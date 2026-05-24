@@ -3884,4 +3884,100 @@ mod tests {
             Some("rtco git log | head | tail && rtco git status".into())
         );
     }
+
+    // --- PHP (rtk#1892) ---
+
+    #[test]
+    fn test_classify_php_bare() {
+        assert!(matches!(
+            classify_command("php"),
+            Classification::Supported {
+                rtk_equivalent: "rtco php",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_classify_php_artisan() {
+        assert!(matches!(
+            classify_command("php artisan migrate"),
+            Classification::Supported {
+                rtk_equivalent: "rtco php",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_classify_php_script() {
+        assert!(matches!(
+            classify_command("php script.php"),
+            Classification::Supported {
+                rtk_equivalent: "rtco php",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_classify_phpunit_not_php() {
+        // phpunit is a different tool (PHPUnit test runner) — must not be misclassified
+        // as the php interpreter rule (rtk#1892 regression guard).
+        // Unsupported / Ignored are both fine — we only forbid a php-rule match.
+        if let Classification::Supported { rtk_equivalent, .. } = classify_command("phpunit tests/")
+        {
+            assert_ne!(
+                rtk_equivalent, "rtco php",
+                "phpunit must not be rewritten via the php rule"
+            );
+        }
+    }
+
+    #[test]
+    fn test_rewrite_php_bare() {
+        assert_eq!(
+            rewrite_command_no_prefixes("php", &[]),
+            Some("rtco php".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_php_artisan_migrate() {
+        assert_eq!(
+            rewrite_command_no_prefixes("php artisan migrate", &[]),
+            Some("rtco php artisan migrate".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_php_artisan_serve() {
+        assert_eq!(
+            rewrite_command_no_prefixes("php artisan serve", &[]),
+            Some("rtco php artisan serve".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_php_script_file() {
+        assert_eq!(
+            rewrite_command_no_prefixes("php script.php --opt", &[]),
+            Some("rtco php script.php --opt".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_phpunit_not_rewritten_as_php() {
+        // phpunit must NOT be rewritten to `rtco php unit` or `rtco php …`.
+        // (It may be left unchanged, or rewritten via its own future rule —
+        // but the php rule must not steal it.)
+        let result = rewrite_command_no_prefixes("phpunit tests/", &[]);
+        if let Some(ref rewritten) = result {
+            assert!(
+                !rewritten.starts_with("rtco php "),
+                "phpunit should not be rewritten via php rule, got: {}",
+                rewritten
+            );
+        }
+    }
 }
