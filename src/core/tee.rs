@@ -178,7 +178,10 @@ fn display_path(path: &std::path::Path) -> String {
 }
 
 fn format_hint(path: &std::path::Path) -> String {
-    format!("[full output: {}]", display_path(path))
+    // Surface the recovery action inline so an AI consumer knows exactly which
+    // command to run if it needs the full output. Without this, models often
+    // ignore the path entirely and proceed with partial context.
+    format!("[full output saved — run: cat {}]", display_path(path))
 }
 
 /// Convenience: tee + format hint in one call.
@@ -215,7 +218,7 @@ fn force_tee_path(content: &str, command_slug: &str) -> Option<PathBuf> {
     )
 }
 
-/// Returns `[full output: ~/path]`, or None if tee is disabled/skipped.
+/// Returns `[full output saved — run: cat ~/path]`, or None if tee is disabled/skipped.
 pub fn force_tee_hint(raw: &str, command_slug: &str) -> Option<String> {
     let path = force_tee_path(raw, command_slug)?;
     Some(format_hint(&path))
@@ -233,6 +236,74 @@ pub fn force_tee_tail_hint(
         line_offset,
         display_path(&path)
     ))
+}
+
+/// Like `force_tee_tail_hint`, but also injects a preview of the first hidden
+/// lines so an AI consumer can decide whether the truncated portion is worth
+/// reading without making an extra `cat`/`tail` tool call.
+///
+/// `line_offset` is 1-based: it identifies the first hidden line (i.e., the
+/// line just after the truncation cut). The preview shows up to the first 3
+/// non-empty hidden lines, each capped at 80 characters.
+///
+/// Output formats:
+/// - With preview lines:
+///   `[+N items hidden — first hidden: <l1> | <l2> | <l3>]\n[full: cat ~/path]`
+/// - Without preview (all hidden lines empty/blank):
+///   `[+N items hidden — run: cat ~/path]`
+///
+/// Returns `None` if tee is disabled or skipped.
+//
+// NOTE: Intentionally not yet wired into any filter caller. This change ships
+// the helper so consumers can adopt it incrementally per filter (the existing
+// `force_tee_tail_hint` callers stay on the simpler hint until they prove the
+// preview adds signal). Tests below exercise it directly.
+#[allow(dead_code)]
+pub fn force_tee_tail_hint_with_preview(
+    content: &str,
+    command_slug: &str,
+    line_offset: usize,
+) -> Option<String> {
+    let path = force_tee_path(content, command_slug)?;
+
+    let total_lines = content.lines().count();
+    // line_offset is 1-based; skip everything before it.
+    let skip = line_offset.saturating_sub(1);
+    let hidden_count = total_lines.saturating_sub(skip);
+
+    // Build up to 3 preview snippets from the first hidden lines, char-safe
+    // truncated to 80 characters each. Skip blank lines.
+    let previews: Vec<String> = content
+        .lines()
+        .skip(skip)
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                None
+            } else if trimmed.chars().count() > 80 {
+                let truncated: String = trimmed.chars().take(80).collect();
+                Some(format!("{}…", truncated))
+            } else {
+                Some(trimmed.to_string())
+            }
+        })
+        .take(3)
+        .collect();
+
+    let display = display_path(&path);
+    if previews.is_empty() {
+        Some(format!(
+            "[+{} items hidden — run: cat {}]",
+            hidden_count, display
+        ))
+    } else {
+        Some(format!(
+            "[+{} items hidden — first hidden: {}]\n[full: cat {}]",
+            hidden_count,
+            previews.join(" | "),
+            display
+        ))
+    }
 }
 
 /// TeeMode controls when tee writes files.
@@ -442,9 +513,25 @@ mod tests {
     fn test_format_hint() {
         let path = PathBuf::from("/tmp/rtk/tee/123_cargo_test.log");
         let hint = format_hint(&path);
-        assert!(hint.starts_with("[full output: "));
+        assert!(hint.starts_with("[full output saved — run: cat "));
         assert!(hint.ends_with(']'));
         assert!(hint.contains("123_cargo_test.log"));
+    }
+
+    #[test]
+    fn test_tee_hint_includes_cat_command() {
+        // The hint must surface a runnable `cat` command so AI consumers know
+        // exactly how to retrieve the full output, not just where it lives.
+        let path = PathBuf::from("/tmp/rtk/tee/456_go_test.log");
+        let hint = format_hint(&path);
+        assert!(
+            hint.contains("run: cat "),
+            "hint must include 'run: cat <path>' instruction, got: {hint}"
+        );
+        assert!(
+            hint.contains("456_go_test.log"),
+            "hint must include the path, got: {hint}"
+        );
     }
 
     #[test]
@@ -523,5 +610,88 @@ directory = "/tmp/rtk-tee"
         assert!(hint.starts_with("[see remaining: tail -n +22 "));
         assert!(hint.ends_with(']'));
         assert!(hint.contains("123_docker_images.log"));
+    }
+
+    #[test]
+    fn test_force_tee_tail_hint_with_preview_skip_empty() {
+        let hint = force_tee_tail_hint_with_preview("", "test_cmd", 5);
+        assert!(hint.is_none(), "Should skip empty content");
+    }
+
+    #[test]
+    fn test_truncate_preview_shows_hidden_lines() {
+        // Build content where lines 4..=10 are hidden (offset = 4, 1-based).
+        // The preview should surface the first 3 non-empty hidden lines and
+        // include a runnable `cat` command for the saved file.
+        let lines: Vec<String> = (1..=10).map(|i| format!("item-{i}")).collect();
+        let content = lines.join("\n");
+
+        // Use a per-test tee dir so we don't pollute the user environment.
+        let tmpdir = tempfile::tempdir().unwrap();
+        std::env::set_var("RTCO_TEE_DIR", tmpdir.path());
+        // Make sure no global env is forcing tee off.
+        std::env::remove_var("RTCO_TEE");
+
+        let hint = force_tee_tail_hint_with_preview(&content, "preview_test", 4);
+
+        std::env::remove_var("RTCO_TEE_DIR");
+
+        let hint = hint.expect("preview hint should be produced for non-empty content");
+        assert!(
+            hint.contains("+7 items hidden"),
+            "should report 7 hidden items (lines 4..=10), got: {hint}"
+        );
+        assert!(
+            hint.contains("first hidden: item-4 | item-5 | item-6"),
+            "should preview the first 3 hidden lines, got: {hint}"
+        );
+        assert!(
+            hint.contains("[full: cat "),
+            "should include `cat` recovery command, got: {hint}"
+        );
+    }
+
+    #[test]
+    fn test_truncate_preview_truncates_long_lines() {
+        let long_line = "x".repeat(200);
+        let content = format!("visible\n{long_line}\nshort tail");
+
+        let tmpdir = tempfile::tempdir().unwrap();
+        std::env::set_var("RTCO_TEE_DIR", tmpdir.path());
+        std::env::remove_var("RTCO_TEE");
+
+        let hint = force_tee_tail_hint_with_preview(&content, "preview_long", 2);
+
+        std::env::remove_var("RTCO_TEE_DIR");
+
+        let hint = hint.expect("hint should be produced");
+        // The 200-char line must be truncated to 80 chars + ellipsis in preview.
+        let expected_prefix: String = "x".repeat(80);
+        assert!(
+            hint.contains(&format!("{expected_prefix}…")),
+            "long preview line should be truncated to 80 chars + ellipsis, got: {hint}"
+        );
+        assert!(hint.contains("short tail"));
+    }
+
+    #[test]
+    fn test_truncate_preview_skips_blank_hidden_lines() {
+        // Hidden region starts with blank lines; preview should skip them and
+        // surface the first non-empty line instead.
+        let content = "visible-1\n\n\n\nactual-content\nmore-content";
+
+        let tmpdir = tempfile::tempdir().unwrap();
+        std::env::set_var("RTCO_TEE_DIR", tmpdir.path());
+        std::env::remove_var("RTCO_TEE");
+
+        let hint = force_tee_tail_hint_with_preview(content, "preview_blanks", 2);
+
+        std::env::remove_var("RTCO_TEE_DIR");
+
+        let hint = hint.expect("hint should be produced");
+        assert!(
+            hint.contains("first hidden: actual-content | more-content"),
+            "should skip blank lines and preview content, got: {hint}"
+        );
     }
 }
