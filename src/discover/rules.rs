@@ -703,7 +703,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_status: &[],
     },
     RtkRule {
-        pattern: r"^mvn\s+(compile|package|clean|install)\b",
+        pattern: r"^mvn\s+(compile|package|clean|install|test|verify|integration-test|failsafe:integration-test)\b",
         rtk_cmd: "rtco mvn",
         rewrite_prefixes: &["mvn"],
         category: "Build",
