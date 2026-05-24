@@ -581,6 +581,19 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
+    // PHP interpreter (artisan, scripts, -v, etc.). Routed via fallback passthrough
+    // so any invocation works without a dedicated handler. Restored in rtk#1892 after
+    // a regression silently dropped the rule. Pattern uses `(\s|$)` so it matches
+    // `php` alone and `php …` but never `phpunit`, `phpcs`, `phpstan`.
+    RtkRule {
+        pattern: r"^php(\s|$)",
+        rtk_cmd: "rtco php",
+        rewrite_prefixes: &["php"],
+        category: "Build",
+        savings_pct: 65.0,
+        subcmd_savings: &[],
+        subcmd_status: &[],
+    },
     RtkRule {
         pattern: r"^df(\s|$)",
         rtk_cmd: "rtco df",
