@@ -5,41 +5,62 @@ use anyhow::Result;
 use std::fs;
 use std::path::Path;
 
-/// Ultra-condensed diff - only changed lines, no context
-pub fn run(file1: &Path, file2: &Path, verbose: u8) -> Result<()> {
+/// Ultra-condensed diff - only changed lines, no context.
+///
+/// Exit-code contract aligned with GNU `diff` (issue rtk#1918):
+/// - `Ok(0)` when files are identical.
+/// - `Ok(1)` when files differ.
+/// - `Ok(2)` on I/O errors such as missing files.
+///
+/// The "files are identical" status message is written to stderr (not stdout)
+/// so scripts redirecting stdout into `patch`, `git apply`, or similar
+/// consumers don't see decorative text mixed into the patch stream.
+pub fn run(file1: &Path, file2: &Path, verbose: u8) -> Result<i32> {
     let timer = tracking::TimedExecution::start();
 
     if verbose > 0 {
         eprintln!("Comparing: {} vs {}", file1.display(), file2.display());
     }
 
-    let content1 = fs::read_to_string(file1)?;
-    let content2 = fs::read_to_string(file2)?;
+    let content1 = match fs::read_to_string(file1) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("rtco diff: {}: {}", file1.display(), e);
+            return Ok(2);
+        }
+    };
+    let content2 = match fs::read_to_string(file2) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("rtco diff: {}: {}", file2.display(), e);
+            return Ok(2);
+        }
+    };
     let raw = format!("{}\n---\n{}", content1, content2);
 
     let lines1: Vec<&str> = content1.lines().collect();
     let lines2: Vec<&str> = content2.lines().collect();
     let diff = compute_diff(&lines1, &lines2);
-    let mut rtk = String::new();
 
-    if diff.added == 0 && diff.removed == 0 {
-        rtk.push_str("[ok] Files are identical");
-        println!("{}", rtk);
+    if diff.added == 0 && diff.removed == 0 && diff.modified == 0 {
+        // Match GNU diff: silent on identical files (advisory message to
+        // stderr only). Exit code 0.
+        eprintln!("[ok] Files are identical");
         timer.track(
             &format!("diff {} {}", file1.display(), file2.display()),
             "rtco diff",
             &raw,
-            &rtk,
+            "",
         );
-        return Ok(());
+        return Ok(0);
     }
 
+    let mut rtk = String::new();
     rtk.push_str(&format!("{} → {}\n", file1.display(), file2.display()));
     rtk.push_str(&format!(
         "   +{} added, -{} removed, ~{} modified\n\n",
         diff.added, diff.removed, diff.modified
     ));
-
     rtk.push_str(&format_diff_changes(&diff));
 
     print!("{}", rtk);
@@ -49,7 +70,8 @@ pub fn run(file1: &Path, file2: &Path, verbose: u8) -> Result<()> {
         &raw,
         &rtk,
     );
-    Ok(())
+    // GNU diff convention: exit 1 when files differ.
+    Ok(1)
 }
 
 /// Run diff from stdin (piped command output)
@@ -436,6 +458,44 @@ diff --git a/b.rs b/b.rs
 
         assert!(output.contains("old_line_0"), "should contain first change");
         assert!(output.contains("new_line_99"), "should contain last change");
+    }
+
+    #[test]
+    fn test_run_returns_0_on_identical_files() {
+        use std::io::Write;
+        let mut a = tempfile::NamedTempFile::new().unwrap();
+        let mut b = tempfile::NamedTempFile::new().unwrap();
+        a.write_all(b"hello\nworld\n").unwrap();
+        b.write_all(b"hello\nworld\n").unwrap();
+        a.flush().unwrap();
+        b.flush().unwrap();
+
+        let exit = run(a.path(), b.path(), 0).expect("run ok");
+        assert_eq!(exit, 0, "identical files must exit 0 (GNU diff convention)");
+    }
+
+    #[test]
+    fn test_run_returns_1_on_different_files() {
+        use std::io::Write;
+        let mut a = tempfile::NamedTempFile::new().unwrap();
+        let mut b = tempfile::NamedTempFile::new().unwrap();
+        a.write_all(b"hello\nworld\n").unwrap();
+        b.write_all(b"hello\nWORLD\n").unwrap();
+        a.flush().unwrap();
+        b.flush().unwrap();
+
+        let exit = run(a.path(), b.path(), 0).expect("run ok");
+        assert_eq!(exit, 1, "differing files must exit 1 (GNU diff convention)");
+    }
+
+    #[test]
+    fn test_run_returns_2_on_missing_file() {
+        use std::path::PathBuf;
+        let missing = PathBuf::from("/nonexistent-rtco-test-path-xyz123/a.txt");
+        let existing = tempfile::NamedTempFile::new().unwrap();
+
+        let exit = run(&missing, existing.path(), 0).expect("run does not error out on missing");
+        assert_eq!(exit, 2, "missing file must exit 2 (GNU diff convention)");
     }
 
     #[test]
