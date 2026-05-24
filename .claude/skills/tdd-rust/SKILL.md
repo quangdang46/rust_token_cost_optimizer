@@ -1,6 +1,6 @@
 ---
 name: tdd-rust
-description: TDD workflow for RTK filter development. Red-Green-Refactor with Rust idioms. Real fixtures, token savings assertions, snapshot tests with insta. Auto-triggers on new filter implementation.
+description: TDD workflow for RTCO filter development. Red-Green-Refactor with Rust idioms. Real fixtures, token savings assertions, snapshot tests with insta. Auto-triggers on new filter implementation.
 triggers:
   - "new filter"
   - "implement filter"
@@ -14,12 +14,12 @@ allowed-tools:
   - Edit
   - Bash
 effort: medium
-tags: [tdd, testing, rust, filters, snapshots, token-savings, rtk]
+tags: [tdd, testing, rust, filters, snapshots, token-savings, rtco]
 ---
 
-# RTK TDD Workflow
+# RTCO TDD Workflow
 
-Enforce Red-Green-Refactor for all RTK filter development.
+Enforce Red-Green-Refactor for all RTCO filter development.
 
 ## The Loop
 
@@ -169,7 +169,7 @@ pub fn run(args: MycmdArgs) -> Result<()> {
 
     let filtered = filter_mycmd(&output.stdout)
         .unwrap_or_else(|e| {
-            eprintln!("rtk: filter warning: {}", e);
+            eprintln!("rtco: filter warning: {}", e);
             output.stdout.clone()
         });
 
@@ -209,7 +209,7 @@ fn test_filters_only_errors() {
 }
 ```
 
-## RTK-Specific Test Patterns
+## RTCO-Specific Test Patterns
 
 ### Test ANSI stripping
 

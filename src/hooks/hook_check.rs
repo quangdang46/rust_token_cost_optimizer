@@ -37,7 +37,7 @@ pub fn status() -> HookStatus {
     // Check for new binary command in settings.json first
     if binary_hook_registered(&claude_dir) {
         // If old script file still exists alongside new command, report Outdated
-        // (migration not complete — user should run `rtk init -g` to clean up)
+        // (migration not complete — user should run `rtco init -g` to clean up)
         let old_hook = claude_dir.join(HOOKS_SUBDIR).join(REWRITE_HOOK_FILE);
         if old_hook.exists() {
             return HookStatus::Outdated;
@@ -97,9 +97,9 @@ fn check_and_warn() -> Option<()> {
     let warning = match status() {
         HookStatus::Ok => return Some(()),
         HookStatus::Missing => {
-            "[rtk] /!\\ No hook installed — run `rtk init -g` for automatic token savings"
+            "[rtco] /!\\ No hook installed — run `rtco init -g` for automatic token savings"
         }
-        HookStatus::Outdated => "[rtk] /!\\ Hook outdated — run `rtk init -g` to update",
+        HookStatus::Outdated => "[rtco] /!\\ Hook outdated — run `rtco init -g` to update",
     };
 
     // Rate limit: warn once per day

@@ -21,14 +21,14 @@ use super::constants::{
 use super::integrity;
 
 // Embedded OpenCode plugin (auto-rewrite)
-const OPENCODE_PLUGIN: &str = include_str!("../../hooks/opencode/rtk.ts");
+const OPENCODE_PLUGIN: &str = include_str!("../../hooks/opencode/rtco.ts");
 
 // Embedded Pi extension (auto-rewrite)
-const PI_PLUGIN: &str = include_str!("../../hooks/pi/rtk.ts");
+const PI_PLUGIN: &str = include_str!("../../hooks/pi/rtco.ts");
 
 // Embedded slim RTK awareness instructions
-const RTK_SLIM: &str = include_str!("../../hooks/claude/rtk-awareness.md");
-const RTK_SLIM_CODEX: &str = include_str!("../../hooks/codex/rtk-awareness.md");
+const RTK_SLIM: &str = include_str!("../../hooks/claude/rtco-awareness.md");
+const RTK_SLIM_CODEX: &str = include_str!("../../hooks/codex/rtco-awareness.md");
 
 /// Template written by `rtk init` when no filters.toml exists yet.
 const FILTERS_TEMPLATE: &str = r#"# Project-local RTK filters — commit this file with your repo.
@@ -61,14 +61,14 @@ schema_version = 1
 # max_lines = 40
 "#;
 
-const RTK_MD: &str = "RTK.md";
+const RTK_MD: &str = "RTCO.md";
 const CLAUDE_MD: &str = "CLAUDE.md";
 const AGENTS_MD: &str = "AGENTS.md";
-const RTK_MD_REF: &str = "@RTK.md";
+const RTK_MD_REF: &str = "@RTCO.md";
 const GEMINI_MD: &str = "GEMINI.md";
 
-const RTK_BLOCK_START: &str = "<!-- rtk-instructions";
-const RTK_BLOCK_END: &str = "<!-- /rtk-instructions -->";
+const RTK_BLOCK_START: &str = "<!-- rtco-instructions";
+const RTK_BLOCK_END: &str = "<!-- /rtco-instructions -->";
 
 /// Control flow for settings.json patching
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -105,7 +105,7 @@ fn print_dry_run_footer() {
 }
 
 // Legacy full instructions for backward compatibility (--claude-md mode)
-const RTK_INSTRUCTIONS: &str = r##"<!-- rtk-instructions v2 -->
+const RTK_INSTRUCTIONS: &str = r##"<!-- rtco-instructions v2 -->
 # RTK (Rust Token Killer) - Token-Optimized Commands
 
 ## Golden Rule
@@ -242,7 +242,7 @@ rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
 | Network | curl, wget | 65-70% |
 
 Overall average: **60-90% token reduction** on common development operations.
-<!-- /rtk-instructions -->
+<!-- /rtco-instructions -->
 "##;
 
 /// Main entry point for `rtk init`
@@ -468,8 +468,8 @@ fn prompt_telemetry_consent() -> Result<()> {
     eprintln!("  What:    command names (not arguments), token savings, OS, version");
     eprintln!("  Why:     prioritize filter development for the most-used commands");
     eprintln!("  Who:     RTK AI Labs, contact@rtk-ai.app");
-    eprintln!("  Rights:  disable anytime with `rtk telemetry disable`,");
-    eprintln!("           request erasure with `rtk telemetry forget`");
+    eprintln!("  Rights:  disable anytime with `rtco telemetry disable`,");
+    eprintln!("           request erasure with `rtco telemetry forget`");
     eprintln!("  Details: https://github.com/rtk-ai/rtk/blob/master/docs/TELEMETRY.md");
     eprintln!();
     eprint!("Enable anonymous telemetry? [y/N] ");
@@ -1083,7 +1083,7 @@ fn insert_hook_entry(root: &mut serde_json::Value, hook_command: &str) -> Result
 }
 
 /// Check if RTK hook is already present in settings.json
-/// Matches on legacy rtk-rewrite.sh path OR new `rtk hook claude` command
+/// Matches on legacy rtco-rewrite.sh path OR new `rtk hook claude` command
 fn hook_already_present(root: &serde_json::Value, hook_command: &str) -> bool {
     let pre_tool_use_array = match root
         .get("hooks")
@@ -1194,7 +1194,7 @@ fn run_default_mode(
 }
 
 /// Migrate old hook script to new binary command.
-/// Deletes `~/.claude/hooks/rtk-rewrite.sh` and `.rtk-hook.sha256` if present,
+/// Deletes `~/.claude/hooks/rtco-rewrite.sh` and `.rtco-hook.sha256` if present,
 /// and removes the stale settings.json entry so the new `rtk hook claude` entry
 /// can be registered.
 fn migrate_old_hook_script(ctx: InitContext) {
@@ -1231,7 +1231,7 @@ fn migrate_old_hook_script(ctx: InitContext) {
         let hash_file = home
             .join(CLAUDE_DIR)
             .join(HOOKS_SUBDIR)
-            .join(".rtk-hook.sha256");
+            .join(".rtco-hook.sha256");
         if hash_file.exists() {
             if dry_run {
                 println!(
@@ -1257,7 +1257,7 @@ fn migrate_old_hook_script(ctx: InitContext) {
     }
 }
 
-/// Remove only legacy `rtk-rewrite.sh` entries from settings.json.
+/// Remove only legacy `rtco-rewrite.sh` entries from settings.json.
 /// Preserves any existing `rtk hook claude` entries (new format).
 fn remove_legacy_settings_entries(ctx: InitContext) -> Result<()> {
     let InitContext { verbose, dry_run } = ctx;
@@ -1283,7 +1283,7 @@ fn remove_legacy_settings_entries(ctx: InitContext) -> Result<()> {
 
     if dry_run {
         println!(
-            "[dry-run] would remove legacy rtk-rewrite.sh entry from {}",
+            "[dry-run] would remove legacy rtco-rewrite.sh entry from {}",
             settings_path.display()
         );
         return Ok(());
@@ -1299,12 +1299,12 @@ fn remove_legacy_settings_entries(ctx: InitContext) -> Result<()> {
     atomic_write(&settings_path, &serialized)?;
 
     if verbose > 0 {
-        eprintln!("  [ok] Removed legacy rtk-rewrite.sh entry from settings.json");
+        eprintln!("  [ok] Removed legacy rtco-rewrite.sh entry from settings.json");
     }
     Ok(())
 }
 
-/// Remove only legacy `rtk-rewrite.sh` hook entries from a parsed settings.json.
+/// Remove only legacy `rtco-rewrite.sh` hook entries from a parsed settings.json.
 /// Returns true if any entries were removed.
 /// Does NOT remove `rtk hook claude` entries — those are the new format.
 fn remove_legacy_hook_entries_from_json(root: &mut serde_json::Value) -> bool {
@@ -1493,15 +1493,15 @@ fn run_claude_md_mode(global: bool, install_opencode: bool, ctx: InitContext) ->
     }
 
     let recovery_cmd = if global {
-        "rtk init -g --claude-md"
+        "rtco init -g --claude-md"
     } else {
-        "rtk init --claude-md"
+        "rtco init --claude-md"
     };
 
     let action = write_rtk_block(
         &path,
         RTK_INSTRUCTIONS,
-        "rtk instructions",
+        "rtco instructions",
         recovery_cmd,
         ctx,
     )?;
@@ -1747,8 +1747,8 @@ fn run_antigravity_mode_at(base_dir: &Path, ctx: InitContext) -> Result<()> {
 
 // ─── Hermes support ────────────────────────────────────────────
 
-const HERMES_PLUGIN_INIT: &str = include_str!("../../hooks/hermes/rtk-rewrite/__init__.py");
-const HERMES_PLUGIN_YAML: &str = include_str!("../../hooks/hermes/rtk-rewrite/plugin.yaml");
+const HERMES_PLUGIN_INIT: &str = include_str!("../../hooks/hermes/rtco-rewrite/__init__.py");
+const HERMES_PLUGIN_YAML: &str = include_str!("../../hooks/hermes/rtco-rewrite/plugin.yaml");
 
 pub fn run_hermes_mode(ctx: InitContext) -> Result<()> {
     let hermes_home = resolve_hermes_home()?;
@@ -2386,7 +2386,7 @@ fn upsert_rtk_block(content: &str, block: &str) -> (String, RtkBlockUpsert) {
 /// Returns the [`RtkBlockUpsert`] action so callers can branch on whether anything
 /// was actually changed (e.g., to skip post-install steps on `Unchanged`).
 ///
-/// `label` is shown in user-facing messages (e.g., `"rtk instructions"`,
+/// `label` is shown in user-facing messages (e.g., `"rtco instructions"`,
 /// `"Copilot instructions"`).
 fn write_rtk_block(
     path: &Path,
@@ -2710,7 +2710,7 @@ fn resolve_home_subdir(subdir: &str) -> Result<PathBuf> {
 }
 
 fn resolve_claude_dir() -> Result<PathBuf> {
-    if let Ok(dir) = std::env::var("RTK_CLAUDE_DIR") {
+    if let Ok(dir) = std::env::var("RTCO_CLAUDE_DIR") {
         return Ok(PathBuf::from(dir));
     }
     resolve_home_subdir(CLAUDE_DIR)
@@ -3069,7 +3069,7 @@ fn patch_cursor_hooks_json(path: &Path, ctx: InitContext) -> Result<bool> {
 }
 
 /// Check if RTK preToolUse hook is already present in Cursor hooks.json
-/// Matches on legacy rtk-rewrite.sh path OR new `rtk hook cursor` command
+/// Matches on legacy rtco-rewrite.sh path OR new `rtk hook cursor` command
 fn cursor_hook_already_present(root: &serde_json::Value) -> bool {
     let hooks = match root
         .get("hooks")
@@ -3119,7 +3119,7 @@ fn insert_cursor_hook_entry(root: &mut serde_json::Value) -> Result<()> {
     Ok(())
 }
 
-/// Remove only legacy `rtk-rewrite.sh` entries from Cursor hooks.json.
+/// Remove only legacy `rtco-rewrite.sh` entries from Cursor hooks.json.
 /// Preserves any existing `rtk hook cursor` entries (new format).
 fn remove_legacy_cursor_hooks_json_entries(path: &Path, ctx: InitContext) -> Result<()> {
     let InitContext { verbose, dry_run } = ctx;
@@ -3142,7 +3142,7 @@ fn remove_legacy_cursor_hooks_json_entries(path: &Path, ctx: InitContext) -> Res
 
     if dry_run {
         println!(
-            "[dry-run] would remove legacy rtk-rewrite.sh entry from Cursor hooks.json: {}",
+            "[dry-run] would remove legacy rtco-rewrite.sh entry from Cursor hooks.json: {}",
             path.display()
         );
         return Ok(());
@@ -3153,12 +3153,12 @@ fn remove_legacy_cursor_hooks_json_entries(path: &Path, ctx: InitContext) -> Res
     atomic_write(path, &serialized)?;
 
     if verbose > 0 {
-        eprintln!("  [ok] Removed legacy rtk-rewrite.sh entry from Cursor hooks.json");
+        eprintln!("  [ok] Removed legacy rtco-rewrite.sh entry from Cursor hooks.json");
     }
     Ok(())
 }
 
-/// Remove only legacy `rtk-rewrite.sh` entries from parsed Cursor hooks.json.
+/// Remove only legacy `rtco-rewrite.sh` entries from parsed Cursor hooks.json.
 /// Returns true if any entries were removed.
 /// Does NOT remove `rtk hook cursor` entries — those are the new format.
 fn remove_legacy_cursor_hook_entries_from_json(root: &mut serde_json::Value) -> bool {
@@ -3280,7 +3280,7 @@ fn show_claude_config() -> Result<()> {
     let global_claude_md = claude_dir.join(CLAUDE_MD);
     let local_claude_md = PathBuf::from(CLAUDE_MD);
 
-    println!("rtk Configuration:\n");
+    println!("rtco Configuration:\n");
 
     // Check hook: prefer binary command detection, fall back to script file
     let settings_path = claude_dir.join(SETTINGS_JSON);
@@ -3308,7 +3308,7 @@ fn show_claude_config() -> Result<()> {
             let hook_content = fs::read_to_string(&hook_path)?;
             let has_guards =
                 hook_content.contains("command -v rtk") && hook_content.contains("command -v jq");
-            let is_thin_delegator = hook_content.contains("rtk rewrite");
+            let is_thin_delegator = hook_content.contains("rtco rewrite");
             let hook_version = super::hook_check::parse_hook_version(&hook_content);
 
             if !is_executable {
@@ -3318,12 +3318,12 @@ fn show_claude_config() -> Result<()> {
                 );
             } else if !is_thin_delegator {
                 println!(
-                    "[warn] Hook: {} (outdated — run `rtk init -g` to upgrade to native binary)",
+                    "[warn] Hook: {} (outdated — run `rtco init -g` to upgrade to native binary)",
                     hook_path.display()
                 );
             } else if is_executable && has_guards {
                 println!(
-                    "[warn] Hook: {} (legacy script v{} — run `rtk init -g` to upgrade)",
+                    "[warn] Hook: {} (legacy script v{} — run `rtco init -g` to upgrade)",
                     hook_path.display(),
                     hook_version
                 );
@@ -3338,7 +3338,7 @@ fn show_claude_config() -> Result<()> {
         #[cfg(not(unix))]
         {
             println!(
-                "[warn] Hook: {} (legacy script — run `rtk init -g` to upgrade)",
+                "[warn] Hook: {} (legacy script — run `rtco init -g` to upgrade)",
                 hook_path.display()
             );
         }
@@ -3462,7 +3462,7 @@ fn show_claude_config() -> Result<()> {
                 let meta = fs::metadata(&cursor_hook)?;
                 let is_executable = meta.permissions().mode() & 0o111 != 0;
                 let content = fs::read_to_string(&cursor_hook)?;
-                let _is_thin = content.contains("rtk rewrite");
+                let _is_thin = content.contains("rtco rewrite");
 
                 if !is_executable {
                     println!(
@@ -3471,7 +3471,7 @@ fn show_claude_config() -> Result<()> {
                     );
                 } else {
                     println!(
-                        "[warn] Cursor hook: {} (legacy script — run `rtk init -g --agent cursor` to upgrade)",
+                        "[warn] Cursor hook: {} (legacy script — run `rtco init -g --agent cursor` to upgrade)",
                         cursor_hook.display()
                     );
                 }
@@ -3479,7 +3479,7 @@ fn show_claude_config() -> Result<()> {
 
             #[cfg(not(unix))]
             {
-                println!("[warn] Cursor hook: {} (legacy script — run `rtk init -g --agent cursor` to upgrade)", cursor_hook.display());
+                println!("[warn] Cursor hook: {} (legacy script — run `rtco init -g --agent cursor` to upgrade)", cursor_hook.display());
             }
         } else {
             println!("[--] Cursor hook: not found");
@@ -3512,7 +3512,7 @@ fn show_codex_config() -> Result<()> {
     let local_agents_md = PathBuf::from(AGENTS_MD);
     let local_rtk_md = PathBuf::from(RTK_MD);
 
-    println!("rtk Configuration (Codex CLI):\n");
+    println!("rtco Configuration (Codex CLI):\n");
 
     if global_rtk_md.exists() {
         println!("[ok] Global RTK.md: {}", global_rtk_md.display());
@@ -3850,7 +3850,7 @@ const COPILOT_HOOK_JSON: &str = r#"{
     "PreToolUse": [
       {
         "type": "command",
-        "command": "rtk hook copilot",
+        "command": "rtco hook copilot",
         "cwd": ".",
         "timeout": 5
       }
@@ -3859,7 +3859,7 @@ const COPILOT_HOOK_JSON: &str = r#"{
 }
 "#;
 
-const COPILOT_INSTRUCTIONS: &str = r#"<!-- rtk-instructions v2 -->
+const COPILOT_INSTRUCTIONS: &str = r#"<!-- rtco-instructions v2 -->
 # RTK — Token-Optimized CLI
 
 **rtk** is a CLI proxy that filters and compresses command outputs, saving 60-90% tokens.
@@ -3885,7 +3885,7 @@ rtk gain --history    # Per-command savings history
 rtk discover          # Find missed rtk opportunities
 rtk proxy <cmd>       # Run raw (no filtering) but track usage
 ```
-<!-- /rtk-instructions -->
+<!-- /rtco-instructions -->
 "#;
 
 /// Entry point for `rtk init --copilot`.
@@ -3917,12 +3917,12 @@ fn run_copilot_at(base: &Path, ctx: InitContext) -> Result<()> {
         &instructions_path,
         COPILOT_INSTRUCTIONS,
         "Copilot instructions",
-        "rtk init --copilot",
+        "rtco init --copilot",
         ctx,
     )?;
 
     // 2. Write hook config (only reached if the upsert above succeeded).
-    let hook_path = hooks_dir.join("rtk-rewrite.json");
+    let hook_path = hooks_dir.join("rtco-rewrite.json");
     write_if_changed(&hook_path, COPILOT_HOOK_JSON, "Copilot hook config", ctx)?;
 
     if dry_run {
@@ -3947,21 +3947,21 @@ mod tests {
     #[test]
     fn test_init_mentions_all_top_level_commands() {
         for cmd in [
-            "rtk cargo",
-            "rtk gh",
-            "rtk vitest",
-            "rtk tsc",
-            "rtk lint",
-            "rtk prettier",
-            "rtk next",
-            "rtk playwright",
-            "rtk prisma",
-            "rtk pnpm",
-            "rtk npm",
-            "rtk curl",
-            "rtk git",
-            "rtk docker",
-            "rtk kubectl",
+            "rtco cargo",
+            "rtco gh",
+            "rtco vitest",
+            "rtco tsc",
+            "rtco lint",
+            "rtco prettier",
+            "rtco next",
+            "rtco playwright",
+            "rtco prisma",
+            "rtco pnpm",
+            "rtco npm",
+            "rtco curl",
+            "rtco git",
+            "rtco docker",
+            "rtco kubectl",
         ] {
             assert!(
                 RTK_INSTRUCTIONS.contains(cmd),
@@ -4056,7 +4056,7 @@ mod tests {
     fn test_claude_md_mode_creates_full_injection() {
         // Just verify RTK_INSTRUCTIONS constant has the right content
         assert!(RTK_INSTRUCTIONS.contains(RTK_BLOCK_START));
-        assert!(RTK_INSTRUCTIONS.contains("rtk cargo test"));
+        assert!(RTK_INSTRUCTIONS.contains("rtco cargo test"));
         assert!(RTK_INSTRUCTIONS.contains(RTK_BLOCK_END));
         assert!(RTK_INSTRUCTIONS.len() > 4000);
     }
@@ -4082,7 +4082,7 @@ mod tests {
         let (content, action) = upsert_rtk_block(&input, RTK_INSTRUCTIONS);
         assert_eq!(action, RtkBlockUpsert::Updated);
         assert!(!content.contains("OLD RTK CONTENT"));
-        assert!(content.contains("rtk cargo test")); // from current RTK_INSTRUCTIONS
+        assert!(content.contains("rtco cargo test")); // from current RTK_INSTRUCTIONS
         assert!(content.contains("# Team instructions"));
         assert!(content.contains("More notes"));
     }
@@ -4266,7 +4266,7 @@ mod tests {
         let temp = TempDir::new().unwrap();
         run_hermes_mode_at(temp.path(), InitContext::default()).unwrap();
 
-        let plugin_dir = temp.path().join("plugins/rtk-rewrite");
+        let plugin_dir = temp.path().join("plugins/rtco-rewrite");
         let init_path = plugin_dir.join("__init__.py");
         let manifest_path = plugin_dir.join("plugin.yaml");
         let config_path = temp.path().join("config.yaml");
@@ -4275,17 +4275,17 @@ mod tests {
         assert!(manifest_path.exists(), "Plugin manifest should be created");
         assert_eq!(
             fs::read_to_string(&init_path).unwrap(),
-            include_str!("../../hooks/hermes/rtk-rewrite/__init__.py")
+            include_str!("../../hooks/hermes/rtco-rewrite/__init__.py")
         );
         assert_eq!(
             fs::read_to_string(&manifest_path).unwrap(),
-            include_str!("../../hooks/hermes/rtk-rewrite/plugin.yaml")
+            include_str!("../../hooks/hermes/rtco-rewrite/plugin.yaml")
         );
 
         let config = fs::read_to_string(&config_path).unwrap();
         assert!(config.contains("plugins:\n"));
         assert!(config.contains("  enabled:\n"));
-        assert_eq!(config.matches("rtk-rewrite").count(), 1);
+        assert_eq!(config.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4308,7 +4308,7 @@ mod tests {
         assert!(first.contains("    - existing-plugin\n"));
         assert!(first.contains("  search_path: ./plugins\n"));
         assert!(first.contains("other: true\n"));
-        assert_eq!(first.matches("rtk-rewrite").count(), 1);
+        assert_eq!(first.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4326,13 +4326,13 @@ mod tests {
         run_hermes_mode_at(temp.path(), InitContext::default()).unwrap();
         let second = fs::read_to_string(&config_path).unwrap();
 
-        let expected = "theme: dark\nplugins:\n disabled:\n - google_meet\n - spotify\n enabled:\n - disk-cleanup\n - rtk-rewrite\n search_path: ./plugins\nother: true\n";
+        let expected = "theme: dark\nplugins:\n disabled:\n - google_meet\n - spotify\n enabled:\n - disk-cleanup\n - rtco-rewrite\n search_path: ./plugins\nother: true\n";
         assert_eq!(first, expected);
         assert_eq!(
             second, expected,
             "Hermes PyYAML config patch should be idempotent"
         );
-        assert_eq!(first.matches("rtk-rewrite").count(), 1);
+        assert_eq!(first.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4357,10 +4357,10 @@ mod tests {
         run_hermes_mode_at(hermes_home, InitContext::default()).unwrap();
         let second = fs::read_to_string(&config_path).unwrap();
 
-        let installed = "theme: dark\nplugins:\n disabled:\n - google_meet\n - spotify\n search_path: ./plugins\n enabled:\n - rtk-rewrite\nother: true\n";
+        let installed = "theme: dark\nplugins:\n disabled:\n - google_meet\n - spotify\n search_path: ./plugins\n enabled:\n - rtco-rewrite\nother: true\n";
         assert_eq!(first, installed);
         assert_eq!(second, installed);
-        assert_eq!(first.matches("rtk-rewrite").count(), 1);
+        assert_eq!(first.matches("rtco-rewrite").count(), 1);
         assert!(plugin_dir.exists());
         assert_eq!(fs::read_to_string(&other_plugin_file).unwrap(), "keep");
 
@@ -4380,7 +4380,7 @@ mod tests {
         );
         assert!(!uninstalled.contains("\n - \n"));
         assert!(!uninstalled.contains("\n -\n"));
-        assert_eq!(uninstalled.matches("rtk-rewrite").count(), 0);
+        assert_eq!(uninstalled.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
@@ -4399,7 +4399,7 @@ mod tests {
         fs::write(&other_plugin_file, "keep").unwrap();
         fs::write(
             &config_path,
-            "theme: dark\nplugins:\n  enabled:\n    - existing-plugin\n    - rtk-rewrite\n  search_path: ./plugins\nother: true\n",
+            "theme: dark\nplugins:\n  enabled:\n    - existing-plugin\n    - rtco-rewrite\n  search_path: ./plugins\nother: true\n",
         )
         .unwrap();
 
@@ -4417,7 +4417,7 @@ mod tests {
         assert!(config.contains("    - existing-plugin\n"));
         assert!(config.contains("  search_path: ./plugins\n"));
         assert!(config.contains("other: true\n"));
-        assert_eq!(config.matches("rtk-rewrite").count(), 0);
+        assert_eq!(config.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
@@ -4436,7 +4436,7 @@ mod tests {
         fs::write(&other_plugin_file, "keep").unwrap();
         fs::write(
             &config_path,
-            "theme: dark\nplugins:\n disabled:\n - google_meet\n - spotify\n enabled:\n - disk-cleanup\n - rtk-rewrite\n search_path: ./plugins\nother: true\n",
+            "theme: dark\nplugins:\n disabled:\n - google_meet\n - spotify\n enabled:\n - disk-cleanup\n - rtco-rewrite\n search_path: ./plugins\nother: true\n",
         )
         .unwrap();
 
@@ -4456,7 +4456,7 @@ mod tests {
         );
         assert!(!config.contains("\n - \n"));
         assert!(!config.contains("\n -\n"));
-        assert_eq!(config.matches("rtk-rewrite").count(), 0);
+        assert_eq!(config.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
@@ -4481,18 +4481,18 @@ mod tests {
         assert!(patched.contains("theme: dark\n"));
         assert!(patched.contains("plugins:\n"));
         assert!(patched.contains("  search_path: ./plugins\n"));
-        assert!(patched.contains("  enabled:\n    - rtk-rewrite\n"));
+        assert!(patched.contains("  enabled:\n    - rtco-rewrite\n"));
         assert!(patched.contains("other: true\n"));
-        assert_eq!(patched.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
     fn test_hermes_config_patch_removes_duplicate_rtk_rewrite() {
-        let existing = "plugins:\n  enabled:\n    - rtk-rewrite\n    - other\n    - rtk-rewrite\n";
+        let existing = "plugins:\n  enabled:\n    - rtco-rewrite\n    - other\n    - rtco-rewrite\n";
         let patched = patch_hermes_config(existing);
 
         assert!(patched.contains("    - other\n"));
-        assert_eq!(patched.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4504,9 +4504,9 @@ mod tests {
 
         assert_eq!(
             patched,
-            "plugins:\n disabled:\n - google_meet\n - spotify\n enabled:\n - disk-cleanup\n - rtk-rewrite\n"
+            "plugins:\n disabled:\n - google_meet\n - spotify\n enabled:\n - disk-cleanup\n - rtco-rewrite\n"
         );
-        assert_eq!(patched.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4515,8 +4515,8 @@ mod tests {
 
         let patched = patch_hermes_config(existing);
 
-        assert_eq!(patched, "plugins:\n  enabled:\n  - foo\n  - rtk-rewrite\n");
-        assert_eq!(patched.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched, "plugins:\n  enabled:\n  - foo\n  - rtco-rewrite\n");
+        assert_eq!(patched.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4528,9 +4528,9 @@ mod tests {
 
         assert_eq!(
             patched,
-            "plugins:\n disabled:\n - google_meet\n - spotify\n search_path: ./plugins\n enabled:\n - rtk-rewrite\n"
+            "plugins:\n disabled:\n - google_meet\n - spotify\n search_path: ./plugins\n enabled:\n - rtco-rewrite\n"
         );
-        assert_eq!(patched.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4542,10 +4542,10 @@ mod tests {
 
         assert_eq!(
             patched_once,
-            "plugins:\n enabled:\n - disk-cleanup\n - rtk-rewrite\n disabled:\n - spotify\n"
+            "plugins:\n enabled:\n - disk-cleanup\n - rtco-rewrite\n disabled:\n - spotify\n"
         );
         assert_eq!(patched_twice, patched_once);
-        assert_eq!(patched_once.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched_once.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4556,9 +4556,9 @@ mod tests {
 
         assert_eq!(
             patched,
-            "plugins:\n enabled:\n - disk-cleanup\n - rtk-rewrite\n"
+            "plugins:\n enabled:\n - disk-cleanup\n - rtco-rewrite\n"
         );
-        assert_eq!(patched.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4569,9 +4569,9 @@ mod tests {
 
         assert_eq!(
             patched,
-            "plugins:\n  enabled:\n    - existing-plugin\n    - rtk-rewrite\n"
+            "plugins:\n  enabled:\n    - existing-plugin\n    - rtco-rewrite\n"
         );
-        assert_eq!(patched.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4582,9 +4582,9 @@ mod tests {
 
         assert_eq!(
             patched,
-            "plugins:\n  search_path: ./plugins\n  enabled:\n    - rtk-rewrite\n"
+            "plugins:\n  search_path: ./plugins\n  enabled:\n    - rtco-rewrite\n"
         );
-        assert_eq!(patched.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4593,30 +4593,30 @@ mod tests {
 
         let patched = patch_hermes_config(existing);
 
-        assert_eq!(patched, "plugins:\n  enabled:\n    - rtk-rewrite\n");
-        assert_eq!(patched.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched, "plugins:\n  enabled:\n    - rtco-rewrite\n");
+        assert_eq!(patched.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
     fn test_hermes_config_patch_inline_enabled_is_idempotent() {
-        let existing = "theme: dark\nplugins:\n  enabled: [existing-plugin, rtk-rewrite] # keep\n  search_path: ./plugins\nother: true\n";
+        let existing = "theme: dark\nplugins:\n  enabled: [existing-plugin, rtco-rewrite] # keep\n  search_path: ./plugins\nother: true\n";
 
         let patched = patch_hermes_config(existing);
 
         assert_eq!(patched, existing);
         assert_eq!(patch_hermes_config(&patched), patched);
-        assert_eq!(patched.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
     fn test_hermes_config_patch_inline_enabled_without_final_newline_is_idempotent() {
-        let existing = "plugins:\n  enabled: [existing-plugin, rtk-rewrite]";
+        let existing = "plugins:\n  enabled: [existing-plugin, rtco-rewrite]";
 
         let patched = patch_hermes_config(existing);
 
         assert_eq!(patched, existing);
         assert_eq!(patch_hermes_config(&patched), patched);
-        assert_eq!(patched.matches("rtk-rewrite").count(), 1);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 1);
     }
 
     #[test]
@@ -4630,7 +4630,7 @@ mod tests {
 
     #[test]
     fn test_hermes_config_unpatch_inline_enabled_preserves_unrelated_entries() {
-        let existing = "theme: dark\nplugins:\n  enabled: [alpha, rtk-rewrite, beta] # keep comment\n  search_path: ./plugins\nother: true\n";
+        let existing = "theme: dark\nplugins:\n  enabled: [alpha, rtco-rewrite, beta] # keep comment\n  search_path: ./plugins\nother: true\n";
 
         let patched = unpatch_hermes_config(existing);
 
@@ -4638,42 +4638,42 @@ mod tests {
             patched,
             "theme: dark\nplugins:\n  enabled: [alpha, beta] # keep comment\n  search_path: ./plugins\nother: true\n"
         );
-        assert_eq!(patched.matches("rtk-rewrite").count(), 0);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
     fn test_hermes_config_unpatch_inline_enabled_final_line_without_newline() {
-        let existing = "plugins:\n  enabled: [existing-plugin, rtk-rewrite]";
+        let existing = "plugins:\n  enabled: [existing-plugin, rtco-rewrite]";
 
         let patched = unpatch_hermes_config(existing);
 
         assert_eq!(patched, "plugins:\n  enabled: [existing-plugin]");
-        assert_eq!(patched.matches("rtk-rewrite").count(), 0);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
     fn test_hermes_config_unpatch_removes_duplicate_inline_rtk_rewrite() {
-        let existing = "plugins:\n  enabled: [alpha, rtk-rewrite, beta, rtk-rewrite]\n";
+        let existing = "plugins:\n  enabled: [alpha, rtco-rewrite, beta, rtco-rewrite]\n";
 
         let patched = unpatch_hermes_config(existing);
 
         assert_eq!(patched, "plugins:\n  enabled: [alpha, beta]\n");
-        assert_eq!(patched.matches("rtk-rewrite").count(), 0);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
     fn test_hermes_config_unpatch_removes_duplicate_block_rtk_rewrite() {
-        let existing = "plugins:\n  enabled:\n    - rtk-rewrite\n    - other\n    - rtk-rewrite\n";
+        let existing = "plugins:\n  enabled:\n    - rtco-rewrite\n    - other\n    - rtco-rewrite\n";
 
         let patched = unpatch_hermes_config(existing);
 
         assert_eq!(patched, "plugins:\n  enabled:\n    - other\n");
-        assert_eq!(patched.matches("rtk-rewrite").count(), 0);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
     fn test_hermes_config_unpatch_pyyaml_indentationless_enabled_list() {
-        let existing = "plugins:\n disabled:\n - google_meet\n - spotify\n enabled:\n - disk-cleanup\n - rtk-rewrite\n search_path: ./plugins\n";
+        let existing = "plugins:\n disabled:\n - google_meet\n - spotify\n enabled:\n - disk-cleanup\n - rtco-rewrite\n search_path: ./plugins\n";
 
         let patched = unpatch_hermes_config(existing);
 
@@ -4681,27 +4681,27 @@ mod tests {
             patched,
             "plugins:\n disabled:\n - google_meet\n - spotify\n enabled:\n - disk-cleanup\n search_path: ./plugins\n"
         );
-        assert_eq!(patched.matches("rtk-rewrite").count(), 0);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
     fn test_hermes_config_unpatch_pyyaml_indentationless_only_rtk_collapses_to_empty() {
-        let existing = "plugins:\n enabled:\n - rtk-rewrite\n search_path: ./plugins\n";
+        let existing = "plugins:\n enabled:\n - rtco-rewrite\n search_path: ./plugins\n";
 
         let patched = unpatch_hermes_config(existing);
 
         assert_eq!(patched, "plugins:\n enabled: []\n search_path: ./plugins\n");
-        assert_eq!(patched.matches("rtk-rewrite").count(), 0);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
     fn test_hermes_config_unpatch_block_enabled_final_line_without_newline() {
-        let existing = "plugins:\n  enabled:\n    - existing-plugin\n    - rtk-rewrite";
+        let existing = "plugins:\n  enabled:\n    - existing-plugin\n    - rtco-rewrite";
 
         let patched = unpatch_hermes_config(existing);
 
         assert_eq!(patched, "plugins:\n  enabled:\n    - existing-plugin\n");
-        assert_eq!(patched.matches("rtk-rewrite").count(), 0);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
@@ -4715,7 +4715,7 @@ mod tests {
 
     #[test]
     fn test_hermes_config_unpatch_preserves_quoted_exact_values() {
-        let existing = "plugins:\n  enabled:\n    - 'alpha'\n    - \"rtk-rewrite\"\n    - 'beta'\n  search_path: ./plugins\n";
+        let existing = "plugins:\n  enabled:\n    - 'alpha'\n    - \"rtco-rewrite\"\n    - 'beta'\n  search_path: ./plugins\n";
 
         let patched = unpatch_hermes_config(existing);
 
@@ -4723,7 +4723,7 @@ mod tests {
             patched,
             "plugins:\n  enabled:\n    - 'alpha'\n    - 'beta'\n  search_path: ./plugins\n"
         );
-        assert_eq!(patched.matches("rtk-rewrite").count(), 0);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
@@ -4737,12 +4737,12 @@ mod tests {
 
     #[test]
     fn test_hermes_config_unpatch_collapses_empty_enabled_list() {
-        let existing = "plugins:\n  enabled:\n    - rtk-rewrite\n";
+        let existing = "plugins:\n  enabled:\n    - rtco-rewrite\n";
 
         let patched = unpatch_hermes_config(existing);
 
         assert_eq!(patched, "plugins:\n  enabled: []\n");
-        assert_eq!(patched.matches("rtk-rewrite").count(), 0);
+        assert_eq!(patched.matches("rtco-rewrite").count(), 0);
     }
 
     #[test]
@@ -4976,13 +4976,13 @@ mod tests {
                     "matcher": "Bash",
                     "hooks": [{
                         "type": "command",
-                        "command": "/Users/test/.claude/hooks/rtk-rewrite.sh"
+                        "command": "/Users/test/.claude/hooks/rtco-rewrite.sh"
                     }]
                 }]
             }
         });
 
-        let hook_command = "/Users/test/.claude/hooks/rtk-rewrite.sh";
+        let hook_command = "/Users/test/.claude/hooks/rtco-rewrite.sh";
         assert!(hook_already_present(&json_content, hook_command));
     }
 
@@ -4994,21 +4994,21 @@ mod tests {
                     "matcher": "Bash",
                     "hooks": [{
                         "type": "command",
-                        "command": "/home/user/.claude/hooks/rtk-rewrite.sh"
+                        "command": "/home/user/.claude/hooks/rtco-rewrite.sh"
                     }]
                 }]
             }
         });
 
-        let hook_command = "~/.claude/hooks/rtk-rewrite.sh";
-        // Should match on rtk-rewrite.sh substring
+        let hook_command = "~/.claude/hooks/rtco-rewrite.sh";
+        // Should match on rtco-rewrite.sh substring
         assert!(hook_already_present(&json_content, hook_command));
     }
 
     #[test]
     fn test_hook_not_present_empty() {
         let json_content = serde_json::json!({});
-        let hook_command = "/Users/test/.claude/hooks/rtk-rewrite.sh";
+        let hook_command = "/Users/test/.claude/hooks/rtco-rewrite.sh";
         assert!(!hook_already_present(&json_content, hook_command));
     }
 
@@ -5043,7 +5043,7 @@ mod tests {
             }
         });
 
-        let hook_command = "/Users/test/.claude/hooks/rtk-rewrite.sh";
+        let hook_command = "/Users/test/.claude/hooks/rtco-rewrite.sh";
         assert!(!hook_already_present(&json_content, hook_command));
     }
 
@@ -5051,7 +5051,7 @@ mod tests {
     #[test]
     fn test_insert_hook_entry_empty_root() {
         let mut json_content = serde_json::json!({});
-        let hook_command = "/Users/test/.claude/hooks/rtk-rewrite.sh";
+        let hook_command = "/Users/test/.claude/hooks/rtco-rewrite.sh";
 
         insert_hook_entry(&mut json_content, hook_command).unwrap();
 
@@ -5084,7 +5084,7 @@ mod tests {
             }
         });
 
-        let hook_command = "/Users/test/.claude/hooks/rtk-rewrite.sh";
+        let hook_command = "/Users/test/.claude/hooks/rtco-rewrite.sh";
         insert_hook_entry(&mut json_content, hook_command).unwrap();
 
         let pre_tool_use = json_content["hooks"]["PreToolUse"].as_array().unwrap();
@@ -5107,7 +5107,7 @@ mod tests {
             "model": "claude-sonnet-4"
         });
 
-        let hook_command = "/Users/test/.claude/hooks/rtk-rewrite.sh";
+        let hook_command = "/Users/test/.claude/hooks/rtco-rewrite.sh";
         insert_hook_entry(&mut json_content, hook_command).unwrap();
 
         // Should preserve all other keys
@@ -5187,7 +5187,7 @@ mod tests {
                         "matcher": "Bash",
                         "hooks": [{
                             "type": "command",
-                            "command": "/Users/test/.claude/hooks/rtk-rewrite.sh"
+                            "command": "/Users/test/.claude/hooks/rtco-rewrite.sh"
                         }]
                     }
                 ]
@@ -5266,7 +5266,7 @@ mod tests {
             "version": 1,
             "hooks": {
                 "preToolUse": [{
-                    "command": "./hooks/rtk-rewrite.sh",
+                    "command": "./hooks/rtco-rewrite.sh",
                     "matcher": "Shell"
                 }]
             }
@@ -5353,7 +5353,7 @@ mod tests {
             "hooks": {
                 "preToolUse": [
                     { "command": "./hooks/other.sh", "matcher": "Shell" },
-                    { "command": "./hooks/rtk-rewrite.sh", "matcher": "Shell" }
+                    { "command": "./hooks/rtco-rewrite.sh", "matcher": "Shell" }
                 ]
             }
         });
@@ -5411,7 +5411,7 @@ mod tests {
                     "matcher": "Bash",
                     "hooks": [{
                         "type": "command",
-                        "command": "/home/user/.claude/hooks/rtk-rewrite.sh"
+                        "command": "/home/user/.claude/hooks/rtco-rewrite.sh"
                     }]
                 }]
             }
@@ -5431,7 +5431,7 @@ mod tests {
                         "matcher": "Bash",
                         "hooks": [{
                             "type": "command",
-                            "command": "/home/user/.claude/hooks/rtk-rewrite.sh"
+                            "command": "/home/user/.claude/hooks/rtco-rewrite.sh"
                         }]
                     },
                     {
@@ -5480,7 +5480,7 @@ mod tests {
                         "matcher": "Bash",
                         "hooks": [{
                             "type": "command",
-                            "command": "/home/user/.claude/hooks/rtk-rewrite.sh"
+                            "command": "/home/user/.claude/hooks/rtco-rewrite.sh"
                         }]
                     },
                     {
@@ -5507,7 +5507,7 @@ mod tests {
             "version": 1,
             "hooks": {
                 "preToolUse": [{
-                    "command": "./hooks/rtk-rewrite.sh",
+                    "command": "./hooks/rtco-rewrite.sh",
                     "matcher": "Shell"
                 }]
             }
@@ -5525,7 +5525,7 @@ mod tests {
             "hooks": {
                 "preToolUse": [
                     {
-                        "command": "./hooks/rtk-rewrite.sh",
+                        "command": "./hooks/rtco-rewrite.sh",
                         "matcher": "Shell"
                     },
                     {
@@ -5553,12 +5553,12 @@ mod tests {
         let claude_dir = tmp.path().join(CLAUDE_DIR);
         fs::create_dir_all(&claude_dir).unwrap();
 
-        let orig = std::env::var_os("RTK_CLAUDE_DIR");
-        std::env::set_var("RTK_CLAUDE_DIR", &claude_dir);
+        let orig = std::env::var_os("RTCO_CLAUDE_DIR");
+        std::env::set_var("RTCO_CLAUDE_DIR", &claude_dir);
         f(&claude_dir);
         match orig {
-            Some(v) => std::env::set_var("RTK_CLAUDE_DIR", v),
-            None => std::env::remove_var("RTK_CLAUDE_DIR"),
+            Some(v) => std::env::set_var("RTCO_CLAUDE_DIR", v),
+            None => std::env::remove_var("RTCO_CLAUDE_DIR"),
         }
     }
 
@@ -5769,7 +5769,7 @@ mod tests {
         let (cleaned, did_remove) = remove_rtk_block(&content);
         assert!(did_remove);
         assert!(!cleaned.contains(RTK_BLOCK_START));
-        assert!(!cleaned.contains("rtk cargo test"));
+        assert!(!cleaned.contains("rtco cargo test"));
     }
 
     #[test]
@@ -5885,7 +5885,7 @@ mod tests {
 
             let content = fs::read_to_string(&plugin).unwrap();
             assert!(
-                content.contains("rtk rewrite"),
+                content.contains("rtco rewrite"),
                 "extension must delegate to rtk rewrite"
             );
         });
@@ -6213,7 +6213,7 @@ mod tests {
             "Stale RTK block content must be removed"
         );
         assert!(
-            updated.contains("rtk cargo test"),
+            updated.contains("rtco cargo test"),
             "Fresh COPILOT_INSTRUCTIONS content must be present"
         );
     }
@@ -6251,7 +6251,7 @@ mod tests {
         let content = fs::read_to_string(&instructions_path).unwrap();
         assert!(content.contains(RTK_BLOCK_START));
         assert!(content.contains(RTK_BLOCK_END));
-        assert!(content.contains("rtk cargo test"));
+        assert!(content.contains("rtco cargo test"));
     }
 
     #[test]
@@ -6289,7 +6289,7 @@ mod tests {
         let malformed = format!("# My rules\n\n{}\nincomplete RTK block\n", RTK_BLOCK_START);
         fs::write(&instructions_path, &malformed).unwrap();
 
-        let hook_path = github_dir.join("hooks").join("rtk-rewrite.json");
+        let hook_path = github_dir.join("hooks").join("rtco-rewrite.json");
 
         let result = run_copilot_at(temp.path(), InitContext::default());
 

@@ -33,7 +33,7 @@ fn run_status() -> Result<()> {
         "no"
     };
 
-    let env_override = std::env::var("RTK_TELEMETRY_DISABLED").unwrap_or_default() == "1";
+    let env_override = std::env::var("RTCO_TELEMETRY_DISABLED").unwrap_or_default() == "1";
 
     println!("Telemetry status:");
     println!("  consent:       {}", consent_str);
@@ -42,7 +42,7 @@ fn run_status() -> Result<()> {
     }
     println!("  enabled:       {}", enabled_str);
     if env_override {
-        println!("  env override:  RTK_TELEMETRY_DISABLED=1 (blocked)");
+        println!("  env override:  RTCO_TELEMETRY_DISABLED=1 (blocked)");
     }
 
     let salt_path = super::telemetry::salt_file_path();
@@ -159,7 +159,7 @@ fn run_forget() -> Result<()> {
 }
 
 fn send_erasure_request(device_hash: &str) -> Result<()> {
-    let url = option_env!("RTK_TELEMETRY_URL");
+    let url = option_env!("RTCO_TELEMETRY_URL");
     let url = match url {
         Some(u) => format!("{}/erasure", u),
         None => anyhow::bail!("no telemetry endpoint configured"),
@@ -172,7 +172,7 @@ fn send_erasure_request(device_hash: &str) -> Result<()> {
 
     let mut req = ureq::post(&url).set("Content-Type", "application/json");
 
-    if let Some(token) = option_env!("RTK_TELEMETRY_TOKEN") {
+    if let Some(token) = option_env!("RTCO_TELEMETRY_TOKEN") {
         req = req.set("X-RTK-Token", token);
     }
 

@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: Customize RTK behavior via config.toml, environment variables, and per-project filters
+description: Customize RTCO behavior via config.toml, environment variables, and per-project filters
 sidebar:
   order: 4
 ---
@@ -11,12 +11,12 @@ sidebar:
 
 | Platform | Path |
 |----------|------|
-| Linux | `~/.config/rtk/config.toml` |
-| macOS | `~/Library/Application Support/rtk/config.toml` |
+| Linux | `~/.config/rtco/config.toml` |
+| macOS | `~/Library/Application Support/rtco/config.toml` |
 
 ```bash
-rtk config            # show current configuration
-rtk config --create   # create config file with defaults
+rtco config            # show current configuration
+rtco config --create   # create config file with defaults
 ```
 
 ## Full config structure
@@ -33,7 +33,7 @@ emoji = true                # use emojis in output
 max_width = 120             # maximum output width
 
 [filters]
-# These apply to file-reading commands (ls, find, grep, cat/rtk read).
+# These apply to file-reading commands (ls, find, grep, cat/rtco read).
 # Paths matching these patterns are excluded from output, keeping noise low.
 ignore_dirs = [".git", "node_modules", "target", "__pycache__", ".venv", "vendor"]
 ignore_files = ["*.lock", "*.min.js", "*.min.css"]
@@ -57,7 +57,7 @@ For full details on what is collected, opt-out options, and GDPR rights, see [Te
 
 | Variable | Description |
 |----------|-------------|
-| `RTK_DISABLED=1` | Disable RTK for a single command (`RTK_DISABLED=1 git status`) |
+| `RTK_DISABLED=1` | Disable RTCO for a single command (`RTK_DISABLED=1 git status`) |
 | `RTK_TEE_DIR` | Override the tee directory |
 | `RTK_TELEMETRY_DISABLED=1` | Disable telemetry |
 | `RTK_HOOK_AUDIT=1` | Enable hook audit logging |
@@ -65,11 +65,11 @@ For full details on what is collected, opt-out options, and GDPR rights, see [Te
 
 ## Tee system
 
-When a command fails, RTK saves the full raw output to a local file and prints the path:
+When a command fails, RTCO saves the full raw output to a local file and prints the path:
 
 ```
 FAILED: 2/15 tests
-[full output: ~/.local/share/rtk/tee/1707753600_cargo_test.log]
+[full output: ~/.local/share/rtco/tee/1707753600_cargo_test.log]
 ```
 
 Your AI assistant can then read the file if it needs more detail, without re-running the command.
@@ -112,7 +112,7 @@ RTK_DISABLED=1 git rebase main
 
 ## Telemetry
 
-RTK sends one anonymous ping per day (23h interval). No personal data, no file paths, no command content.
+RTCO sends one anonymous ping per day (23h interval). No personal data, no file paths, no command content.
 
 Data sent: device hash, version, OS, architecture, command count/24h, top commands, savings %.
 
@@ -129,4 +129,4 @@ enabled = false
 
 ## Per-project filters
 
-Create `.rtk/filters.toml` in your project root to add custom filters or override built-ins. See [`src/filters/README.md`](https://github.com/rtk-ai/rtk/blob/master/src/filters/README.md) for the full TOML DSL reference.
+Create `.rtco/filters.toml` in your project root to add custom filters or override built-ins. See [`src/filters/README.md`](https://github.com/rtco-ai/rtco/blob/master/src/filters/README.md) for the full TOML DSL reference.

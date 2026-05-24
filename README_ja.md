@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://avatars.githubusercontent.com/u/258253854?v=4" alt="RTK - Rust Token Killer" width="500">
+  <img src="https://avatars.githubusercontent.com/u/258253854?v=4" alt="RTCO - Rust Token Killer" width="500">
 </p>
 
 <p align="center">
@@ -7,15 +7,15 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rtk-ai/rtk/actions"><img src="https://github.com/rtk-ai/rtk/workflows/Security%20Check/badge.svg" alt="CI"></a>
-  <a href="https://github.com/rtk-ai/rtk/releases"><img src="https://img.shields.io/github/v/release/rtk-ai/rtk" alt="Release"></a>
+  <a href="https://github.com/rtco-ai/rtco/actions"><img src="https://github.com/rtco-ai/rtco/workflows/Security%20Check/badge.svg" alt="CI"></a>
+  <a href="https://github.com/rtco-ai/rtco/releases"><img src="https://img.shields.io/github/v/release/rtco-ai/rtco" alt="Release"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://discord.gg/RySmvNF5kF"><img src="https://img.shields.io/discord/1478373640461488159?label=Discord&logo=discord" alt="Discord"></a>
-  <a href="https://formulae.brew.sh/formula/rtk"><img src="https://img.shields.io/homebrew/v/rtk" alt="Homebrew"></a>
+  <a href="https://formulae.brew.sh/formula/rtco"><img src="https://img.shields.io/homebrew/v/rtco" alt="Homebrew"></a>
 </p>
 
 <p align="center">
-  <a href="https://www.rtk-ai.app">ウェブサイト</a> &bull;
+  <a href="https://www.rtco-ai.app">ウェブサイト</a> &bull;
   <a href="#インストール">インストール</a> &bull;
   <a href="docs/TROUBLESHOOTING.md">トラブルシューティング</a> &bull;
   <a href="docs/contributing/ARCHITECTURE.md">アーキテクチャ</a> &bull;
@@ -33,11 +33,11 @@
 
 ---
 
-rtk はコマンド出力を LLM コンテキストに届く前にフィルタリング・圧縮します。単一の Rust バイナリ、依存関係ゼロ、オーバーヘッド 10ms 未満。
+rtco はコマンド出力を LLM コンテキストに届く前にフィルタリング・圧縮します。単一の Rust バイナリ、依存関係ゼロ、オーバーヘッド 10ms 未満。
 
 ## トークン節約（30分の Claude Code セッション）
 
-| 操作 | 頻度 | 標準 | rtk | 節約 |
+| 操作 | 頻度 | 標準 | rtco | 節約 |
 |------|------|------|-----|------|
 | `ls` / `tree` | 10x | 2,000 | 400 | -80% |
 | `cat` / `read` | 20x | 40,000 | 12,000 | -70% |
@@ -51,44 +51,44 @@ rtk はコマンド出力を LLM コンテキストに届く前にフィルタ�
 ### Homebrew（推奨）
 
 ```bash
-brew install rtk
+brew install rtco
 ```
 
 ### クイックインストール（Linux/macOS）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rtco-ai/rtco/refs/heads/master/install.sh | sh
 ```
 
 ### Cargo
 
 ```bash
-cargo install --git https://github.com/rtk-ai/rtk
+cargo install --git https://github.com/rtco-ai/rtco
 ```
 
 ### 確認
 
 ```bash
-rtk --version   # "rtk 0.27.x" と表示されるはず
-rtk gain        # トークン節約統計が表示されるはず
+rtco --version   # "rtco 0.27.x" と表示されるはず
+rtco gain        # トークン節約統計が表示されるはず
 ```
 
 ## クイックスタート
 
 ```bash
 # 1. Claude Code 用フックをインストール（推奨）
-rtk init --global
+rtco init --global
 
 # 2. Claude Code を再起動してテスト
-git status  # 自動的に rtk git status に書き換え
+git status  # 自動的に rtco git status に書き換え
 ```
 
 ## 仕組み
 
 ```
-  rtk なし：                                       rtk あり：
+  rtco なし：                                       rtco あり：
 
-  Claude  --git status-->  shell  -->  git          Claude  --git status-->  RTK  -->  git
+  Claude  --git status-->  shell  -->  git          Claude  --git status-->  RTCO  -->  git
     ^                                   |             ^                      |          |
     |        ~2,000 tokens（生出力）     |             |   ~200 tokens        | フィルタ |
     +-----------------------------------+             +------- （圧縮済）----+----------+
@@ -105,42 +105,42 @@ git status  # 自動的に rtk git status に書き換え
 
 ### ファイル
 ```bash
-rtk ls .                        # 最適化されたディレクトリツリー
-rtk read file.rs                # スマートファイル読み取り
-rtk find "*.rs" .               # コンパクトな検索結果
-rtk grep "pattern" .            # ファイル別グループ化検索
+rtco ls .                        # 最適化されたディレクトリツリー
+rtco read file.rs                # スマートファイル読み取り
+rtco find "*.rs" .               # コンパクトな検索結果
+rtco grep "pattern" .            # ファイル別グループ化検索
 ```
 
 ### Git
 ```bash
-rtk git status                  # コンパクトなステータス
-rtk git log -n 10               # 1行コミット
-rtk git diff                    # 圧縮された diff
-rtk git push                    # -> "ok main"
+rtco git status                  # コンパクトなステータス
+rtco git log -n 10               # 1行コミット
+rtco git diff                    # 圧縮された diff
+rtco git push                    # -> "ok main"
 ```
 
 ### テスト
 ```bash
-rtk jest                        # Jest コンパクト
-rtk vitest                      # Vitest コンパクト
-rtk pytest                      # Python テスト（-90%）
-rtk go test                     # Go テスト（-90%）
-rtk test <cmd>                  # 失敗のみ表示（-90%）
+rtco jest                        # Jest コンパクト
+rtco vitest                      # Vitest コンパクト
+rtco pytest                      # Python テスト（-90%）
+rtco go test                     # Go テスト（-90%）
+rtco test <cmd>                  # 失敗のみ表示（-90%）
 ```
 
 ### ビルド & リント
 ```bash
-rtk lint                        # ESLint ルール別グループ化
-rtk tsc                         # TypeScript エラーグループ化
-rtk cargo build                 # Cargo ビルド（-80%）
-rtk ruff check                  # Python リント（-80%）
+rtco lint                        # ESLint ルール別グループ化
+rtco tsc                         # TypeScript エラーグループ化
+rtco cargo build                 # Cargo ビルド（-80%）
+rtco ruff check                  # Python リント（-80%）
 ```
 
 ### 分析
 ```bash
-rtk gain                        # 節約統計
-rtk gain --graph                # ASCII グラフ（30日間）
-rtk discover                    # 見逃した節約機会を発見
+rtco gain                        # 節約統計
+rtco gain --graph                # ASCII グラフ（30日間）
+rtco discover                    # 見逃した節約機会を発見
 ```
 
 ## ドキュメント
@@ -151,7 +151,7 @@ rtk discover                    # 見逃した節約機会を発見
 
 ## コントリビュート
 
-コントリビューション歓迎！[GitHub](https://github.com/rtk-ai/rtk) で issue または PR を作成してください。
+コントリビューション歓迎！[GitHub](https://github.com/rtco-ai/rtco) で issue または PR を作成してください。
 
 [Discord](https://discord.gg/RySmvNF5kF) コミュニティに参加。
 

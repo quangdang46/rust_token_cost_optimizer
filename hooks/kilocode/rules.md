@@ -1,32 +1,32 @@
-# RTK - Rust Token Killer (Kilo Code)
+# RTCO - Rust Token Killer (Kilo Code)
 
 **Usage**: Token-optimized CLI proxy for shell commands.
 
 ## Rule
 
-Always prefix shell commands with `rtk` to minimize token consumption.
+Always prefix shell commands with `rtco` to minimize token consumption.
 
 Examples:
 
 ```bash
-rtk git status
-rtk cargo test
-rtk ls src/
-rtk grep "pattern" src/
-rtk find "*.rs" .
-rtk docker ps
-rtk gh pr list
+rtco git status
+rtco cargo test
+rtco ls src/
+rtco grep "pattern" src/
+rtco find "*.rs" .
+rtco docker ps
+rtco gh pr list
 ```
 
 ## Meta Commands
 
 ```bash
-rtk gain              # Show token savings
-rtk gain --history    # Command history with savings
-rtk discover          # Find missed RTK opportunities
-rtk proxy <cmd>       # Run raw (no filtering, for debugging)
+rtco gain              # Show token savings
+rtco gain --history    # Command history with savings
+rtco discover          # Find missed RTCO opportunities
+rtco proxy <cmd>       # Run raw (no filtering, for debugging)
 ```
 
 ## Why
 
-RTK filters and compresses command output before it reaches the LLM context, saving 60-90% tokens on common operations. Always use `rtk <cmd>` instead of raw commands.
+RTCO filters and compresses command output before it reaches the LLM context, saving 60-90% tokens on common operations. Always use `rtco <cmd>` instead of raw commands.

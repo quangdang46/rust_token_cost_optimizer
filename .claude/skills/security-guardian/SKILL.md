@@ -1,11 +1,11 @@
 ---
-description: CLI security expert for RTK - command injection, shell escaping, hook security
+description: CLI security expert for RTCO - command injection, shell escaping, hook security
 allowed-tools: Read Grep Glob Bash
 ---
 
 # Security Guardian
 
-Comprehensive security analysis for RTK CLI tool, focusing on **command injection**, **shell escaping**, **hook security**, and **malicious input handling**.
+Comprehensive security analysis for RTCO CLI tool, focusing on **command injection**, **shell escaping**, **hook security**, and **malicious input handling**.
 
 ## When to Use
 
@@ -13,12 +13,12 @@ Comprehensive security analysis for RTK CLI tool, focusing on **command injectio
 - **Manual invocation**: Before release, after security-sensitive code changes
 - **Proactive**: When handling user input, executing shell commands, or parsing untrusted output
 
-## RTK Security Threat Model
+## RTCO Security Threat Model
 
-RTK faces unique security challenges as a CLI proxy that:
+RTCO faces unique security challenges as a CLI proxy that:
 1. **Executes shell commands** based on user input
 2. **Parses untrusted command output** (git, cargo, gh, etc.)
-3. **Integrates with Claude Code hooks** (rtk-rewrite.sh, rtk-suggest.sh)
+3. **Integrates with Claude Code hooks** (rtco-rewrite.sh, rtco-suggest.sh)
 4. **Routes commands transparently** (command injection vectors)
 
 ### Threat Categories
@@ -28,7 +28,7 @@ RTK faces unique security challenges as a CLI proxy that:
 | **Command Injection** | 🔴 CRITICAL | Remote code execution | Input validation, shell escaping |
 | **Shell Escaping** | 🔴 CRITICAL | Arbitrary command execution | Platform-specific escaping |
 | **Hook Injection** | 🟡 HIGH | Hook hijacking, command interception | Permission checks, signature validation |
-| **Malicious Output** | 🟡 MEDIUM | RTK crash, DoS | Robust parsing, error handling |
+| **Malicious Output** | 🟡 MEDIUM | RTCO crash, DoS | Robust parsing, error handling |
 | **Path Traversal** | 🟢 LOW | File access outside filters/ | Path sanitization |
 
 ## Security Analysis Workflow
@@ -130,14 +130,14 @@ fn filter_git_log(input: &str) -> Result<String> {
 ```bash
 # 🔴 CRITICAL: Hook not checking source
 #!/bin/bash
-# rtk-rewrite.sh
+# rtco-rewrite.sh
 
 # Execute command without validation
 eval "$CLAUDE_CODE_HOOK_BASH_TEMPLATE" # DANGEROUS!
 
 # ✅ SAFE: Validate hook environment
 #!/bin/bash
-# rtk-rewrite.sh
+# rtco-rewrite.sh
 
 # Verify running in Claude Code context
 if [ -z "$CLAUDE_CODE_HOOK_BASH_TEMPLATE" ]; then
@@ -145,14 +145,14 @@ if [ -z "$CLAUDE_CODE_HOOK_BASH_TEMPLATE" ]; then
     exit 1
 fi
 
-# Validate RTK binary exists and is executable
-if ! command -v rtk >/dev/null 2>&1; then
-    echo "Error: rtk binary not found"
+# Validate RTCO binary exists and is executable
+if ! command -v rtco >/dev/null 2>&1; then
+    echo "Error: rtco binary not found"
     exit 1
 fi
 
 # Execute with explicit path (no PATH hijacking)
-/usr/local/bin/rtk "$@"
+/usr/local/bin/rtco "$@"
 ```
 
 ### 3. Security Testing
@@ -209,7 +209,7 @@ mod security_tests {
 ```rust
 #[test]
 fn test_malicious_output_handling() {
-    // Malformed outputs that could crash RTK
+    // Malformed outputs that could crash RTCO
     let malicious_outputs = vec![
         "", // Empty
         "\n\n\n", // Only newlines
@@ -271,24 +271,24 @@ rg "\.join\(\" \"\)" --type rust src/
 **Hook security checklist**:
 ```bash
 #!/bin/bash
-# rtk-rewrite.sh
+# rtco-rewrite.sh
 
 # 1. Verify Claude Code context
 if [ -z "$CLAUDE_CODE_HOOK_BASH_TEMPLATE" ]; then
     exit 1
 fi
 
-# 2. Verify RTK binary exists
-if ! command -v rtk >/dev/null 2>&1; then
+# 2. Verify RTCO binary exists
+if ! command -v rtco >/dev/null 2>&1; then
     exit 1
 fi
 
 # 3. Use absolute path (prevent PATH hijacking)
-RTK_BIN=$(which rtk)
+RTK_BIN=$(which rtco)
 
-# 4. Validate RTK version (prevent downgrade attacks)
-if ! "$RTK_BIN" --version | grep -q "rtk 0.16"; then
-    echo "Warning: RTK version mismatch"
+# 4. Validate RTCO version (prevent downgrade attacks)
+if ! "$RTK_BIN" --version | grep -q "rtco 0.16"; then
+    echo "Warning: RTCO version mismatch"
 fi
 
 # 5. Execute with explicit path
@@ -458,14 +458,14 @@ rg "eval|source" --type bash .claude/hooks/
 **Example advisory template**:
 
 ```markdown
-## Security Advisory: Command Injection in rtk v0.16.0
+## Security Advisory: Command Injection in rtco v0.16.0
 
 **Severity**: CRITICAL (CVSS 9.8)
 **Affected versions**: v0.15.0 - v0.16.0
 **Fixed in**: v0.16.1
 
 **Description**:
-RTK versions 0.15.0 through 0.16.0 are vulnerable to command injection
+RTCO versions 0.15.0 through 0.16.0 are vulnerable to command injection
 via malicious git repository names. An attacker can execute arbitrary
 shell commands by creating a repository with special characters in the name.
 
@@ -473,7 +473,7 @@ shell commands by creating a repository with special characters in the name.
 Remote code execution with user privileges.
 
 **Mitigation**:
-Upgrade to v0.16.1 immediately. As a workaround, avoid using RTK in
+Upgrade to v0.16.1 immediately. As a workaround, avoid using RTCO in
 directories with untrusted repository names.
 
 **Credits**:

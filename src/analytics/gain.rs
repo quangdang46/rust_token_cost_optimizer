@@ -141,7 +141,7 @@ pub fn run(
             hook_check::HookStatus::Ok => {}
         }
 
-        // Lightweight RTK_DISABLED bypass check (best-effort, silent on failure)
+        // Lightweight RTCO_DISABLED bypass check (best-effort, silent on failure)
         if let Some(warning) = check_rtk_disabled_bypass() {
             eprintln!("{}", warning.yellow());
             eprintln!();
@@ -635,7 +635,7 @@ fn export_csv(
     Ok(())
 }
 
-/// Lightweight scan of recent Claude Code sessions for RTK_DISABLED= overuse.
+/// Lightweight scan of recent Claude Code sessions for RTCO_DISABLED= overuse.
 /// Returns a warning string if bypass rate exceeds 10%, None otherwise.
 /// Silently returns None on any error (missing dirs, permission issues, etc.).
 fn check_rtk_disabled_bypass() -> Option<String> {
@@ -676,7 +676,7 @@ fn check_rtk_disabled_bypass() -> Option<String> {
     let pct = (bypassed as f64 / total_bash as f64) * 100.0;
     if pct > 10.0 {
         Some(format!(
-            "[warn] {} commands ({:.0}%) used RTK_DISABLED=1 unnecessarily — run `rtk discover` for details",
+            "[warn] {} commands ({:.0}%) used RTCO_DISABLED=1 unnecessarily — run `rtk discover` for details",
             bypassed, pct
         ))
     } else {

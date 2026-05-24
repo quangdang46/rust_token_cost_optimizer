@@ -19,7 +19,7 @@
 //! let timer = TimedExecution::start();
 //! let input = "raw output";
 //! let output = "filtered output";
-//! timer.track("ls -la", "rtk ls", input, output);
+//! timer.track("ls -la", "rtco ls", input, output);
 //!
 //! // Query statistics
 //! let tracker = Tracker::new().unwrap();
@@ -82,7 +82,7 @@ use super::constants::{DEFAULT_HISTORY_DAYS, HISTORY_DB, RTK_DATA_DIR};
 /// use rtk::tracking::Tracker;
 ///
 /// let tracker = Tracker::new()?;
-/// tracker.record("ls -la", "rtk ls", 1000, 200, 50)?;
+/// tracker.record("ls -la", "rtco ls", 1000, 200, 50)?;
 ///
 /// let summary = tracker.get_summary()?;
 /// println!("Total saved: {} tokens", summary.total_saved);
@@ -99,7 +99,7 @@ pub struct Tracker {
 pub struct CommandRecord {
     /// UTC timestamp when command was executed
     pub timestamp: DateTime<Utc>,
-    /// RTK command that was executed (e.g., "rtk ls")
+    /// RTK command that was executed (e.g., "rtco ls")
     pub rtk_cmd: String,
     /// Number of tokens saved (input - output)
     pub saved_tokens: usize,
@@ -385,7 +385,7 @@ impl Tracker {
     /// # Arguments
     ///
     /// - `original_cmd`: The standard command (e.g., "ls -la")
-    /// - `rtk_cmd`: The RTK command used (e.g., "rtk ls")
+    /// - `rtk_cmd`: The RTK command used (e.g., "rtco ls")
     /// - `input_tokens`: Estimated tokens from standard command output
     /// - `output_tokens`: Actual tokens from RTK output
     /// - `exec_time_ms`: Execution time in milliseconds
@@ -396,7 +396,7 @@ impl Tracker {
     /// use rtk::tracking::Tracker;
     ///
     /// let tracker = Tracker::new()?;
-    /// tracker.record("ls -la", "rtk ls", 1000, 200, 50)?;
+    /// tracker.record("ls -la", "rtco ls", 1000, 200, 50)?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn record(
@@ -980,7 +980,7 @@ impl Tracker {
         )?;
         let rows = stmt.query_map(params![limit as i64], |row| {
             let cmd: String = row.get(0)?;
-            // Extract just the command name (e.g. "rtk git status" → "git")
+            // Extract just the command name (e.g. "rtco git status" → "git")
             Ok(cmd.split_whitespace().nth(1).unwrap_or(&cmd).to_string())
         })?;
         Ok(rows.filter_map(|r| r.ok()).collect())
@@ -1083,7 +1083,7 @@ impl Tracker {
 
     /// Count invocations of a specific meta-command (by rtk_cmd suffix).
     pub fn count_meta_command(&self, name: &str) -> Result<i64> {
-        let pattern = format!("rtk {}", name);
+        let pattern = format!("rtco {}", name);
         let count: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM commands WHERE rtk_cmd LIKE ?1 || '%'",
             params![pattern],
@@ -1219,7 +1219,7 @@ fn categorize_command(rtk_cmd: &str) -> String {
 
 fn get_db_path() -> Result<PathBuf> {
     // Priority 1: Environment variable RTK_DB_PATH
-    if let Ok(custom_path) = std::env::var("RTK_DB_PATH") {
+    if let Ok(custom_path) = std::env::var("RTCO_DB_PATH") {
         return Ok(PathBuf::from(custom_path));
     }
 
@@ -1300,7 +1300,7 @@ pub fn estimate_tokens(text: &str) -> usize {
 /// let timer = TimedExecution::start();
 /// let input = execute_standard_command()?;
 /// let output = execute_rtk_command()?;
-/// timer.track("ls -la", "rtk ls", &input, &output);
+/// timer.track("ls -la", "rtco ls", &input, &output);
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub struct TimedExecution {
@@ -1321,7 +1321,7 @@ impl TimedExecution {
     ///
     /// let timer = TimedExecution::start();
     /// // ... execute command ...
-    /// timer.track("cmd", "rtk cmd", "input", "output");
+    /// timer.track("cmd", "rtco cmd", "input", "output");
     /// ```
     pub fn start() -> Self {
         Self {
@@ -1339,7 +1339,7 @@ impl TimedExecution {
     /// # Arguments
     ///
     /// - `original_cmd`: Standard command (e.g., "ls -la")
-    /// - `rtk_cmd`: RTK command used (e.g., "rtk ls")
+    /// - `rtk_cmd`: RTK command used (e.g., "rtco ls")
     /// - `input`: Standard command output (for token estimation)
     /// - `output`: RTK command output (for token estimation)
     ///
@@ -1351,7 +1351,7 @@ impl TimedExecution {
     /// let timer = TimedExecution::start();
     /// let input = "long output...";
     /// let output = "short output";
-    /// timer.track("ls -la", "rtk ls", input, output);
+    /// timer.track("ls -la", "rtco ls", input, output);
     /// ```
     pub fn track(&self, original_cmd: &str, rtk_cmd: &str, input: &str, output: &str) {
         let elapsed_ms = self.start.elapsed().as_millis() as u64;
@@ -1378,7 +1378,7 @@ impl TimedExecution {
     /// # Arguments
     ///
     /// - `original_cmd`: Standard command (e.g., "git tag --list")
-    /// - `rtk_cmd`: RTK command used (e.g., "rtk git tag --list")
+    /// - `rtk_cmd`: RTK command used (e.g., "rtco git tag --list")
     ///
     /// # Examples
     ///
@@ -1387,7 +1387,7 @@ impl TimedExecution {
     ///
     /// let timer = TimedExecution::start();
     /// // ... execute streaming command ...
-    /// timer.track_passthrough("git tag", "rtk git tag");
+    /// timer.track_passthrough("git tag", "rtco git tag");
     /// ```
     pub fn track_passthrough(&self, original_cmd: &str, rtk_cmd: &str) {
         let elapsed_ms = self.start.elapsed().as_millis() as u64;
@@ -1450,7 +1450,7 @@ mod tests {
         let tracker = Tracker::new().expect("Failed to create tracker");
 
         // Use unique test identifier to avoid conflicts with other tests
-        let test_cmd = format!("rtk git status test_{}", std::process::id());
+        let test_cmd = format!("rtco git status test_{}", std::process::id());
 
         tracker
             .record("git status", &test_cmd, 100, 20, 50)
@@ -1475,8 +1475,8 @@ mod tests {
 
         // Use unique test identifiers
         let pid = std::process::id();
-        let cmd1 = format!("rtk cmd1_test_{}", pid);
-        let cmd2 = format!("rtk cmd2_passthrough_test_{}", pid);
+        let cmd1 = format!("rtco cmd1_test_{}", pid);
+        let cmd2 = format!("rtco cmd2_passthrough_test_{}", pid);
 
         // Record one real command with 80% savings
         tracker
@@ -1517,19 +1517,19 @@ mod tests {
     fn test_timed_execution_records_time() {
         let timer = TimedExecution::start();
         std::thread::sleep(std::time::Duration::from_millis(10));
-        timer.track("test cmd", "rtk test", "raw input data", "filtered");
+        timer.track("test cmd", "rtco test", "raw input data", "filtered");
 
         // Verify via DB that record exists
         let tracker = Tracker::new().expect("Failed to create tracker");
         let recent = tracker.get_recent(5).expect("Failed to get recent");
-        assert!(recent.iter().any(|r| r.rtk_cmd == "rtk test"));
+        assert!(recent.iter().any(|r| r.rtk_cmd == "rtco test"));
     }
 
     // 6. TimedExecution::track_passthrough records with 0 tokens
     #[test]
     fn test_timed_execution_passthrough() {
         let timer = TimedExecution::start();
-        timer.track_passthrough("git tag", "rtk git tag (passthrough)");
+        timer.track_passthrough("git tag", "rtco git tag (passthrough)");
 
         let tracker = Tracker::new().expect("Failed to create tracker");
         let recent = tracker.get_recent(5).expect("Failed to get recent");
@@ -1555,11 +1555,11 @@ mod tests {
         let _guard = ENV_LOCK.lock().unwrap();
 
         let custom_path = env::temp_dir().join("rtk_test_custom.db");
-        env::set_var("RTK_DB_PATH", &custom_path);
+        env::set_var("RTCO_DB_PATH", &custom_path);
         let db_path = get_db_path().expect("Failed to get db path");
         assert_eq!(db_path, custom_path);
 
-        env::remove_var("RTK_DB_PATH");
+        env::remove_var("RTCO_DB_PATH");
         let db_path = get_db_path().expect("Failed to get db path");
         assert!(
             db_path.ends_with("rtk/history.db"),
@@ -1656,7 +1656,7 @@ mod tests {
         tracker
             .record(
                 "git status",
-                &format!("rtk git status reset_test_{}", pid),
+                &format!("rtco git status reset_test_{}", pid),
                 100,
                 20,
                 50,

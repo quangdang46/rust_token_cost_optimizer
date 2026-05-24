@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test tracking end-to-end: run commands, verify they appear in rtk gain --history
+# Test tracking end-to-end: run commands, verify they appear in rtco gain --history
 set -euo pipefail
 
 # Workaround for macOS bash pipe handling in strict mode
@@ -22,35 +22,35 @@ check() {
     fi
 }
 
-echo "═══ RTK Tracking Validation ═══"
+echo "═══ RTCO Tracking Validation ═══"
 echo ""
 
 # 1. Commandes avec filtrage réel — doivent apparaitre dans history
 echo "── Optimized commands (token savings) ──"
-rtk ls . >/dev/null 2>&1
-check "rtk ls tracked" "rtk ls" rtk gain --history
+rtco ls . >/dev/null 2>&1
+check "rtco ls tracked" "rtco ls" rtco gain --history
 
-rtk git status >/dev/null 2>&1
-check "rtk git status tracked" "rtk git status" rtk gain --history
+rtco git status >/dev/null 2>&1
+check "rtco git status tracked" "rtco git status" rtco gain --history
 
-rtk git log -5 >/dev/null 2>&1
-check "rtk git log tracked" "rtk git log" rtk gain --history
+rtco git log -5 >/dev/null 2>&1
+check "rtco git log tracked" "rtco git log" rtco gain --history
 
 # Git passthrough (timing-only)
 echo ""
 echo "── Passthrough commands (timing-only) ──"
-rtk git tag --list >/dev/null 2>&1
-check "git passthrough tracked" "git tag --list" rtk gain --history
+rtco git tag --list >/dev/null 2>&1
+check "git passthrough tracked" "git tag --list" rtco gain --history
 
 # gh commands (if authenticated)
 echo ""
 echo "── GitHub CLI tracking ──"
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    rtk gh pr list >/dev/null 2>&1 || true
-    check "rtk gh pr list tracked" "rtk gh pr" rtk gain --history
+    rtco gh pr list >/dev/null 2>&1 || true
+    check "rtco gh pr list tracked" "rtco gh pr" rtco gain --history
 
-    rtk gh run list >/dev/null 2>&1 || true
-    check "rtk gh run list tracked" "rtk gh run" rtk gain --history
+    rtco gh run list >/dev/null 2>&1 || true
+    check "rtco gh run list tracked" "rtco gh run" rtco gain --history
 else
     echo "  SKIP  gh (not authenticated)"
 fi
@@ -58,17 +58,17 @@ fi
 # Stdin commands
 echo ""
 echo "── Stdin commands ──"
-echo -e "line1\nline2\nline1\nERROR: bad\nline1" | rtk log >/dev/null 2>&1
-check "rtk log stdin tracked" "rtk log" rtk gain --history
+echo -e "line1\nline2\nline1\nERROR: bad\nline1" | rtco log >/dev/null 2>&1
+check "rtco log stdin tracked" "rtco log" rtco gain --history
 
 # Summary — verify passthrough doesn't dilute
 echo ""
 echo "── Summary integrity ──"
-output=$(rtk gain 2>&1)
+output=$(rtco gain 2>&1)
 if echo "$output" | grep -q "Tokens saved"; then
-    PASS=$((PASS+1)); printf "  ${GREEN}PASS${NC}  rtk gain summary works\n"
+    PASS=$((PASS+1)); printf "  ${GREEN}PASS${NC}  rtco gain summary works\n"
 else
-    FAIL=$((FAIL+1)); printf "  ${RED}FAIL${NC}  rtk gain summary\n"
+    FAIL=$((FAIL+1)); printf "  ${RED}FAIL${NC}  rtco gain summary\n"
 fi
 
 echo ""

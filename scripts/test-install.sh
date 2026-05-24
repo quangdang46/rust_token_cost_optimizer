@@ -36,8 +36,8 @@ check_archive() {
 
 # --- Build safe archive using standard tar ---
 mkdir -p "$TMPDIR/safe_src"
-printf '#!/bin/sh\necho rtk\n' > "$TMPDIR/safe_src/rtk"
-(cd "$TMPDIR/safe_src" && tar -czf "$TMPDIR/safe.tgz" rtk)
+printf '#!/bin/sh\necho rtco\n' > "$TMPDIR/safe_src/rtco"
+(cd "$TMPDIR/safe_src" && tar -czf "$TMPDIR/safe.tgz" rtco)
 
 # --- Build crafted malicious archives with python ---
 python3 - "$TMPDIR" <<'PY'
@@ -56,8 +56,8 @@ def make(name, entry):
 
 make("traversal.tgz", "../etc/evil")
 make("absolute.tgz", "/tmp/evil_abs")
-make("middle.tgz", "rtk/../../../etc/evil")
-make("end_dotdot.tgz", "rtk/..")
+make("middle.tgz", "rtco/../../../etc/evil")
+make("end_dotdot.tgz", "rtco/..")
 PY
 
 FAIL=0

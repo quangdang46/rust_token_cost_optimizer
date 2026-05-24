@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://avatars.githubusercontent.com/u/258253854?v=4" alt="RTK - Rust Token Killer" width="500">
+  <img src="https://avatars.githubusercontent.com/u/258253854?v=4" alt="RTCO - Rust Token Killer" width="500">
 </p>
 
 <p align="center">
@@ -7,15 +7,15 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rtk-ai/rtk/actions"><img src="https://github.com/rtk-ai/rtk/workflows/Security%20Check/badge.svg" alt="CI"></a>
-  <a href="https://github.com/rtk-ai/rtk/releases"><img src="https://img.shields.io/github/v/release/rtk-ai/rtk" alt="Release"></a>
+  <a href="https://github.com/rtco-ai/rtco/actions"><img src="https://github.com/rtco-ai/rtco/workflows/Security%20Check/badge.svg" alt="CI"></a>
+  <a href="https://github.com/rtco-ai/rtco/releases"><img src="https://img.shields.io/github/v/release/rtco-ai/rtco" alt="Release"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://discord.gg/RySmvNF5kF"><img src="https://img.shields.io/discord/1478373640461488159?label=Discord&logo=discord" alt="Discord"></a>
-  <a href="https://formulae.brew.sh/formula/rtk"><img src="https://img.shields.io/homebrew/v/rtk" alt="Homebrew"></a>
+  <a href="https://formulae.brew.sh/formula/rtco"><img src="https://img.shields.io/homebrew/v/rtco" alt="Homebrew"></a>
 </p>
 
 <p align="center">
-  <a href="https://www.rtk-ai.app">Site web</a> &bull;
+  <a href="https://www.rtco-ai.app">Site web</a> &bull;
   <a href="#installation">Installer</a> &bull;
   <a href="docs/TROUBLESHOOTING.md">Depannage</a> &bull;
   <a href="docs/contributing/ARCHITECTURE.md">Architecture</a> &bull;
@@ -33,11 +33,11 @@
 
 ---
 
-rtk filtre et compresse les sorties de commandes avant qu'elles n'atteignent le contexte de votre LLM. Binaire Rust unique, zero dependance, <10ms d'overhead.
+rtco filtre et compresse les sorties de commandes avant qu'elles n'atteignent le contexte de votre LLM. Binaire Rust unique, zero dependance, <10ms d'overhead.
 
 ## Economies de tokens (session Claude Code de 30 min)
 
-| Operation | Frequence | Standard | rtk | Economies |
+| Operation | Frequence | Standard | rtco | Economies |
 |-----------|-----------|----------|-----|-----------|
 | `ls` / `tree` | 10x | 2 000 | 400 | -80% |
 | `cat` / `read` | 20x | 40 000 | 12 000 | -70% |
@@ -56,49 +56,49 @@ rtk filtre et compresse les sorties de commandes avant qu'elles n'atteignent le 
 ### Homebrew (recommande)
 
 ```bash
-brew install rtk
+brew install rtco
 ```
 
 ### Installation rapide (Linux/macOS)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rtco-ai/rtco/refs/heads/master/install.sh | sh
 ```
 
 ### Cargo
 
 ```bash
-cargo install --git https://github.com/rtk-ai/rtk
+cargo install --git https://github.com/rtco-ai/rtco
 ```
 
 ### Verification
 
 ```bash
-rtk --version   # Doit afficher "rtk 0.27.x"
-rtk gain        # Doit afficher les statistiques d'economies
+rtco --version   # Doit afficher "rtco 0.27.x"
+rtco gain        # Doit afficher les statistiques d'economies
 ```
 
-> **Attention** : Un autre projet "rtk" (Rust Type Kit) existe sur crates.io. Si `rtk gain` echoue, vous avez le mauvais package.
+> **Attention** : Un autre projet "rtco" (Rust Type Kit) existe sur crates.io. Si `rtco gain` echoue, vous avez le mauvais package.
 
 ## Demarrage rapide
 
 ```bash
 # 1. Installer le hook pour Claude Code (recommande)
-rtk init --global
+rtco init --global
 # Suivre les instructions pour enregistrer dans ~/.claude/settings.json
 
 # 2. Redemarrer Claude Code, puis tester
-git status  # Automatiquement reecrit en rtk git status
+git status  # Automatiquement reecrit en rtco git status
 ```
 
-Le hook reecrit de maniere transparente les commandes (ex: `git status` -> `rtk git status`) avant execution.
+Le hook reecrit de maniere transparente les commandes (ex: `git status` -> `rtco git status`) avant execution.
 
 ## Comment ca marche
 
 ```
-  Sans rtk :                                       Avec rtk :
+  Sans rtco :                                       Avec rtco :
 
-  Claude  --git status-->  shell  -->  git          Claude  --git status-->  RTK  -->  git
+  Claude  --git status-->  shell  -->  git          Claude  --git status-->  RTCO  -->  git
     ^                                   |             ^                      |          |
     |        ~2 000 tokens (brut)       |             |   ~200 tokens        | filtre   |
     +-----------------------------------+             +------- (filtre) -----+----------+
@@ -115,61 +115,61 @@ Quatre strategies appliquees par type de commande :
 
 ### Fichiers
 ```bash
-rtk ls .                        # Arbre de repertoires optimise
-rtk read file.rs                # Lecture intelligente
-rtk read file.rs -l aggressive  # Signatures uniquement
-rtk find "*.rs" .               # Resultats compacts
-rtk grep "pattern" .            # Resultats groupes par fichier
-rtk diff file1 file2            # Diff condense
+rtco ls .                        # Arbre de repertoires optimise
+rtco read file.rs                # Lecture intelligente
+rtco read file.rs -l aggressive  # Signatures uniquement
+rtco find "*.rs" .               # Resultats compacts
+rtco grep "pattern" .            # Resultats groupes par fichier
+rtco diff file1 file2            # Diff condense
 ```
 
 ### Git
 ```bash
-rtk git status                  # Status compact
-rtk git log -n 10               # Commits sur une ligne
-rtk git diff                    # Diff condense
-rtk git add                     # -> "ok"
-rtk git commit -m "msg"         # -> "ok abc1234"
-rtk git push                    # -> "ok main"
+rtco git status                  # Status compact
+rtco git log -n 10               # Commits sur une ligne
+rtco git diff                    # Diff condense
+rtco git add                     # -> "ok"
+rtco git commit -m "msg"         # -> "ok abc1234"
+rtco git push                    # -> "ok main"
 ```
 
 ### Tests
 ```bash
-rtk jest                        # Jest compact
-rtk vitest                      # Vitest compact
-rtk pytest                      # Tests Python (-90%)
-rtk go test                     # Tests Go (-90%)
-rtk cargo test                  # Tests Cargo (-90%)
-rtk test <cmd>                  # Echecs uniquement (-90%)
+rtco jest                        # Jest compact
+rtco vitest                      # Vitest compact
+rtco pytest                      # Tests Python (-90%)
+rtco go test                     # Tests Go (-90%)
+rtco cargo test                  # Tests Cargo (-90%)
+rtco test <cmd>                  # Echecs uniquement (-90%)
 ```
 
 ### Build & Lint
 ```bash
-rtk lint                        # ESLint groupe par regle
-rtk tsc                         # Erreurs TypeScript groupees
-rtk cargo build                 # Build Cargo (-80%)
-rtk cargo clippy                # Clippy (-80%)
-rtk ruff check                  # Linting Python (-80%)
+rtco lint                        # ESLint groupe par regle
+rtco tsc                         # Erreurs TypeScript groupees
+rtco cargo build                 # Build Cargo (-80%)
+rtco cargo clippy                # Clippy (-80%)
+rtco ruff check                  # Linting Python (-80%)
 ```
 
 ### Conteneurs
 ```bash
-rtk docker ps                   # Liste compacte
-rtk docker logs <container>     # Logs dedupliques
-rtk kubectl pods                # Pods compacts
+rtco docker ps                   # Liste compacte
+rtco docker logs <container>     # Logs dedupliques
+rtco kubectl pods                # Pods compacts
 ```
 
 ### Analytics
 ```bash
-rtk gain                        # Statistiques d'economies
-rtk gain --graph                # Graphique ASCII (30 jours)
-rtk discover                    # Trouver les economies manquees
+rtco gain                        # Statistiques d'economies
+rtco gain --graph                # Graphique ASCII (30 jours)
+rtco discover                    # Trouver les economies manquees
 ```
 
 ## Configuration
 
 ```toml
-# ~/.config/rtk/config.toml
+# ~/.config/rtco/config.toml
 [tracking]
 database_path = "/chemin/custom.db"
 
@@ -189,7 +189,7 @@ mode = "failures"
 
 ## Contribuer
 
-Les contributions sont les bienvenues ! Ouvrez une issue ou une PR sur [GitHub](https://github.com/rtk-ai/rtk).
+Les contributions sont les bienvenues ! Ouvrez une issue ou une PR sur [GitHub](https://github.com/rtco-ai/rtco).
 
 Rejoignez la communaute sur [Discord](https://discord.gg/RySmvNF5kF).
 

@@ -1,4 +1,4 @@
-# RTK Testing Patterns Reference
+# RTCO Testing Patterns Reference
 
 ## Untested Modules Backlog
 
@@ -31,9 +31,9 @@ Prioritized by testability (pure functions first, I/O-heavy last).
 | `init.rs` | CLAUDE.md generation | File I/O |
 | `main.rs` | CLI routing | Covered by smoke tests |
 
-## RTK Test Patterns
+## RTCO Test Patterns
 
-### Pattern 1: Filter Function (most common in RTK)
+### Pattern 1: Filter Function (most common in RTCO)
 
 ```rust
 #[test]

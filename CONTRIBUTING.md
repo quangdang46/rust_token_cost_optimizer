@@ -1,6 +1,6 @@
-# Contributing to rtk
+# Contributing to rtco
 
-**Welcome!** We appreciate your interest in contributing to rtk.
+**Welcome!** We appreciate your interest in contributing to rtco.
 
 ## Quick Links
 
@@ -11,9 +11,9 @@
 
 ---
 
-## What is rtk?
+## What is rtco?
 
-**rtk (Rust Token Killer)** is a coding agent proxy that cuts noise from command outputs. It filters and compresses CLI output before it reaches your LLM context, saving 60-90% of tokens on common operations. The vision is to make AI-assisted development faster and cheaper by eliminating unnecessary token consumption.
+**rtco (Rust Token Killer)** is a coding agent proxy that cuts noise from command outputs. It filters and compresses CLI output before it reaches your LLM context, saving 60-90% of tokens on common operations. The vision is to make AI-assisted development faster and cheaper by eliminating unnecessary token consumption.
 
 ---
 
@@ -30,7 +30,7 @@
 
 ## Design Philosophy
 
-Four principles guide every RTK design decision. Understanding them helps you write contributions that fit naturally into the project.
+Four principles guide every RTCO design decision. Understanding them helps you write contributions that fit naturally into the project.
 
 ### Correctness VS Token Savings
 
@@ -38,23 +38,23 @@ When a user or LLM explicitly requests detailed output via flags (e.g., `git log
 
 Filters should be flag-aware: default output (no flags) gets aggressively compressed, but verbose/detailed flags should pass through more content. When in doubt, preserve correctness.
 
-> Example: `rtk cargo test` shows failures only (90% savings). But `rtk cargo test -- --nocapture` preserves all output because the user explicitly asked for it.
+> Example: `rtco cargo test` shows failures only (90% savings). But `rtco cargo test -- --nocapture` preserves all output because the user explicitly asked for it.
 
 ### Transparency
 
-The LLM doesn't know RTK is involved for which commands, hooks rewrite commands silently. RTK's output must be a valid, useful subset of the original tool's output, not a different format the LLM wouldn't expect. If an LLM parses `git diff` output, RTK's filtered version must still look like `git diff` output.
+The LLM doesn't know RTCO is involved for which commands, hooks rewrite commands silently. RTCO's output must be a valid, useful subset of the original tool's output, not a different format the LLM wouldn't expect. If an LLM parses `git diff` output, RTCO's filtered version must still look like `git diff` output.
 
-Don't invent new output formats. Don't add RTK-specific headers or markers in the default output. The filtered output should be indistinguishable from "a shorter version of the real command."
+Don't invent new output formats. Don't add RTCO-specific headers or markers in the default output. The filtered output should be indistinguishable from "a shorter version of the real command."
 
 ### Never Block
 
-If a filter fails, fall back to raw output. RTK should never prevent a command from executing or producing output. Better to pass through unfiltered than to error out. Same for hooks: exit 0 on all error paths so the agent's command runs unmodified.
+If a filter fails, fall back to raw output. RTCO should never prevent a command from executing or producing output. Better to pass through unfiltered than to error out. Same for hooks: exit 0 on all error paths so the agent's command runs unmodified.
 
 Every filter needs a fallback path. Every hook must handle malformed input gracefully. Truncation follows the same rule: capping output at N items is only acceptable if accompanied by a hint that lets the agent recover the hidden data.
 
 ### Zero Overhead
 
-<10ms startup. No async runtime. No config file I/O on the critical path. If developers perceive any delay, they'll disable RTK. Speed is the difference between adoption and abandonment.
+<10ms startup. No async runtime. No config file I/O on the critical path. If developers perceive any delay, they'll disable RTCO. Speed is the difference between adoption and abandonment.
 
 `lazy_static!` for all regex. No network calls. No disk reads in the hot path. Benchmark before/after with `hyperfine`.
 
@@ -65,7 +65,7 @@ If you want to submit a new core feature, this is an important point to watch.
 
 ---
 
-## What Belongs in RTK?
+## What Belongs in RTCO?
 
 ### In Scope
 
@@ -87,7 +87,7 @@ When implementing a new filter/cmds, be aware of the [Design Philosophy](#design
 - Binary output (images, compiled artifacts): no text to filter
 - Trivial commands: not worth the overhead and may loose important informations
 - Commands with no text output: nothing to compress
-- Others features not related to a LLM-proxy like RTK
+- Others features not related to a LLM-proxy like RTCO
 
 ### TOML vs Rust: Which One?
 
@@ -109,7 +109,7 @@ For the step-by-step checklist (create filter, register rewrite pattern, registe
 
 ## Commit Messages & Changelog
 
-RTK uses [Conventional Commits](https://www.conventionalcommits.org/) and [release-please](https://github.com/googleapis/release-please) to **auto-generate CHANGELOG.md, version bumps, and GitHub releases**. Never edit `CHANGELOG.md` manually — it is fully managed by release-please from your commit messages.
+RTCO uses [Conventional Commits](https://www.conventionalcommits.org/) and [release-please](https://github.com/googleapis/release-please) to **auto-generate CHANGELOG.md, version bumps, and GitHub releases**. Never edit `CHANGELOG.md` manually — it is fully managed by release-please from your commit messages.
 
 ### Commit format
 
@@ -209,7 +209,7 @@ All contributions require signing our [Contributor License Agreement (CLA)](CLA.
 
 By signing, you certify that:
 - You have authored 100% of the contribution, or have the necessary rights to submit it.
-- You grant **rtk-ai** and **rtk-ai Labs** a perpetual, worldwide, royalty-free license to use your contribution — including in commercial products such as **rtk Pro** — under the [Apache License 2.0](LICENSE).
+- You grant **rtco-ai** and **rtco-ai Labs** a perpetual, worldwide, royalty-free license to use your contribution — including in commercial products such as **rtco Pro** — under the [Apache License 2.0](LICENSE).
 - If your employer has rights over your work, you have obtained their permission.
 
 **This is automatic.** When you open a Pull Request, [CLA Assistant](https://cla-assistant.io) will post a comment asking you to sign. Click the link in that comment to sign with your GitHub account. You only need to sign once.
@@ -265,7 +265,7 @@ cargo fmt --all --check && cargo clippy --all-targets && cargo test
 - [ ] Any truncated list has a recovery hint (`force_tee_tail_hint` or `force_tee_hint`) and uses a `CAP_*` from `src/core/truncate.rs`
 - [ ] Edge cases covered
 - [ ] `cargo fmt --all --check && cargo clippy --all-targets && cargo test` passes
-- [ ] Manual test: run `rtk <cmd>` and inspect output
+- [ ] Manual test: run `rtco <cmd>` and inspect output
 
 ---
 
@@ -296,8 +296,8 @@ Keep documentation concise and practical -- examples over explanations.
 - **Discussions**: [GitHub Discussions](../../discussions)
 
 **For external contributors**: Your PR will undergo automated security review (see [SECURITY.md](SECURITY.md)). 
-This protects RTK's shell execution capabilities against injection attacks and supply chain vulnerabilities.
+This protects RTCO's shell execution capabilities against injection attacks and supply chain vulnerabilities.
 
 ---
 
-**Thank you for contributing to rtk!**
+**Thank you for contributing to rtco!**

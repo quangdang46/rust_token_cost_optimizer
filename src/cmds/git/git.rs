@@ -202,7 +202,7 @@ fn run_diff(
 
         timer.track(
             &format!("git diff {}", args.join(" ")),
-            &format!("rtk git diff {} (passthrough)", args.join(" ")),
+            &format!("rtco git diff {} (passthrough)", args.join(" ")),
             &result.stdout,
             &result.stdout,
         );
@@ -226,7 +226,7 @@ fn run_diff(
         }
         timer.track(
             &format!("git diff {}", args.join(" ")),
-            &format!("rtk git diff {}", args.join(" ")),
+            &format!("rtco git diff {}", args.join(" ")),
             &result.stdout,
             &result.stdout,
         );
@@ -260,7 +260,7 @@ fn run_diff(
 
     timer.track(
         &format!("git diff {}", args.join(" ")),
-        &format!("rtk git diff {}", args.join(" ")),
+        &format!("rtco git diff {}", args.join(" ")),
         &format!("{}\n{}", result.stdout, diff_result.stdout),
         &final_output,
     );
@@ -308,7 +308,7 @@ fn run_show(
 
         timer.track(
             &format!("git show {}", args.join(" ")),
-            &format!("rtk git show {} (passthrough)", args.join(" ")),
+            &format!("rtco git show {} (passthrough)", args.join(" ")),
             &result.stdout,
             &result.stdout,
         );
@@ -372,7 +372,7 @@ fn run_show(
 
     timer.track(
         &format!("git show {}", args.join(" ")),
-        &format!("rtk git show {}", args.join(" ")),
+        &format!("rtco git show {}", args.join(" ")),
         &raw_output,
         &final_output,
     );
@@ -551,7 +551,7 @@ fn run_log(
 
     timer.track(
         &format!("git log {}", args.join(" ")),
-        &format!("rtk git log {}", args.join(" ")),
+        &format!("rtco git log {}", args.join(" ")),
         &result.stdout,
         &filtered,
     );
@@ -885,7 +885,7 @@ fn run_status(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
             }
             timer.track(
                 &format!("git status {}", args.join(" ")),
-                &format!("rtk git status {}", args.join(" ")),
+                &format!("rtco git status {}", args.join(" ")),
                 &result.stdout,
                 &result.stdout,
             );
@@ -902,7 +902,7 @@ fn run_status(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
 
         timer.track(
             &format!("git status {}", args.join(" ")),
-            &format!("rtk git status {}", args.join(" ")),
+            &format!("rtco git status {}", args.join(" ")),
             &result.stdout,
             &filtered,
         );
@@ -929,9 +929,9 @@ fn run_status(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
             format!("git status {}", args.join(" "))
         };
         let rtk_cmd = if args.is_empty() {
-            "rtk git status".to_string()
+            "rtco git status".to_string()
         } else {
-            format!("rtk git status {}", args.join(" "))
+            format!("rtco git status {}", args.join(" "))
         };
         timer.track(&original_cmd, &rtk_cmd, &raw_output, &message);
         return Ok(result.exit_code);
@@ -958,9 +958,9 @@ fn run_status(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
         format!("git status {}", args.join(" "))
     };
     let rtk_cmd = if args.is_empty() {
-        "rtk git status".to_string()
+        "rtco git status".to_string()
     } else {
-        format!("rtk git status {}", args.join(" "))
+        format!("rtco git status {}", args.join(" "))
     };
 
     timer.track(&original_cmd, &rtk_cmd, &raw_output, &final_output);
@@ -1018,7 +1018,7 @@ fn run_add(args: &[String], verbose: u8, global_args: &[String]) -> Result<i32> 
 
         timer.track(
             &format!("git add {}", args.join(" ")),
-            &format!("rtk git add {}", args.join(" ")),
+            &format!("rtco git add {}", args.join(" ")),
             &raw_output,
             &compact,
         );
@@ -1083,12 +1083,12 @@ fn run_commit(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
 
         println!("{}", compact);
 
-        timer.track(&original_cmd, "rtk git commit", &raw_output, &compact);
+        timer.track(&original_cmd, "rtco git commit", &raw_output, &compact);
     } else if stderr.contains("nothing to commit") || stdout.contains("nothing to commit") {
         println!("ok (nothing to commit)");
         timer.track(
             &original_cmd,
-            "rtk git commit",
+            "rtco git commit",
             &raw_output,
             "ok (nothing to commit)",
         );
@@ -1099,7 +1099,7 @@ fn run_commit(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
         if !stdout.trim().is_empty() {
             eprint!("{}", stdout);
         }
-        timer.track(&original_cmd, "rtk git commit", &raw_output, &raw_output);
+        timer.track(&original_cmd, "rtco git commit", &raw_output, &raw_output);
         return Ok(exit_code);
     }
 
@@ -1186,7 +1186,7 @@ fn run_push(args: &[String], verbose: u8, global_args: &[String]) -> Result<i32>
 
     timer.track(
         &cmd_label,
-        &format!("rtk {}", cmd_label),
+        &format!("rtco {}", cmd_label),
         &result.raw,
         &result.filtered,
     );
@@ -1261,7 +1261,7 @@ fn run_pull(args: &[String], verbose: u8, global_args: &[String]) -> Result<i32>
 
         timer.track(
             &format!("git pull {}", args.join(" ")),
-            &format!("rtk git pull {}", args.join(" ")),
+            &format!("rtco git pull {}", args.join(" ")),
             &raw_output,
             &compact,
         );
@@ -1339,7 +1339,7 @@ fn run_branch(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
         let trimmed = result.stdout.trim();
         timer.track(
             &format!("git branch {}", args.join(" ")),
-            &format!("rtk git branch {}", args.join(" ")),
+            &format!("rtco git branch {}", args.join(" ")),
             &combined,
             trimmed,
         );
@@ -1370,7 +1370,7 @@ fn run_branch(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
 
         timer.track(
             &format!("git branch {}", args.join(" ")),
-            &format!("rtk git branch {}", args.join(" ")),
+            &format!("rtco git branch {}", args.join(" ")),
             &combined,
             msg,
         );
@@ -1409,7 +1409,7 @@ fn run_branch(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
         }
         timer.track(
             &format!("git branch {}", args.join(" ")),
-            &format!("rtk git branch {}", args.join(" ")),
+            &format!("rtco git branch {}", args.join(" ")),
             &result.stdout,
             &result.stdout,
         );
@@ -1421,7 +1421,7 @@ fn run_branch(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
 
     timer.track(
         &format!("git branch {}", args.join(" ")),
-        &format!("rtk git branch {}", args.join(" ")),
+        &format!("rtco git branch {}", args.join(" ")),
         &result.stdout,
         &filtered,
     );
@@ -1528,7 +1528,7 @@ fn run_fetch(args: &[String], verbose: u8, global_args: &[String]) -> Result<i32
     };
 
     println!("{}", msg);
-    timer.track("git fetch", "rtk git fetch", &raw, &msg);
+    timer.track("git fetch", "rtco git fetch", &raw, &msg);
 
     Ok(0)
 }
@@ -1574,7 +1574,7 @@ fn run_stash(
             if result.stdout.trim().is_empty() {
                 let msg = "No stashes";
                 println!("{}", msg);
-                timer.track("git stash list", "rtk git stash list", &result.stdout, msg);
+                timer.track("git stash list", "rtco git stash list", &result.stdout, msg);
                 return Ok(0);
             }
 
@@ -1582,7 +1582,7 @@ fn run_stash(
             println!("{}", filtered);
             timer.track(
                 "git stash list",
-                "rtk git stash list",
+                "rtco git stash list",
                 &result.stdout,
                 &filtered,
             );
@@ -1607,7 +1607,7 @@ fn run_stash(
 
             timer.track(
                 "git stash show",
-                "rtk git stash show",
+                "rtco git stash show",
                 &result.stdout,
                 &filtered,
             );
@@ -1637,7 +1637,7 @@ fn run_stash(
 
             timer.track(
                 &format!("git stash {}", sub),
-                &format!("rtk git stash {}", sub),
+                &format!("rtco git stash {}", sub),
                 &combined,
                 &msg,
             );
@@ -1679,7 +1679,7 @@ fn run_stash(
 
             timer.track(
                 &format!("git stash {}", sub),
-                &format!("rtk git stash {}", sub),
+                &format!("rtco git stash {}", sub),
                 &combined,
                 &msg,
             );
@@ -1739,7 +1739,7 @@ fn run_worktree(args: &[String], verbose: u8, global_args: &[String]) -> Result<
 
         timer.track(
             &format!("git worktree {}", args.join(" ")),
-            &format!("rtk git worktree {}", args.join(" ")),
+            &format!("rtco git worktree {}", args.join(" ")),
             &combined,
             msg,
         );
@@ -1765,7 +1765,7 @@ fn run_worktree(args: &[String], verbose: u8, global_args: &[String]) -> Result<
     println!("{}", filtered);
     timer.track(
         "git worktree list",
-        "rtk git worktree",
+        "rtco git worktree",
         &result.stdout,
         &filtered,
     );
@@ -1815,7 +1815,7 @@ pub fn run_passthrough(args: &[OsString], global_args: &[String], verbose: u8) -
     let args_str = tracking::args_display(args);
     timer.track_passthrough(
         &format!("git {}", args_str),
-        &format!("rtk git {} (passthrough)", args_str),
+        &format!("rtco git {} (passthrough)", args_str),
     );
 
     if !status.success() {

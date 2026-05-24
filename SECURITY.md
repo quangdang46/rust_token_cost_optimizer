@@ -2,9 +2,9 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in RTK, please report it to the maintainers privately:
+If you discover a security vulnerability in RTCO, please report it to the maintainers privately:
 
-- **Email**: security@rtk-ai.app (or create a private security advisory on GitHub)
+- **Email**: security@rtco-ai.app (or create a private security advisory on GitHub)
 - **Response time**: We aim to acknowledge reports within 48 hours
 - **Disclosure**: We follow responsible disclosure practices (90-day embargo)
 
@@ -16,7 +16,7 @@ If you discover a security vulnerability in RTK, please report it to the maintai
 
 ## Security Review Process for Pull Requests
 
-RTK is a CLI tool that executes shell commands and handles user input. PRs from external contributors undergo enhanced security review to protect against:
+RTCO is a CLI tool that executes shell commands and handles user input. PRs from external contributors undergo enhanced security review to protect against:
 
 - **Shell injection** (command execution vulnerabilities)
 - **Supply chain attacks** (malicious dependencies)
@@ -52,7 +52,7 @@ The following files are considered **high-risk** and trigger mandatory 2-reviewe
 - **`src/summary.rs`** - Command output aggregation (data exfiltration risk)
 - **`src/tracking.rs`** - SQLite database operations (privacy/telemetry concerns)
 - **`src/discover/registry.rs`** - Rewrite logic for all commands (command injection risk via rewrite rules)
-- **`hooks/rtk-rewrite.sh`** / **`.claude/hooks/rtk-rewrite.sh`** - Thin delegator hook (executes in Claude Code context, intercepts all commands)
+- **`hooks/rtco-rewrite.sh`** / **`.claude/hooks/rtco-rewrite.sh`** - Thin delegator hook (executes in Claude Code context, intercepts all commands)
 
 ### Tier 2: Input Validation
 - **`src/pnpm_cmd.rs`** - Package name validation (prevents injection via malicious names)
@@ -84,7 +84,7 @@ Use the comprehensive security review process:
 
 ```bash
 # If Claude Code available, run the dedicated skill:
-/rtk-pr-security <PR_NUMBER>
+/rtco-pr-security <PR_NUMBER>
 
 # Manual review (without Claude):
 gh pr view <PR_NUMBER>
@@ -114,7 +114,7 @@ bash scripts/detect-dangerous-patterns.sh /tmp/pr.diff
 | `SystemTime::now() > ...` | Logic bombs | Delayed malicious behavior |
 | Base64/hex strings | Obfuscation | Hides malicious URLs/commands |
 
-See [Dangerous Patterns Reference](https://github.com/rtk-ai/rtk/wiki/Dangerous-Patterns) for exploitation examples.
+See [Dangerous Patterns Reference](https://github.com/rtco-ai/rtco/wiki/Dangerous-Patterns) for exploitation examples.
 
 ---
 
@@ -208,8 +208,8 @@ Critical vulnerabilities (remote code execution, data exfiltration) may be fast-
 
 ## Contact
 
-- **Security issues**: security@rtk-ai.app
-- **General questions**: https://github.com/rtk-ai/rtk/discussions
+- **Security issues**: security@rtco-ai.app
+- **General questions**: https://github.com/rtco-ai/rtco/discussions
 - **Maintainers**: @FlorianBruniaux (active fork maintainer)
 
 ---

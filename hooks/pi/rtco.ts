@@ -1,13 +1,13 @@
-// RTK Pi extension — rewrites bash commands to use rtk for token savings.
-// Requires: rtk >= 0.23.0 in PATH.
+// RTCO Pi extension — rewrites bash commands to use rtco for token savings.
+// Requires: rtco >= 0.23.0 in PATH.
 //
-// This is a thin delegating extension: all rewrite logic lives in `rtk rewrite`,
+// This is a thin delegating extension: all rewrite logic lives in `rtco rewrite`,
 // which is the single source of truth (src/discover/registry.rs).
 // To add or change rewrite rules, edit the Rust registry — not this file.
 //
-// Exit code contract for `rtk rewrite`:
+// Exit code contract for `rtco rewrite`:
 //   0 + stdout  Rewrite found → mutate command
-//   1           No RTK equivalent → pass through unchanged
+//   1           No RTCO equivalent → pass through unchanged
 //   3 + stdout  Rewrite (advisory) → mutate command
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
@@ -23,13 +23,13 @@ function parseSemver(raw: string): [number, number, number] | null {
   return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)]
 }
 
-// Calls `rtk rewrite`; returns the rewritten command or null (pass through).
+// Calls `rtco rewrite`; returns the rewritten command or null (pass through).
 async function rewriteCommand(
   pi: ExtensionAPI,
   cmd: string,
   signal?: AbortSignal
 ): Promise<string | null> {
-  const result = await pi.exec("rtk", ["rewrite", cmd], {
+  const result = await pi.exec("rtco", ["rewrite", cmd], {
     timeout: REWRITE_TIMEOUT_MS,
     signal,
   })
@@ -39,19 +39,19 @@ async function rewriteCommand(
 }
 
 export default async function (pi: ExtensionAPI) {
-  // Probe rtk version at load time; disables extension if missing or too old.
-  const ver = await pi.exec("rtk", ["--version"], { timeout: REWRITE_TIMEOUT_MS })
+  // Probe rtco version at load time; disables extension if missing or too old.
+  const ver = await pi.exec("rtco", ["--version"], { timeout: REWRITE_TIMEOUT_MS })
   if (ver.code !== 0) {
-    console.warn("[rtk] rtk binary not found in PATH — extension disabled")
+    console.warn("[rtco] rtco binary not found in PATH — extension disabled")
     return
   }
 
-  // Warn and bail if rtk predates 0.23.0 (when `rtk rewrite` was introduced).
-  const parsed = parseSemver(ver.stdout.replace(/^rtk\s+/, ""))
+  // Warn and bail if rtco predates 0.23.0 (when `rtco rewrite` was introduced).
+  const parsed = parseSemver(ver.stdout.replace(/^rtco\s+/, ""))
   if (parsed) {
     const [major, minor] = parsed
     if (major === 0 && minor < MIN_SUPPORTED_RTK_MINOR) {
-      console.warn(`[rtk] rtk ${ver.stdout.trim()} is too old (need >= 0.23.0) — extension disabled`)
+      console.warn(`[rtco] rtco ${ver.stdout.trim()} is too old (need >= 0.23.0) — extension disabled`)
       return
     }
   }
@@ -63,17 +63,17 @@ export default async function (pi: ExtensionAPI) {
       const cmd = event.input.command
       if (typeof cmd !== "string" || cmd.trim() === "") return
 
-      if (cmd.startsWith("rtk ")) return
+      if (cmd.startsWith("rtco ")) return
       if (process.env.RTK_DISABLED === "1") return
 
-      // Delegate to RTK.
+      // Delegate to RTCO.
       const rewritten = await rewriteCommand(pi, cmd, ctx.signal)
       if (rewritten && rewritten !== cmd) {
         event.input.command = rewritten
       }
     } catch (err) {
       // Fail open: never block execution on an unexpected error.
-      console.warn("[rtk] unexpected error in tool_call handler; passing through command", err)
+      console.warn("[rtco] unexpected error in tool_call handler; passing through command", err)
       return
     }
   })

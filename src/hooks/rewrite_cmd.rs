@@ -70,8 +70,8 @@ mod tests {
     #[test]
     fn test_run_already_rtk_returns_some() {
         assert_eq!(
-            rewrite_command_no_prefixes("rtk git status"),
-            Some("rtk git status".into())
+            rewrite_command_no_prefixes("rtco git status"),
+            Some("rtco git status".into())
         );
     }
 

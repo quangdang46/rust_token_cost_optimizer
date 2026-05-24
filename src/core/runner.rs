@@ -99,7 +99,7 @@ pub fn run(
                 if !result.raw_stderr.trim().is_empty() {
                     eprint!("{}", result.raw_stderr);
                 }
-                timer.track(&cmd_label, &format!("rtk {}", cmd_label), raw, raw);
+                timer.track(&cmd_label, &format!("rtco {}", cmd_label), raw, raw);
                 return Ok(exit_code);
             }
 
@@ -125,7 +125,7 @@ pub fn run(
             };
             timer.track(
                 &cmd_label,
-                &format!("rtk {}", cmd_label),
+                &format!("rtco {}", cmd_label),
                 raw_for_tracking,
                 &filtered,
             );
@@ -146,7 +146,7 @@ pub fn run(
 
             timer.track(
                 &cmd_label,
-                &format!("rtk {}", cmd_label),
+                &format!("rtco {}", cmd_label),
                 &result.raw,
                 &result.filtered,
             );
@@ -157,7 +157,7 @@ pub fn run(
                 stream::run_streaming(&mut cmd, StdinMode::Inherit, FilterMode::Passthrough)
                     .with_context(|| format!("Failed to run {}", tool_name))?;
 
-            timer.track_passthrough(&cmd_label, &format!("rtk {} (passthrough)", cmd_label));
+            timer.track_passthrough(&cmd_label, &format!("rtco {} (passthrough)", cmd_label));
             Ok(result.exit_code)
         }
     }

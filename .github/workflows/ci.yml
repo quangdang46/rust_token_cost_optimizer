@@ -208,7 +208,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Build rtk
+      - name: Build rtco
         run: cargo build --release
 
       - name: Install system tools

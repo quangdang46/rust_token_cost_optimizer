@@ -1,6 +1,6 @@
-# Search Strategy — RTK Codebase Navigation
+# Search Strategy — RTCO Codebase Navigation
 
-Efficient search patterns for RTK's Rust codebase.
+Efficient search patterns for RTCO's Rust codebase.
 
 ## Priority Order
 
@@ -11,13 +11,13 @@ Efficient search patterns for RTK's Rust codebase.
 
 Never use Bash for search (`find`, `grep`, `rg`) — use dedicated tools.
 
-## RTK Module Map
+## RTCO Module Map
 
 ```
 src/
 ├── main.rs                    ← Commands enum + routing (start here for any command)
 ├── core/                      ← Shared infrastructure
-│   ├── config.rs              ← ~/.config/rtk/config.toml
+│   ├── config.rs              ← ~/.config/rtco/config.toml
 │   ├── tracking.rs            ← SQLite token metrics
 │   ├── tee.rs                 ← Raw output recovery on failure
 │   ├── utils.rs               ← strip_ansi, truncate, execute_command
@@ -26,15 +26,15 @@ src/
 │   ├── display_helpers.rs     ← Terminal formatting helpers
 │   └── telemetry.rs           ← Analytics ping
 ├── hooks/                     ← Hook system
-│   ├── init.rs                ← rtk init command
-│   ├── rewrite_cmd.rs         ← rtk rewrite command
+│   ├── init.rs                ← rtco init command
+│   ├── rewrite_cmd.rs         ← rtco rewrite command
 │   ├── hook_cmd.rs            ← Gemini/Copilot hook processors
 │   ├── hook_check.rs          ← Hook status detection
-│   ├── verify_cmd.rs          ← rtk verify command
+│   ├── verify_cmd.rs          ← rtco verify command
 │   ├── trust.rs               ← Project trust/untrust
 │   └── integrity.rs           ← SHA-256 hook verification
 ├── analytics/                 ← Token savings analytics
-│   ├── gain.rs                ← rtk gain command
+│   ├── gain.rs                ← rtco gain command
 │   ├── cc_economics.rs        ← Claude Code economics
 │   ├── ccusage.rs             ← ccusage data parsing
 │   └── session_cmd.rs         ← Session adoption reporting
@@ -110,7 +110,7 @@ Grep pattern="count_tokens\|savings" type="rust" output_mode="content"
 Glob pattern="tests/fixtures/*.txt"
 ```
 
-## RTK-Specific Navigation Rules
+## RTCO-Specific Navigation Rules
 
 ### Adding a new filter
 
@@ -135,14 +135,14 @@ Glob pattern="tests/fixtures/*.txt"
 ### Configuration issues
 
 1. `src/core/config.rs` → `RtkConfig` struct
-2. `src/hooks/init.rs` → `rtk init` command
-3. Config file: `~/.config/rtk/config.toml`
-4. Filter files: `~/.config/rtk/filters/` (global) or `.rtk/filters/` (project)
+2. `src/hooks/init.rs` → `rtco init` command
+3. Config file: `~/.config/rtco/config.toml`
+4. Filter files: `~/.config/rtco/filters/` (global) or `.rtco/filters/` (project)
 
 ## TOML Filter DSL Navigation
 
 ```
-Glob pattern=".rtk/filters/*.toml"         # Project-local filters
+Glob pattern=".rtco/filters/*.toml"         # Project-local filters
 Glob pattern="src/core/toml_filter.rs"     # TOML filter engine
 Grep pattern="FilterRule\|FilterConfig" type="rust"
 ```

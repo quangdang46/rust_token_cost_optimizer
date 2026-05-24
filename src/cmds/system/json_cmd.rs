@@ -55,7 +55,7 @@ pub fn run(file: &Path, max_depth: usize, schema_only: bool, verbose: u8) -> Res
     println!("{}", output);
     timer.track(
         &format!("cat {}", file.display()),
-        "rtk json",
+        "rtco json",
         &content,
         &output,
     );
@@ -82,7 +82,7 @@ pub fn run_stdin(max_depth: usize, schema_only: bool, verbose: u8) -> Result<()>
         filter_json_compact(&content, max_depth)?
     };
     println!("{}", output);
-    timer.track("cat - (stdin)", "rtk json -", &content, &output);
+    timer.track("cat - (stdin)", "rtco json -", &content, &output);
     Ok(())
 }
 
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn test_cargo_toml_suggests_deps() {
         let err = validate_json_extension(Path::new("Cargo.toml")).unwrap_err();
-        assert!(err.to_string().contains("rtk deps"));
+        assert!(err.to_string().contains("rtco deps"));
     }
 
     #[test]

@@ -37,7 +37,7 @@ fn sanitize_slug(slug: &str) -> String {
 /// Get the tee directory, respecting config and env overrides.
 fn get_tee_dir(config: &Config) -> Option<PathBuf> {
     // Env var override
-    if let Ok(dir) = std::env::var("RTK_TEE_DIR") {
+    if let Ok(dir) = std::env::var("RTCO_TEE_DIR") {
         return Some(PathBuf::from(dir));
     }
 
@@ -149,8 +149,8 @@ fn write_tee_file(
 /// Write raw output to tee file if conditions are met.
 /// Returns file path on success, None if skipped/failed.
 pub fn tee_raw(raw: &str, command_slug: &str, exit_code: i32) -> Option<PathBuf> {
-    // Check RTK_TEE=0 env override (disable)
-    if std::env::var("RTK_TEE").ok().as_deref() == Some("0") {
+    // Check RTCO_TEE=0 env override (disable)
+    if std::env::var("RTCO_TEE").ok().as_deref() == Some("0") {
         return None;
     }
 
@@ -189,7 +189,7 @@ pub fn tee_and_hint(raw: &str, command_slug: &str, exit_code: i32) -> Option<Str
 }
 
 fn force_tee_path(content: &str, command_slug: &str) -> Option<PathBuf> {
-    if std::env::var("RTK_TEE").ok().as_deref() == Some("0") {
+    if std::env::var("RTCO_TEE").ok().as_deref() == Some("0") {
         return None;
     }
 
@@ -501,12 +501,12 @@ directory = "/tmp/rtk-tee"
 
     #[test]
     fn test_force_tee_hint_respects_env_disable() {
-        // When RTK_TEE=0, force_tee_hint should return None
-        std::env::set_var("RTK_TEE", "0");
+        // When RTCO_TEE=0, force_tee_hint should return None
+        std::env::set_var("RTCO_TEE", "0");
         let large_output = "x".repeat(1000);
         let hint = force_tee_hint(&large_output, "test_cmd");
-        std::env::remove_var("RTK_TEE");
-        assert!(hint.is_none(), "Should respect RTK_TEE=0");
+        std::env::remove_var("RTCO_TEE");
+        assert!(hint.is_none(), "Should respect RTCO_TEE=0");
     }
 
     #[test]

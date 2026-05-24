@@ -26,7 +26,7 @@ const HASH_FILENAME: &str = ".rtk-hook.sha256";
 pub enum IntegrityStatus {
     /// Hash matches — hook is unmodified since last install/update
     Verified,
-    /// Hash mismatch — hook has been modified outside of `rtk init`
+    /// Hash mismatch — hook has been modified outside of `rtco init`
     Tampered { expected: String, actual: String },
     /// Hook exists but no stored hash (installed before integrity checks)
     NoBaseline,
@@ -214,7 +214,7 @@ pub fn run_verify(verbose: u8) -> Result<()> {
         let settings_path = home.join(CLAUDE_DIR).join("settings.json");
         if settings_path.exists() {
             let content = fs::read_to_string(&settings_path).unwrap_or_default();
-            if content.contains("rtk hook claude") {
+            if content.contains("rtco hook claude") {
                 println!("PASS  native binary hook registered in settings.json");
                 println!("      command: rtk hook claude");
                 println!("      (no script file — integrity check not applicable)");
@@ -222,7 +222,7 @@ pub fn run_verify(verbose: u8) -> Result<()> {
             }
         }
         println!("SKIP  RTK hook not installed");
-        println!("      Run `rtk init -g` to install.");
+        println!("      Run `rtco init -g` to install.");
         return Ok(());
     }
 
@@ -239,7 +239,7 @@ pub fn run_verify(verbose: u8) -> Result<()> {
             eprintln!("  Expected: {}", expected);
             eprintln!("  Actual:   {}", actual);
             eprintln!();
-            eprintln!("  The hook file has been modified outside of `rtk init`.");
+            eprintln!("  The hook file has been modified outside of `rtco init`.");
             eprintln!("  This could indicate tampering or a manual edit.");
             eprintln!();
             eprintln!("  To restore: rtk init -g --auto-patch");
@@ -249,15 +249,15 @@ pub fn run_verify(verbose: u8) -> Result<()> {
         IntegrityStatus::NoBaseline => {
             println!("WARN  no baseline hash found");
             println!("      Hook exists but was installed before integrity checks.");
-            println!("      Run `rtk init -g` to establish baseline.");
+            println!("      Run `rtco init -g` to establish baseline.");
         }
         IntegrityStatus::NotInstalled => {
             println!("SKIP  RTK hook not installed");
-            println!("      Run `rtk init -g` to install.");
+            println!("      Run `rtco init -g` to install.");
         }
         IntegrityStatus::OrphanedHash => {
             eprintln!("WARN  hash file exists but hook is missing");
-            eprintln!("      Run `rtk init -g` to reinstall.");
+            eprintln!("      Run `rtco init -g` to reinstall.");
         }
     }
 
@@ -313,7 +313,7 @@ pub fn runtime_check() -> Result<()> {
         }
         IntegrityStatus::OrphanedHash => {
             eprintln!("rtk: warning: hash file exists but hook is missing");
-            eprintln!("  Run `rtk init -g` to reinstall.");
+            eprintln!("  Run `rtco init -g` to reinstall.");
             // Don't block — hook is gone, nothing to exploit
         }
     }

@@ -11,8 +11,8 @@ use std::sync::OnceLock;
 
 static CACHED_SALT: OnceLock<String> = OnceLock::new();
 
-const TELEMETRY_URL: Option<&str> = option_env!("RTK_TELEMETRY_URL");
-const TELEMETRY_TOKEN: Option<&str> = option_env!("RTK_TELEMETRY_TOKEN");
+const TELEMETRY_URL: Option<&str> = option_env!("RTCO_TELEMETRY_URL");
+const TELEMETRY_TOKEN: Option<&str> = option_env!("RTCO_TELEMETRY_TOKEN");
 const PING_INTERVAL_SECS: u64 = 23 * 3600; // 23 hours
 
 /// Send a telemetry ping if enabled and not already sent today.
@@ -24,7 +24,7 @@ pub fn maybe_ping() {
     }
 
     // Check opt-out: env var
-    if std::env::var("RTK_TELEMETRY_DISABLED").unwrap_or_default() == "1" {
+    if std::env::var("RTCO_TELEMETRY_DISABLED").unwrap_or_default() == "1" {
         return;
     }
 

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# rtk-hook-version: 3
-# RTK auto-rewrite hook for Claude Code PreToolUse:Bash
-# Transparently rewrites raw commands to their RTK equivalents.
-# Uses `rtk rewrite` as single source of truth — no duplicate mapping logic here.
+# rtco-hook-version: 3
+# RTCO auto-rewrite hook for Claude Code PreToolUse:Bash
+# Transparently rewrites raw commands to their RTCO equivalents.
+# Uses `rtco rewrite` as single source of truth — no duplicate mapping logic here.
 #
 # To add support for new commands, update src/discover/registry.rs (PATTERNS + RULES).
 #
-# Exit code protocol for `rtk rewrite`:
+# Exit code protocol for `rtco rewrite`:
 #   0 + stdout  Rewrite found, no deny/ask rule matched → auto-allow
-#   1           No RTK equivalent → pass through unchanged
+#   1           No RTCO equivalent → pass through unchanged
 #   2           Deny rule matched → pass through (Claude Code native deny handles it)
 #   3 + stdout  Ask rule matched → rewrite but let Claude Code prompt the user
 
@@ -16,7 +16,7 @@
 _rtk_audit_log() {
   if [ "${RTK_HOOK_AUDIT:-0}" != "1" ]; then return; fi
   local action="$1" original="$2" rewritten="${3:--}"
-  local dir="${RTK_AUDIT_DIR:-${HOME}/.local/share/rtk}"
+  local dir="${RTK_AUDIT_DIR:-${HOME}/.local/share/rtco}"
   mkdir -p "$dir"
   printf '%s | %s | %s | %s\n' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$action" "$original" "$rewritten" \
@@ -24,7 +24,7 @@ _rtk_audit_log() {
 }
 
 # Guards: skip silently if dependencies missing
-if ! command -v rtk &>/dev/null || ! command -v jq &>/dev/null; then
+if ! command -v rtco &>/dev/null || ! command -v jq &>/dev/null; then
   _rtk_audit_log "skip:no_deps" "-"
   exit 0
 fi
@@ -39,15 +39,15 @@ if [ -z "$CMD" ]; then
   exit 0
 fi
 
-# Skip heredocs (rtk rewrite also skips them, but bail early)
+# Skip heredocs (rtco rewrite also skips them, but bail early)
 case "$CMD" in
   *'<<'*) _rtk_audit_log "skip:heredoc" "$CMD"; exit 0 ;;
 esac
 
-# Rewrite via rtk — single source of truth for all command mappings and permission checks.
+# Rewrite via rtco — single source of truth for all command mappings and permission checks.
 # Use "|| EXIT_CODE=$?" to capture non-zero exit codes without triggering set -e.
 EXIT_CODE=0
-REWRITTEN=$(rtk rewrite "$CMD" 2>/dev/null) || EXIT_CODE=$?
+REWRITTEN=$(rtco rewrite "$CMD" 2>/dev/null) || EXIT_CODE=$?
 
 case $EXIT_CODE in
   0)
@@ -58,7 +58,7 @@ case $EXIT_CODE in
     fi
     ;;
   1)
-    # No RTK equivalent — pass through unchanged.
+    # No RTCO equivalent — pass through unchanged.
     _rtk_audit_log "skip:no_match" "$CMD"
     exit 0
     ;;
@@ -100,7 +100,7 @@ else
       "hookSpecificOutput": {
         "hookEventName": "PreToolUse",
         "permissionDecision": "allow",
-        "permissionDecisionReason": "RTK auto-rewrite",
+        "permissionDecisionReason": "RTCO auto-rewrite",
         "updatedInput": $updated
       }
     }'

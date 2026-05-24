@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://avatars.githubusercontent.com/u/258253854?v=4" alt="RTK - Rust Token Killer" width="500">
+  <img src="https://avatars.githubusercontent.com/u/258253854?v=4" alt="RTCO - Rust Token Killer" width="500">
 </p>
 
 <p align="center">
@@ -7,15 +7,15 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rtk-ai/rtk/actions"><img src="https://github.com/rtk-ai/rtk/workflows/Security%20Check/badge.svg" alt="CI"></a>
-  <a href="https://github.com/rtk-ai/rtk/releases"><img src="https://img.shields.io/github/v/release/rtk-ai/rtk" alt="Release"></a>
+  <a href="https://github.com/rtco-ai/rtco/actions"><img src="https://github.com/rtco-ai/rtco/workflows/Security%20Check/badge.svg" alt="CI"></a>
+  <a href="https://github.com/rtco-ai/rtco/releases"><img src="https://img.shields.io/github/v/release/rtco-ai/rtco" alt="Release"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://discord.gg/RySmvNF5kF"><img src="https://img.shields.io/discord/1478373640461488159?label=Discord&logo=discord" alt="Discord"></a>
-  <a href="https://formulae.brew.sh/formula/rtk"><img src="https://img.shields.io/homebrew/v/rtk" alt="Homebrew"></a>
+  <a href="https://formulae.brew.sh/formula/rtco"><img src="https://img.shields.io/homebrew/v/rtco" alt="Homebrew"></a>
 </p>
 
 <p align="center">
-  <a href="https://www.rtk-ai.app">官网</a> &bull;
+  <a href="https://www.rtco-ai.app">官网</a> &bull;
   <a href="#安装">安装</a> &bull;
   <a href="docs/TROUBLESHOOTING.md">故障排除</a> &bull;
   <a href="docs/contributing/ARCHITECTURE.md">架构</a> &bull;
@@ -33,11 +33,11 @@
 
 ---
 
-rtk 在命令输出到达 LLM 上下文之前进行过滤和压缩。单一 Rust 二进制文件，零依赖，<10ms 开销。
+rtco 在命令输出到达 LLM 上下文之前进行过滤和压缩。单一 Rust 二进制文件，零依赖，<10ms 开销。
 
 ## Token 节省（30 分钟 Claude Code 会话）
 
-| 操作 | 频率 | 标准 | rtk | 节省 |
+| 操作 | 频率 | 标准 | rtco | 节省 |
 |------|------|------|-----|------|
 | `ls` / `tree` | 10x | 2,000 | 400 | -80% |
 | `cat` / `read` | 20x | 40,000 | 12,000 | -70% |
@@ -52,44 +52,44 @@ rtk 在命令输出到达 LLM 上下文之前进行过滤和压缩。单一 Rust
 ### Homebrew（推荐）
 
 ```bash
-brew install rtk
+brew install rtco
 ```
 
 ### 快速安装（Linux/macOS）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rtco-ai/rtco/refs/heads/master/install.sh | sh
 ```
 
 ### Cargo
 
 ```bash
-cargo install --git https://github.com/rtk-ai/rtk
+cargo install --git https://github.com/rtco-ai/rtco
 ```
 
 ### 验证
 
 ```bash
-rtk --version   # 应显示 "rtk 0.27.x"
-rtk gain        # 应显示 token 节省统计
+rtco --version   # 应显示 "rtco 0.27.x"
+rtco gain        # 应显示 token 节省统计
 ```
 
 ## 快速开始
 
 ```bash
 # 1. 为 Claude Code 安装 hook（推荐）
-rtk init --global
+rtco init --global
 
 # 2. 重启 Claude Code，然后测试
-git status  # 自动重写为 rtk git status
+git status  # 自动重写为 rtco git status
 ```
 
 ## 工作原理
 
 ```
-  没有 rtk：                                      使用 rtk：
+  没有 rtco：                                      使用 rtco：
 
-  Claude  --git status-->  shell  -->  git         Claude  --git status-->  RTK  -->  git
+  Claude  --git status-->  shell  -->  git         Claude  --git status-->  RTCO  -->  git
     ^                                   |            ^                      |          |
     |        ~2,000 tokens（原始）       |            |   ~200 tokens        | 过滤     |
     +-----------------------------------+            +------- （已过滤）-----+----------+
@@ -106,49 +106,49 @@ git status  # 自动重写为 rtk git status
 
 ### 文件
 ```bash
-rtk ls .                        # 优化的目录树
-rtk read file.rs                # 智能文件读取
-rtk find "*.rs" .               # 紧凑的查找结果
-rtk grep "pattern" .            # 按文件分组的搜索结果
+rtco ls .                        # 优化的目录树
+rtco read file.rs                # 智能文件读取
+rtco find "*.rs" .               # 紧凑的查找结果
+rtco grep "pattern" .            # 按文件分组的搜索结果
 ```
 
 ### Git
 ```bash
-rtk git status                  # 紧凑状态
-rtk git log -n 10               # 单行提交
-rtk git diff                    # 精简 diff
-rtk git push                    # -> "ok main"
+rtco git status                  # 紧凑状态
+rtco git log -n 10               # 单行提交
+rtco git diff                    # 精简 diff
+rtco git push                    # -> "ok main"
 ```
 
 ### 测试
 ```bash
-rtk jest                        # Jest 紧凑输出
-rtk vitest                      # Vitest 紧凑输出
-rtk pytest                      # Python 测试（-90%）
-rtk go test                     # Go 测试（-90%）
-rtk test <cmd>                  # 仅显示失败（-90%）
+rtco jest                        # Jest 紧凑输出
+rtco vitest                      # Vitest 紧凑输出
+rtco pytest                      # Python 测试（-90%）
+rtco go test                     # Go 测试（-90%）
+rtco test <cmd>                  # 仅显示失败（-90%）
 ```
 
 ### 构建 & 检查
 ```bash
-rtk lint                        # ESLint 按规则分组
-rtk tsc                         # TypeScript 错误分组
-rtk cargo build                 # Cargo 构建（-80%）
-rtk ruff check                  # Python lint（-80%）
+rtco lint                        # ESLint 按规则分组
+rtco tsc                         # TypeScript 错误分组
+rtco cargo build                 # Cargo 构建（-80%）
+rtco ruff check                  # Python lint（-80%）
 ```
 
 ### 容器
 ```bash
-rtk docker ps                   # 紧凑容器列表
-rtk docker logs <container>     # 去重日志
-rtk kubectl pods                # 紧凑 Pod 列表
+rtco docker ps                   # 紧凑容器列表
+rtco docker logs <container>     # 去重日志
+rtco kubectl pods                # 紧凑 Pod 列表
 ```
 
 ### 分析
 ```bash
-rtk gain                        # 节省统计
-rtk gain --graph                # ASCII 图表（30 天）
-rtk discover                    # 发现遗漏的节省机会
+rtco gain                        # 节省统计
+rtco gain --graph                # ASCII 图表（30 天）
+rtco discover                    # 发现遗漏的节省机会
 ```
 
 ## 文档
@@ -159,7 +159,7 @@ rtk discover                    # 发现遗漏的节省机会
 
 ## 贡献
 
-欢迎贡献！请在 [GitHub](https://github.com/rtk-ai/rtk) 上提交 issue 或 PR。
+欢迎贡献！请在 [GitHub](https://github.com/rtco-ai/rtco) 上提交 issue 或 PR。
 
 加入 [Discord](https://discord.gg/RySmvNF5kF) 社区。
 

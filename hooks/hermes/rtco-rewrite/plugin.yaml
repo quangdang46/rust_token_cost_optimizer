@@ -1,0 +1,8 @@
+name: rtco-rewrite
+version: "0.1.0"
+description: Rewrite Hermes terminal commands through RTCO before execution.
+author: RTCO Contributors
+hooks:
+  - pre_tool_call
+provides_hooks:
+  - pre_tool_call

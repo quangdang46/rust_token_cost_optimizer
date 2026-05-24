@@ -9,7 +9,7 @@ allowed-tools:
   - Grep
   - Glob
 effort: medium
-tags: [triage, pr, github, review, code-review, rtk]
+tags: [triage, pr, github, review, code-review, rtco]
 ---
 
 # PR Triage
@@ -223,7 +223,7 @@ prompt: |
   {gh pr diff {num} output}
 
   Apply your security-guardian and backend-architect skills for this review.
-  Additionally, apply the RTK-specific checklist:
+  Additionally, apply the RTCO-specific checklist:
   - lazy_static! regex (no inline Regex::new())
   - anyhow::Result + .context() (no unwrap())
   - Fallback to raw command on filter failure

@@ -187,19 +187,19 @@ pub fn format_text(report: &DiscoverReport, limit: usize, verbose: bool) -> Stri
         out.push_str("-> github.com/rtk-ai/rtk/issues\n");
     }
 
-    // RTK_DISABLED bypass warning
+    // RTCO_DISABLED bypass warning
     if report.rtk_disabled_count > 0 {
         out.push_str(&format!(
-            "\nRTK_DISABLED BYPASS -- {} commands ran without filtering\n",
+            "\nRTCO_DISABLED BYPASS -- {} commands ran without filtering\n",
             report.rtk_disabled_count
         ));
         out.push_str(&"-".repeat(72));
         out.push('\n');
-        out.push_str("These commands used RTK_DISABLED=1 unnecessarily:\n");
+        out.push_str("These commands used RTCO_DISABLED=1 unnecessarily:\n");
         if !report.rtk_disabled_examples.is_empty() {
             out.push_str(&format!("  {}\n", report.rtk_disabled_examples.join(", ")));
         }
-        out.push_str("-> Remove RTK_DISABLED=1 to recover token savings\n");
+        out.push_str("-> Remove RTCO_DISABLED=1 to recover token savings\n");
     }
 
     out.push_str("\n~estimated from tool_result output sizes\n");

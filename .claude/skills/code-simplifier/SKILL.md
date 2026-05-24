@@ -1,6 +1,6 @@
 ---
 name: code-simplifier
-description: Review RTK Rust code for idiomatic simplification. Detects over-engineering, unnecessary allocations, verbose patterns. Applies Rust idioms without changing behavior.
+description: Review RTCO Rust code for idiomatic simplification. Detects over-engineering, unnecessary allocations, verbose patterns. Applies Rust idioms without changing behavior.
 triggers:
   - "simplify"
   - "too verbose"
@@ -13,12 +13,12 @@ allowed-tools:
   - Glob
   - Edit
 effort: low
-tags: [rust, simplify, refactor, idioms, rtk]
+tags: [rust, simplify, refactor, idioms, rtco]
 ---
 
-# RTK Code Simplifier
+# RTCO Code Simplifier
 
-Review and simplify Rust code in RTK while respecting the project's constraints.
+Review and simplify Rust code in RTCO while respecting the project's constraints.
 
 ## Constraints (never simplify away)
 
@@ -146,14 +146,14 @@ match output {
     Err(_) => {},
 }
 
-// ✅ if let (but still handle errors in RTK — don't silently drop)
+// ✅ if let (but still handle errors in RTCO — don't silently drop)
 if let Ok(s) = output {
     process(&s);
 }
-// Note: in RTK filters, always handle Err with eprintln! + fallback
+// Note: in RTCO filters, always handle Err with eprintln! + fallback
 ```
 
-## RTK-Specific Checks
+## RTCO-Specific Checks
 
 Run these after simplification:
 

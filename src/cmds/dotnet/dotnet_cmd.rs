@@ -58,7 +58,7 @@ pub fn run_format(args: &[String], verbose: u8) -> Result<i32> {
 
     timer.track(
         &format!("dotnet format {}", args.join(" ")),
-        &format!("rtk dotnet format {}", args.join(" ")),
+        &format!("rtco dotnet format {}", args.join(" ")),
         &raw,
         &filtered,
     );
@@ -101,7 +101,7 @@ pub fn run_passthrough(args: &[OsString], verbose: u8) -> Result<i32> {
 
     timer.track(
         &format!("dotnet {}", subcommand),
-        &format!("rtk dotnet {}", subcommand),
+        &format!("rtco dotnet {}", subcommand),
         &raw,
         &raw,
     );
@@ -226,7 +226,7 @@ fn run_dotnet_with_binlog(subcommand: &str, args: &[String], verbose: u8) -> Res
 
     timer.track(
         &format!("dotnet {} {}", subcommand, args.join(" ")),
-        &format!("rtk dotnet {} {}", subcommand, args.join(" ")),
+        &format!("rtco dotnet {} {}", subcommand, args.join(" ")),
         &raw,
         &output_to_print,
     );

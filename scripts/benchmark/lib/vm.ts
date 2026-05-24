@@ -1,10 +1,10 @@
 /**
- * Multipass VM management for RTK integration testing.
+ * Multipass VM management for RTCO integration testing.
  */
 
 import { $ } from "bun";
 
-const VM_NAME = "rtk-test";
+const VM_NAME = "rtco-test";
 const CLOUD_INIT = "scripts/benchmark/cloud-init.yaml";
 
 export interface VmInfo {
@@ -93,25 +93,25 @@ export async function vmWaitReady(maxWaitSec = 2400): Promise<boolean> {
   return false;
 }
 
-/** Transfer RTK source and build in release mode */
+/** Transfer RTCO source and build in release mode */
 export async function vmBuildRtk(projectRoot: string): Promise<{
   buildTime: number;
   binarySize: number;
   version: string;
 }> {
-  console.log("[vm] Transferring RTK source...");
+  console.log("[vm] Transferring RTCO source...");
 
   // Create tarball excluding heavy dirs and macOS resource forks (._*)
-  await $`COPYFILE_DISABLE=1 tar czf /tmp/rtk-src.tar.gz --exclude target --exclude .git --exclude node_modules --exclude "index.html*" --exclude "._*" -C ${projectRoot} .`;
-  await vmTransfer("/tmp/rtk-src.tar.gz", "/tmp/rtk-src.tar.gz");
+  await $`COPYFILE_DISABLE=1 tar czf /tmp/rtco-src.tar.gz --exclude target --exclude .git --exclude node_modules --exclude "index.html*" --exclude "._*" -C ${projectRoot} .`;
+  await vmTransfer("/tmp/rtco-src.tar.gz", "/tmp/rtco-src.tar.gz");
   await vmExec(
-    "mkdir -p /home/ubuntu/rtk && cd /home/ubuntu/rtk && tar xzf /tmp/rtk-src.tar.gz"
+    "mkdir -p /home/ubuntu/rtco && cd /home/ubuntu/rtco && tar xzf /tmp/rtco-src.tar.gz"
   );
 
-  console.log("[vm] Building RTK (release)...");
+  console.log("[vm] Building RTCO (release)...");
   const start = Date.now();
   const { stdout, exitCode } = await vmExec(
-    "export PATH=$HOME/.cargo/bin:$PATH && cd /home/ubuntu/rtk && cargo build --release 2>&1 | tail -5"
+    "export PATH=$HOME/.cargo/bin:$PATH && cd /home/ubuntu/rtco && cargo build --release 2>&1 | tail -5"
   );
   const buildTime = Math.round((Date.now() - start) / 1000);
 
@@ -120,12 +120,12 @@ export async function vmBuildRtk(projectRoot: string): Promise<{
   }
 
   const { stdout: sizeStr } = await vmExec(
-    "stat -c%s /home/ubuntu/rtk/target/release/rtk"
+    "stat -c%s /home/ubuntu/rtco/target/release/rtco"
   );
   const binarySize = parseInt(sizeStr.trim(), 10);
 
   const { stdout: version } = await vmExec(
-    "/home/ubuntu/rtk/target/release/rtk --version"
+    "/home/ubuntu/rtco/target/release/rtco --version"
   );
 
   console.log(
@@ -157,7 +157,7 @@ export async function vmEnsureReady(): Promise<void> {
       const ready = await vmWaitReady();
       if (!ready) {
         throw new Error(
-          "Cloud-init timed out. Check: multipass exec rtk-test -- cat /var/log/cloud-init-output.log"
+          "Cloud-init timed out. Check: multipass exec rtco-test -- cat /var/log/cloud-init-output.log"
         );
       }
     }
@@ -171,11 +171,11 @@ export async function vmEnsureReady(): Promise<void> {
       const ready = await vmWaitReady();
       if (!ready) {
         throw new Error(
-          "Cloud-init timed out. Check: multipass exec rtk-test -- cat /var/log/cloud-init-output.log"
+          "Cloud-init timed out. Check: multipass exec rtco-test -- cat /var/log/cloud-init-output.log"
         );
       }
     }
   }
 }
 
-export const RTK_BIN = "/home/ubuntu/rtk/target/release/rtk";
+export const RTK_BIN = "/home/ubuntu/rtco/target/release/rtco";

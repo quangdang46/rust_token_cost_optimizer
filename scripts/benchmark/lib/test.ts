@@ -1,5 +1,5 @@
 /**
- * Test helpers for RTK integration testing.
+ * Test helpers for RTCO integration testing.
  */
 
 import { vmExec, RTK_BIN } from "./vm";
@@ -88,7 +88,7 @@ export async function testCmd(
 }
 
 /**
- * Test token savings: compare raw command output vs RTK filtered output.
+ * Test token savings: compare raw command output vs RTCO filtered output.
  */
 export async function testSavings(
   name: string,
@@ -97,10 +97,10 @@ export async function testSavings(
   targetPct: number
 ): Promise<TestResult> {
   const raw = await vmExec(rawCmd);
-  const rtk = await vmExec(rtkCmd);
+  const rtco = await vmExec(rtkCmd);
 
   const rawSize = raw.stdout.length;
-  const rtkSize = rtk.stdout.length;
+  const rtkSize = rtco.stdout.length;
 
   if (rawSize === 0) {
     const result: TestResult = {

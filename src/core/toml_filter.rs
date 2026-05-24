@@ -10,8 +10,8 @@
 /// `rtk init` generates a commented template for both levels (project or global).
 ///
 /// Environment variables:
-///   - `RTK_NO_TOML=1`     — bypass TOML engine entirely
-///   - `RTK_TOML_DEBUG=1`  — print which filter matched and line counts to stderr
+///   - `RTCO_NO_TOML=1`     — bypass TOML engine entirely
+///   - `RTCO_TOML_DEBUG=1`  — print which filter matched and line counts to stderr
 ///
 /// Pipeline stages (applied in order):
 ///   1. strip_ansi           — remove ANSI escape codes
@@ -200,17 +200,17 @@ impl TomlFilterRegistry {
                     if let Ok(content) = std::fs::read_to_string(project_filter_path) {
                         match Self::parse_and_compile(&content, "project") {
                             Ok(f) => filters.extend(f),
-                            Err(e) => eprintln!("[rtk] warning: .rtk/filters.toml: {}", e),
+                            Err(e) => eprintln!("[rtco] warning: .rtk/filters.toml: {}", e),
                         }
                     }
                 }
                 crate::hooks::trust::TrustStatus::Untrusted => {
-                    eprintln!("[rtk] WARNING: untrusted project filters (.rtk/filters.toml)");
-                    eprintln!("[rtk] Filters NOT applied. Run `rtk trust` to review and enable.");
+                    eprintln!("[rtco] WARNING: untrusted project filters (.rtk/filters.toml)");
+                    eprintln!("[rtco] Filters NOT applied. Run `rtco trust` to review and enable.");
                 }
                 crate::hooks::trust::TrustStatus::ContentChanged { .. } => {
-                    eprintln!("[rtk] WARNING: .rtk/filters.toml changed since trusted.");
-                    eprintln!("[rtk] Filters NOT applied. Run `rtk trust` to re-review.");
+                    eprintln!("[rtco] WARNING: .rtk/filters.toml changed since trusted.");
+                    eprintln!("[rtco] Filters NOT applied. Run `rtco trust` to re-review.");
                 }
             }
         }
@@ -221,7 +221,7 @@ impl TomlFilterRegistry {
             if let Ok(content) = std::fs::read_to_string(&global_path) {
                 match Self::parse_and_compile(&content, "user-global") {
                     Ok(f) => filters.extend(f),
-                    Err(e) => eprintln!("[rtk] warning: {}: {}", global_path.display(), e),
+                    Err(e) => eprintln!("[rtco] warning: {}: {}", global_path.display(), e),
                 }
             }
         }
@@ -230,7 +230,7 @@ impl TomlFilterRegistry {
         let builtin = BUILTIN_TOML;
         match Self::parse_and_compile(builtin, "builtin") {
             Ok(f) => filters.extend(f),
-            Err(e) => eprintln!("[rtk] warning: builtin filters: {}", e),
+            Err(e) => eprintln!("[rtco] warning: builtin filters: {}", e),
         }
 
         TomlFilterRegistry { filters }
@@ -251,7 +251,7 @@ impl TomlFilterRegistry {
         for (name, def) in file.filters {
             match compile_filter(name.clone(), def) {
                 Ok(f) => compiled.push(f),
-                Err(e) => eprintln!("[rtk] warning: filter '{}' in {}: {}", name, source, e),
+                Err(e) => eprintln!("[rtco] warning: filter '{}' in {}: {}", name, source, e),
             }
         }
         Ok(compiled)
@@ -327,7 +327,7 @@ fn compile_filter(name: String, def: TomlFilterDef) -> Result<CompiledFilter, St
     for cmd in RUST_HANDLED_COMMANDS {
         if match_regex.is_match(cmd) {
             eprintln!(
-                "[rtk] warning: filter '{}' match_command matches '{}' which is already \
+                "[rtco] warning: filter '{}' match_command matches '{}' which is already \
                  handled by a Rust module — this filter will never activate for that command",
                 name, cmd
             );
@@ -575,7 +575,7 @@ pub fn run_filter_tests(filter_name_opt: Option<&str>) -> VerifyResults {
                 }
             }
             _ => {
-                eprintln!("[rtk] WARNING: untrusted project filters skipped in verify");
+                eprintln!("[rtco] WARNING: untrusted project filters skipped in verify");
             }
         }
     }
@@ -605,7 +605,7 @@ fn collect_test_outcomes(
     let file: TomlFilterFile = match toml::from_str(content) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("[rtk] warning: TOML parse error during verify: {}", e);
+            eprintln!("[rtco] warning: TOML parse error during verify: {}", e);
             return;
         }
     };
@@ -618,7 +618,7 @@ fn collect_test_outcomes(
             Ok(f) => {
                 compiled_filters.insert(name, f);
             }
-            Err(e) => eprintln!("[rtk] warning: filter '{}' compilation error: {}", name, e),
+            Err(e) => eprintln!("[rtco] warning: filter '{}' compilation error: {}", name, e),
         }
     }
 
@@ -636,7 +636,7 @@ fn collect_test_outcomes(
             Some(f) => f,
             None => {
                 eprintln!(
-                    "[rtk] warning: [[tests.{}]] references unknown filter",
+                    "[rtco] warning: [[tests.{}]] references unknown filter",
                     filter_name
                 );
                 continue;
@@ -666,7 +666,7 @@ fn collect_test_outcomes(
 /// Find a matching filter from the global registry. Initialises the registry
 /// lazily on first call. Returns `None` if no filter matches.
 pub fn find_matching_filter(command: &str) -> Option<&'static CompiledFilter> {
-    if std::env::var("RTK_TOML_DEBUG").is_ok() {
+    if std::env::var("RTCO_TOML_DEBUG").is_ok() {
         eprintln!(
             "[rtk:toml] looking up filter for: {:?} ({} filters loaded)",
             command,
@@ -674,7 +674,7 @@ pub fn find_matching_filter(command: &str) -> Option<&'static CompiledFilter> {
         );
     }
     let result = find_filter_in(command, &REGISTRY.filters);
-    if std::env::var("RTK_TOML_DEBUG").is_ok() {
+    if std::env::var("RTCO_TOML_DEBUG").is_ok() {
         match result {
             Some(f) => eprintln!("[rtk:toml] matched filter: '{}'", f.name),
             None => eprintln!("[rtk:toml] no filter matched — passthrough"),

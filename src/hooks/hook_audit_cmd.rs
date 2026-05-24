@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 /// Default log file location (aligned with hook's $HOME/.local/share/rtk/).
 fn default_log_path() -> PathBuf {
-    if let Ok(dir) = std::env::var("RTK_AUDIT_DIR") {
+    if let Ok(dir) = std::env::var("RTCO_AUDIT_DIR") {
         PathBuf::from(dir).join("hook-audit.log")
     } else {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
@@ -73,7 +73,7 @@ pub fn run(since_days: u64, verbose: u8) -> Result<()> {
 
     if !log_path.exists() {
         println!("No audit log found at {}", log_path.display());
-        println!("Enable audit mode: export RTK_HOOK_AUDIT=1 in your shell, then use Claude Code.");
+        println!("Enable audit mode: export RTCO_HOOK_AUDIT=1 in your shell, then use Claude Code.");
         return Ok(());
     }
 
@@ -184,7 +184,7 @@ mod tests {
         let entry = parse_line(line).unwrap();
         assert_eq!(entry.action, "rewrite");
         assert_eq!(entry.original_cmd, "git status");
-        assert_eq!(entry._rewritten_cmd, "rtk git status");
+        assert_eq!(entry._rewritten_cmd, "rtco git status");
     }
 
     #[test]

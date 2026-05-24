@@ -9,7 +9,7 @@
 //! - Untrusted filters are **skipped** (not "loaded with warning")
 //! - `rtk trust` stores the SHA-256 hash after user review
 //! - Content changes invalidate trust (re-review required)
-//! - `RTK_TRUST_PROJECT_FILTERS=1` overrides for CI pipelines
+//! - `RTCO_TRUST_PROJECT_FILTERS=1` overrides for CI pipelines
 
 use super::integrity;
 use crate::core::constants::{RTK_DATA_DIR, TRUSTED_FILTERS_JSON};
@@ -96,7 +96,7 @@ fn canonical_key(filter_path: &Path) -> Result<String> {
 pub fn check_trust(filter_path: &Path) -> Result<TrustStatus> {
     // Fast path: env var override for CI pipelines only.
     // Requires a known CI env var to be set to prevent .envrc injection attacks.
-    if std::env::var("RTK_TRUST_PROJECT_FILTERS").as_deref() == Ok("1") {
+    if std::env::var("RTCO_TRUST_PROJECT_FILTERS").as_deref() == Ok("1") {
         let in_ci = std::env::var("CI").is_ok()
             || std::env::var("GITHUB_ACTIONS").is_ok()
             || std::env::var("GITLAB_CI").is_ok()
@@ -106,7 +106,7 @@ pub fn check_trust(filter_path: &Path) -> Result<TrustStatus> {
             return Ok(TrustStatus::EnvOverride);
         }
         eprintln!(
-            "[rtk] WARNING: RTK_TRUST_PROJECT_FILTERS=1 ignored (CI environment not detected)"
+            "[rtk] WARNING: RTCO_TRUST_PROJECT_FILTERS=1 ignored (CI environment not detected)"
         );
     }
 
@@ -439,12 +439,12 @@ mod tests {
 
         // Both env vars must be set: trust override + CI indicator
         #[allow(deprecated)]
-        std::env::set_var("RTK_TRUST_PROJECT_FILTERS", "1");
+        std::env::set_var("RTCO_TRUST_PROJECT_FILTERS", "1");
         #[allow(deprecated)]
         std::env::set_var("CI", "true");
         let status = check_trust(&filter).unwrap();
         #[allow(deprecated)]
-        std::env::remove_var("RTK_TRUST_PROJECT_FILTERS");
+        std::env::remove_var("RTCO_TRUST_PROJECT_FILTERS");
         #[allow(deprecated)]
         std::env::remove_var("CI");
 

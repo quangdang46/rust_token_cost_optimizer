@@ -1,7 +1,7 @@
-# RTK Documentation — Interface Contract
+# RTCO Documentation — Interface Contract
 
-This directory contains user-facing documentation for the RTK website.
-It feeds `rtk-ai/rtk-website` via the `prepare-docs.mjs` pipeline.
+This directory contains user-facing documentation for the RTCO website.
+It feeds `rtco-ai/rtco-website` via the `prepare-docs.mjs` pipeline.
 
 **Scope**: `docs/guide/` is website content only. Technical and contributor documentation
 lives in the codebase (distributed, co-located pattern):
@@ -22,7 +22,7 @@ docs/
       installation.md
       quick-start.md
       supported-agents.md
-    what-rtk-covers.md
+    what-rtco-covers.md
     analytics/
       gain.md
     configuration.md
@@ -53,5 +53,5 @@ if frontmatter is missing or malformed.
 - **Diagrams**: Mermaid in fenced code blocks
 - **Code samples**: always specify the language (`rust`, `toml`, `bash`)
 - **Language**: English only
-- **No `rtk <cmd>` syntax**: users never type `rtk` — hooks rewrite commands transparently.
-  Only `rtk gain`, `rtk init`, `rtk verify`, and `rtk proxy` appear as user-typed commands.
+- **No `rtco <cmd>` syntax**: users never type `rtco` — hooks rewrite commands transparently.
+  Only `rtco gain`, `rtco init`, `rtco verify`, and `rtco proxy` appear as user-typed commands.

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://avatars.githubusercontent.com/u/258253854?v=4" alt="RTK - Rust Token Killer" width="500">
+  <img src="https://avatars.githubusercontent.com/u/258253854?v=4" alt="RTCO - Rust Token Killer" width="500">
 </p>
 
 <p align="center">
@@ -7,15 +7,15 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rtk-ai/rtk/actions"><img src="https://github.com/rtk-ai/rtk/workflows/Security%20Check/badge.svg" alt="CI"></a>
-  <a href="https://github.com/rtk-ai/rtk/releases"><img src="https://img.shields.io/github/v/release/rtk-ai/rtk" alt="Release"></a>
+  <a href="https://github.com/rtco-ai/rtco/actions"><img src="https://github.com/rtco-ai/rtco/workflows/Security%20Check/badge.svg" alt="CI"></a>
+  <a href="https://github.com/rtco-ai/rtco/releases"><img src="https://img.shields.io/github/v/release/rtco-ai/rtco" alt="Release"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://discord.gg/RySmvNF5kF"><img src="https://img.shields.io/discord/1478373640461488159?label=Discord&logo=discord" alt="Discord"></a>
-  <a href="https://formulae.brew.sh/formula/rtk"><img src="https://img.shields.io/homebrew/v/rtk" alt="Homebrew"></a>
+  <a href="https://formulae.brew.sh/formula/rtco"><img src="https://img.shields.io/homebrew/v/rtco" alt="Homebrew"></a>
 </p>
 
 <p align="center">
-  <a href="https://www.rtk-ai.app">웹사이트</a> &bull;
+  <a href="https://www.rtco-ai.app">웹사이트</a> &bull;
   <a href="#설치">설치</a> &bull;
   <a href="docs/TROUBLESHOOTING.md">문제 해결</a> &bull;
   <a href="docs/contributing/ARCHITECTURE.md">아키텍처</a> &bull;
@@ -37,7 +37,7 @@ rtk는 명령 출력이 LLM 컨텍스트에 도달하기 전에 필터링하고 
 
 ## 토큰 절약 (30분 Claude Code 세션)
 
-| 작업 | 빈도 | 표준 | rtk | 절약 |
+| 작업 | 빈도 | 표준 | rtco | 절약 |
 |------|------|------|-----|------|
 | `ls` / `tree` | 10x | 2,000 | 400 | -80% |
 | `cat` / `read` | 20x | 40,000 | 12,000 | -70% |
@@ -51,44 +51,44 @@ rtk는 명령 출력이 LLM 컨텍스트에 도달하기 전에 필터링하고 
 ### Homebrew (권장)
 
 ```bash
-brew install rtk
+brew install rtco
 ```
 
 ### 빠른 설치 (Linux/macOS)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rtco-ai/rtco/refs/heads/master/install.sh | sh
 ```
 
 ### Cargo
 
 ```bash
-cargo install --git https://github.com/rtk-ai/rtk
+cargo install --git https://github.com/rtco-ai/rtco
 ```
 
 ### 확인
 
 ```bash
-rtk --version   # "rtk 0.27.x" 표시되어야 함
-rtk gain        # 토큰 절약 통계 표시되어야 함
+rtco --version   # "rtco 0.27.x" 표시되어야 함
+rtco gain        # 토큰 절약 통계 표시되어야 함
 ```
 
 ## 빠른 시작
 
 ```bash
 # 1. Claude Code용 hook 설치 (권장)
-rtk init --global
+rtco init --global
 
 # 2. Claude Code 재시작 후 테스트
-git status  # 자동으로 rtk git status로 재작성
+git status  # 자동으로 rtco git status로 재작성
 ```
 
 ## 작동 원리
 
 ```
-  rtk 없이:                                        rtk 사용:
+  rtco 없이:                                        rtco 사용:
 
-  Claude  --git status-->  shell  -->  git          Claude  --git status-->  RTK  -->  git
+  Claude  --git status-->  shell  -->  git          Claude  --git status-->  RTCO  -->  git
     ^                                   |             ^                      |          |
     |        ~2,000 tokens (원본)        |             |   ~200 tokens        | 필터     |
     +-----------------------------------+             +------- (필터링) -----+----------+
@@ -105,42 +105,42 @@ git status  # 자동으로 rtk git status로 재작성
 
 ### 파일
 ```bash
-rtk ls .                        # 최적화된 디렉토리 트리
-rtk read file.rs                # 스마트 파일 읽기
-rtk find "*.rs" .               # 컴팩트한 검색 결과
-rtk grep "pattern" .            # 파일별 그룹화 검색
+rtco ls .                        # 최적화된 디렉토리 트리
+rtco read file.rs                # 스마트 파일 읽기
+rtco find "*.rs" .               # 컴팩트한 검색 결과
+rtco grep "pattern" .            # 파일별 그룹화 검색
 ```
 
 ### Git
 ```bash
-rtk git status                  # 컴팩트 상태
-rtk git log -n 10               # 한 줄 커밋
-rtk git diff                    # 압축된 diff
-rtk git push                    # -> "ok main"
+rtco git status                  # 컴팩트 상태
+rtco git log -n 10               # 한 줄 커밋
+rtco git diff                    # 압축된 diff
+rtco git push                    # -> "ok main"
 ```
 
 ### 테스트
 ```bash
-rtk jest                        # Jest 컴팩트
-rtk vitest                      # Vitest 컴팩트
-rtk pytest                      # Python 테스트 (-90%)
-rtk go test                     # Go 테스트 (-90%)
-rtk test <cmd>                  # 실패만 표시 (-90%)
+rtco jest                        # Jest 컴팩트
+rtco vitest                      # Vitest 컴팩트
+rtco pytest                      # Python 테스트 (-90%)
+rtco go test                     # Go 테스트 (-90%)
+rtco test <cmd>                  # 실패만 표시 (-90%)
 ```
 
 ### 빌드 & 린트
 ```bash
-rtk lint                        # ESLint 규칙별 그룹화
-rtk tsc                         # TypeScript 에러 그룹화
-rtk cargo build                 # Cargo 빌드 (-80%)
-rtk ruff check                  # Python 린트 (-80%)
+rtco lint                        # ESLint 규칙별 그룹화
+rtco tsc                         # TypeScript 에러 그룹화
+rtco cargo build                 # Cargo 빌드 (-80%)
+rtco ruff check                  # Python 린트 (-80%)
 ```
 
 ### 분석
 ```bash
-rtk gain                        # 절약 통계
-rtk gain --graph                # ASCII 그래프 (30일)
-rtk discover                    # 놓친 절약 기회 발견
+rtco gain                        # 절약 통계
+rtco gain --graph                # ASCII 그래프 (30일)
+rtco discover                    # 놓친 절약 기회 발견
 ```
 
 ## 문서
@@ -151,7 +151,7 @@ rtk discover                    # 놓친 절약 기회 발견
 
 ## 기여
 
-기여를 환영합니다! [GitHub](https://github.com/rtk-ai/rtk)에서 issue 또는 PR을 생성해 주세요.
+기여를 환영합니다! [GitHub](https://github.com/rtco-ai/rtco)에서 issue 또는 PR을 생성해 주세요.
 
 [Discord](https://discord.gg/RySmvNF5kF) 커뮤니티에 참여하세요.
 

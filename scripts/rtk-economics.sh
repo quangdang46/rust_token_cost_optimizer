@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# rtk-economics.sh
-# Combine ccusage (tokens spent) with rtk (tokens saved) for economic analysis
+# rtco-economics.sh
+# Combine ccusage (tokens spent) with rtco (tokens saved) for economic analysis
 
 set -euo pipefail
 
@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 # Get current month
 CURRENT_MONTH=$(date +%Y-%m)
 
-echo -e "${BLUE}📊 RTK Economic Impact Analysis${NC}"
+echo -e "${BLUE}📊 RTCO Economic Impact Analysis${NC}"
 echo "════════════════════════════════════════════════════════════════"
 echo
 
@@ -25,9 +25,9 @@ if ! command -v ccusage &> /dev/null; then
     exit 1
 fi
 
-# Check if rtk is available
-if ! command -v rtk &> /dev/null; then
-    echo -e "${RED}Error: rtk not found${NC}"
+# Check if rtco is available
+if ! command -v rtco &> /dev/null; then
+    echo -e "${RED}Error: rtco not found${NC}"
     echo "Install: cargo install --path ."
     exit 1
 fi
@@ -39,10 +39,10 @@ if ! ccusage_json=$(ccusage monthly --json 2>/dev/null); then
     exit 1
 fi
 
-# Fetch rtk data
-echo -e "${YELLOW}Fetching token savings data from rtk...${NC}"
-if ! rtk_json=$(rtk gain --monthly --format json 2>/dev/null); then
-    echo -e "${RED}Failed to fetch rtk data${NC}"
+# Fetch rtco data
+echo -e "${YELLOW}Fetching token savings data from rtco...${NC}"
+if ! rtk_json=$(rtco gain --monthly --format json 2>/dev/null); then
+    echo -e "${RED}Failed to fetch rtco data${NC}"
     exit 1
 fi
 
@@ -54,7 +54,7 @@ ccusage_input=$(echo "$ccusage_json" | jq -r ".monthly[] | select(.month == \"$C
 ccusage_output=$(echo "$ccusage_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .outputTokens // 0")
 ccusage_total=$(echo "$ccusage_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .totalTokens // 0")
 
-# Parse rtk data for current month
+# Parse rtco data for current month
 rtk_saved=$(echo "$rtk_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .saved_tokens // 0")
 rtk_commands=$(echo "$rtk_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .commands // 0")
 rtk_input=$(echo "$rtk_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .input_tokens // 0")
@@ -65,7 +65,7 @@ rtk_pct=$(echo "$rtk_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MON
 # More accurate would be to use ccusage's model-specific pricing
 saved_cost=$(echo "scale=2; $rtk_saved * 0.0001" | bc 2>/dev/null || echo "0")
 
-# Calculate total without rtk
+# Calculate total without rtco
 total_without_rtk=$(echo "scale=2; $ccusage_cost + $saved_cost" | bc 2>/dev/null || echo "$ccusage_cost")
 
 # Calculate savings percentage
@@ -105,7 +105,7 @@ ${BLUE}Tokens Consumed (via Claude API):${NC}
   Total tokens:        $(format_number $ccusage_total)
   ${RED}Actual cost:         \$$ccusage_cost${NC}
 
-${BLUE}Tokens Saved by rtk:${NC}
+${BLUE}Tokens Saved by rtco:${NC}
   Commands executed:   $rtk_commands
   Input avoided:       $(format_number $rtk_input) tokens
   Output generated:    $(format_number $rtk_output) tokens
@@ -113,10 +113,10 @@ ${BLUE}Tokens Saved by rtk:${NC}
   ${GREEN}Cost avoided:        ~\$$saved_cost${NC}
 
 ${BLUE}Economic Analysis:${NC}
-  Cost without rtk:    \$$total_without_rtk (estimated)
-  Cost with rtk:       \$$ccusage_cost (actual)
+  Cost without rtco:    \$$total_without_rtk (estimated)
+  Cost with rtco:       \$$ccusage_cost (actual)
   ${GREEN}Net savings:         \$$saved_cost ($savings_pct%)${NC}
-  ROI:                 ${GREEN}Infinite${NC} (rtk is free)
+  ROI:                 ${GREEN}Infinite${NC} (rtco is free)
 
 ${BLUE}Efficiency Metrics:${NC}
   Cost per command:    \$$cost_per_cmd_without → \$$cost_per_cmd_with
@@ -131,7 +131,7 @@ ${BLUE}12-Month Projection:${NC}
 ${YELLOW}Note:${NC} Cost estimates use \$0.0001/token average. Actual pricing varies by model.
 See ccusage for precise model-specific costs.
 
-${GREEN}Recommendation:${NC} Focus rtk usage on high-frequency commands (git, grep, ls)
+${GREEN}Recommendation:${NC} Focus rtco usage on high-frequency commands (git, grep, ls)
 for maximum cost reduction.
 
 EOF

@@ -1,12 +1,12 @@
 ---
 model: sonnet
-description: RTK Code Review — Review locale pre-PR avec auto-fix
+description: RTCO Code Review — Review locale pre-PR avec auto-fix
 argument-hint: "[--fix] [file-pattern]"
 ---
 
-# RTK Code Review
+# RTCO Code Review
 
-Review locale de la branche courante avant création de PR. Applique les critères de qualité RTK.
+Review locale de la branche courante avant création de PR. Applique les critères de qualité RTCO.
 
 **Principe**: Preview local → corriger → puis créer PR propre.
 
@@ -68,7 +68,7 @@ git diff "$BASE_BRANCH"...HEAD --stat
 | `tests/` ou `fixtures/`        | Testing Strategy (CLAUDE.md)               |
 | `Cargo.toml`                   | Dependencies + build optimizations         |
 
-### Règles clés RTK
+### Règles clés RTCO
 
 **Error Handling**:
 - `anyhow::Result` pour tout le CLI (jamais `std::io::Result` nu)
@@ -122,7 +122,7 @@ git diff "$BASE_BRANCH"...HEAD --stat
 - Fonction >50 lignes (split recommandé)
 - Nesting >3 niveaux (early returns)
 - `clone()` inutile (borrow possible)
-- Output format inconsistant avec les autres filtres RTK
+- Output format inconsistant avec les autres filtres RTCO
 - Test avec données synthétiques au lieu de vraie fixture
 - ANSI codes non strippés dans le filtre
 - `println!` en production (debug artifact)
@@ -142,7 +142,7 @@ git diff "$BASE_BRANCH"...HEAD --stat
 ### Format compact (défaut)
 
 ```markdown
-## 🔍 Review RTK
+## 🔍 Review RTCO
 
 | 🔴  | 🟡  |
 | :-: | :-: |
@@ -208,7 +208,7 @@ Glob tests/fixtures/<cmd>_raw.txt
 
 **NE PAS signaler**:
 - `unwrap()` dans `#[cfg(test)] mod tests` → autorisé (avec `expect()` préféré)
-- `lazy_static!` avec `unwrap()` pour initialisation → pattern établi RTK
+- `lazy_static!` avec `unwrap()` pour initialisation → pattern établi RTCO
 - Variables `_unused` → peut être intentionnel (warn suppression)
 
 ## Mode Auto (--auto)

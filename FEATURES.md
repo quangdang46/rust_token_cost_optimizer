@@ -2,7 +2,7 @@
 
 > **rust_token_cost_optimizer** (`rtco`) — a single Rust binary that reduces LLM token consumption for AI coding agents by filtering, compressing, diffing, caching, and routing the outputs of shell commands.
 >
-> This document lists what works today (carried over from the upstream `rtk-ai/rtk` codebase this repo derives from) and what is planned for the post-fork roadmap. It supersedes `docs/usage/FEATURES.md`, which is the legacy French-language reference.
+> This document lists what works today (carried over from the upstream `rtco-ai/rtco` codebase this repo derives from) and what is planned for the post-fork roadmap. It supersedes `docs/usage/FEATURES.md`, which is the legacy French-language reference.
 
 ---
 
@@ -17,9 +17,9 @@
 
 ## Identity & positioning
 
-`rtco` is a fork-with-direction. The upstream binary (`rtk`) is a shell-output filter: regex/heuristic-driven, per-command, hook-based. `rtco` keeps that as the foundation and adds three layers the upstream does not pursue:
+`rtco` is a fork-with-direction. The upstream binary (`rtco`) is a shell-output filter: regex/heuristic-driven, per-command, hook-based. `rtco` keeps that as the foundation and adds three layers the upstream does not pursue:
 
-| Layer | Upstream `rtk` | `rtco` adds |
+| Layer | Upstream `rtco` | `rtco` adds |
 |---|---|---|
 | **Static filtering** | Yes (60+ TOML filters, 50+ Rust filters) | Maintained, expanded |
 | **Accurate measurement** | Estimate via word/char proxy | Real tokenizer counts, per-model |
@@ -119,7 +119,7 @@ Any unrecognised git/gh/glab/gt subcommand is passed through unchanged.
 
 > ansible-playbook, basedpyright, biome, brew-install, bundle-install, composer-install, df, dotnet-build, du, fail2ban-client, gcc, gcloud, gradle, hadolint, helm, iptables, jira, jj, jq, just, liquibase, make, markdownlint, mise, mix-compile, mix-format, mvn-build, nx, ollama, oxlint, ping, pio-run, poetry-install, pre-commit, ps, quarto-render, rsync, shellcheck, shopify-theme, skopeo, sops, spring-boot, ssh, stat, swift-build, systemctl-status, task, terraform-plan, tofu-fmt/init/plan/validate, trunk-build, turbo, ty, uv-sync, xcodebuild, yadm, yamllint.
 
-User-level overrides live in `~/.rtk/filters.toml` (see [Configuration](#configuration)).
+User-level overrides live in `~/.rtco/filters.toml` (see [Configuration](#configuration)).
 
 ### Hook system
 
@@ -127,11 +127,11 @@ Lightweight shell/plugin hooks rewrite raw commands to `rtco …` before the age
 
 | Agent | Mechanism |
 |---|---|
-| Claude Code, Copilot | `~/.claude/hooks/rtk-rewrite.sh` (PreToolUse) |
+| Claude Code, Copilot | `~/.claude/hooks/rtco-rewrite.sh` (PreToolUse) |
 | Codex (OpenAI) | shell hook |
 | Cursor, Windsurf, Cline, Roo Code, Kilo Code, Antigravity | rules file |
-| Hermes | Python plugin (`hooks/hermes/rtk-rewrite/`) |
-| OpenCode | TypeScript plugin (`hooks/opencode/rtk.ts`) |
+| Hermes | Python plugin (`hooks/hermes/rtco-rewrite/`) |
+| OpenCode | TypeScript plugin (`hooks/opencode/rtco.ts`) |
 | OpenClaw | TypeScript plugin (`openclaw/index.ts`) |
 
 All rewriting logic lives in Rust (`src/discover/registry.rs`) — every shell hook is a thin delegate calling `rtco rewrite "<command>"`.
@@ -139,7 +139,7 @@ All rewriting logic lives in Rust (`src/discover/registry.rs`) — every shell h
 | Hook command | Purpose |
 |---|---|
 | `rtco rewrite <cmd>` | print the rewritten command (exit 1 if no rewrite) |
-| `rtco init -g [--agent <name>]` | install hook + RTK.md for the chosen agent |
+| `rtco init -g [--agent <name>]` | install hook + RTCO.md for the chosen agent |
 | `rtco init -g --auto-patch` | non-interactive (CI) |
 | `rtco init -g --hook-only` / `--show` / `--uninstall` | management |
 | `rtco verify` | SHA-256 integrity check of installed hook |
@@ -148,7 +148,7 @@ All rewriting logic lives in Rust (`src/discover/registry.rs`) — every shell h
 
 ### Analytics & tracking
 
-SQLite tracking DB at `~/.local/share/rtk/tracking.db` (Linux) / `~/Library/Application Support/rtk/tracking.db` (macOS), 90-day rolling retention.
+SQLite tracking DB at `~/.local/share/rtco/tracking.db` (Linux) / `~/Library/Application Support/rtco/tracking.db` (macOS), 90-day rolling retention.
 
 | Command | Purpose |
 |---|---|
@@ -164,7 +164,7 @@ SQLite tracking DB at `~/.local/share/rtk/tracking.db` (Linux) / `~/Library/Appl
 
 ### Tee (output recovery)
 
-When a filtered command exits non-zero, the raw output is stashed in `~/.local/share/rtk/tee/` and the path is appended to the filtered output. Configurable via `[tee]` in `config.toml` (`mode = "failures"|"always"|"never"`, `max_files = 20`, 500 B min, 1 MB cap).
+When a filtered command exits non-zero, the raw output is stashed in `~/.local/share/rtco/tee/` and the path is appended to the filtered output. Configurable via `[tee]` in `config.toml` (`mode = "failures"|"always"|"never"`, `max_files = 20`, 500 B min, 1 MB cap).
 
 ### Telemetry (opt-in)
 
@@ -172,7 +172,7 @@ Off by default. With consent, sends one anonymous ping per 23 hours: device hash
 
 ### Configuration
 
-`~/.config/rtk/config.toml` (Linux) / `~/Library/Application Support/rtk/config.toml` (macOS):
+`~/.config/rtco/config.toml` (Linux) / `~/Library/Application Support/rtco/config.toml` (macOS):
 
 ```toml
 [tracking]   enabled = true; history_days = 90
@@ -255,7 +255,7 @@ rtco config diff_proxy=true      # global default
 
 ### 5. Project-local + WASM-extensible filters
 
-**Why.** Internal/proprietary tools (a company's CI script, a custom log shipper, in-house CLIs like `ms`, `ffs`, `rfo`) will never get an upstream PR. Today users can drop a TOML into `~/.rtk/filters.toml`, but TOML is too limited for stateful filters. Per-project filters should ship in the repo so a team gets the savings without machine-level config drift, and adventurous users should be able to write filters in any language that compiles to WASM.
+**Why.** Internal/proprietary tools (a company's CI script, a custom log shipper, in-house CLIs like `ms`, `ffs`, `rfo`) will never get an upstream PR. Today users can drop a TOML into `~/.rtco/filters.toml`, but TOML is too limited for stateful filters. Per-project filters should ship in the repo so a team gets the savings without machine-level config drift, and adventurous users should be able to write filters in any language that compiles to WASM.
 
 **Layers.**
 - **`./.rtco/filters.toml`** — repo-local TOML, picked up automatically when CWD is inside the repo.
@@ -303,4 +303,4 @@ Explicitly **not** planned for `rtco`:
 
 ## Compatibility note
 
-`rtco` is derived from the Apache-2.0 licensed [`rtk-ai/rtk`](https://github.com/rtk-ai/rtk) project. Filter behaviour and CLI surface remain compatible at the `<binary> <subcommand>` level; the binary name changes from `rtk` to `rtco`. Existing `~/.rtk/` state files are read on first run and migrated to `~/.rtco/`. The legacy `docs/usage/FEATURES.md` (French) is preserved for reference but supplanted by this document going forward.
+`rtco` is derived from the Apache-2.0 licensed [`rtco-ai/rtco`](https://github.com/rtco-ai/rtco) project. Filter behaviour and CLI surface remain compatible at the `<binary> <subcommand>` level; the binary name changes from `rtco` to `rtco`. Existing `~/.rtco/` state files are read on first run and migrated to `~/.rtco/`. The legacy `docs/usage/FEATURES.md` (French) is preserved for reference but supplanted by this document going forward.

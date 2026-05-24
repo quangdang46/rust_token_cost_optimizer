@@ -4,33 +4,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**rtk (Rust Token Killer)** is a high-performance CLI proxy that minimizes LLM token consumption by filtering and compressing command outputs. It achieves 60-90% token savings on common development operations through smart filtering, grouping, truncation, and deduplication.
+**rtco (Rust Token Killer)** is a high-performance CLI proxy that minimizes LLM token consumption by filtering and compressing command outputs. It achieves 60-90% token savings on common development operations through smart filtering, grouping, truncation, and deduplication.
 
 This is a fork with critical fixes for git argument parsing and modern JavaScript stack support (pnpm, vitest, Next.js, TypeScript, Playwright, Prisma).
 
 ### Name Collision Warning
 
-**Two different "rtk" projects exist:**
-- This project: Rust Token Killer (rtk-ai/rtk)
-- reachingforthejack/rtk: Rust Type Kit (DIFFERENT - generates Rust types)
+**Two different "rtco" projects exist:**
+- This project: Rust Token Killer (rtco-ai/rtco)
+- reachingforthejack/rtco: Rust Type Kit (DIFFERENT - generates Rust types)
 
 **Verify correct installation:**
 ```bash
-rtk --version  # Should show "rtk 0.28.2" (or newer)
-rtk gain       # Should show token savings stats (NOT "command not found")
+rtco --version  # Should show "rtco 0.28.2" (or newer)
+rtco gain       # Should show token savings stats (NOT "command not found")
 ```
 
-If `rtk gain` fails, you have the wrong package installed.
+If `rtco gain` fails, you have the wrong package installed.
 
 ## Development Commands
 
-> **Note**: If rtk is installed, prefer `rtk <cmd>` over raw commands for token-optimized output.
-> All commands work with passthrough support even for subcommands rtk doesn't specifically handle.
+> **Note**: If rtco is installed, prefer `rtco <cmd>` over raw commands for token-optimized output.
+> All commands work with passthrough support even for subcommands rtco doesn't specifically handle.
 
 ### Build & Run
 ```bash
 cargo build                   # raw
-rtk cargo build               # preferred (token-optimized)
+rtco cargo build               # preferred (token-optimized)
 cargo build --release         # release build (optimized)
 cargo run -- <command>        # run directly
 cargo install --path .        # install locally
@@ -39,7 +39,7 @@ cargo install --path .        # install locally
 ### Testing
 ```bash
 cargo test                    # all tests
-rtk cargo test                # preferred (token-optimized)
+rtco cargo test                # preferred (token-optimized)
 cargo test <test_name>        # specific test
 cargo test <module_name>::    # module tests
 cargo test -- --nocapture     # with stdout
@@ -51,7 +51,7 @@ bash scripts/test-all.sh      # smoke tests (installed binary required)
 cargo check                   # check without building
 cargo fmt                     # format code
 cargo clippy --all-targets    # all clippy lints
-rtk cargo clippy --all-targets # preferred
+rtco cargo clippy --all-targets # preferred
 ```
 
 ### Pre-commit Gate
@@ -67,7 +67,7 @@ cargo generate-rpm            # RPM package (needs cargo-generate-rpm, after rel
 
 ## Architecture
 
-rtk uses a **command proxy architecture**: `main.rs` routes CLI commands via a Clap `Commands` enum to specialized filter modules in `src/cmds/*/`, each of which executes the underlying command and compresses its output. Token savings are tracked in SQLite via `src/core/tracking.rs`.
+rtco uses a **command proxy architecture**: `main.rs` routes CLI commands via a Clap `Commands` enum to specialized filter modules in `src/cmds/*/`, each of which executes the underlying command and compresses its output. Token savings are tracked in SQLite via `src/core/tracking.rs`.
 
 For the full architecture, component details, and module development patterns, see:
 - [ARCHITECTURE.md](docs/contributing/ARCHITECTURE.md) — System design, module organization, filtering strategies, error handling
@@ -81,21 +81,21 @@ Supported ecosystems: git/gh/gt, cargo, go/golangci-lint, npm/pnpm/npx, ruff/pyt
 
 **Purpose**: Execute commands without filtering but track usage for metrics.
 
-**Usage**: `rtk proxy <command> [args...]`
+**Usage**: `rtco proxy <command> [args...]`
 
 **Benefits**:
-- **Bypass RTK filtering**: Workaround bugs or get full unfiltered output
-- **Track usage metrics**: Measure which commands Claude uses most (visible in `rtk gain --history`)
-- **Guaranteed compatibility**: Always works even if RTK doesn't implement the command
+- **Bypass RTCO filtering**: Workaround bugs or get full unfiltered output
+- **Track usage metrics**: Measure which commands Claude uses most (visible in `rtco gain --history`)
+- **Guaranteed compatibility**: Always works even if RTCO doesn't implement the command
 
 **Examples**:
 ```bash
-rtk proxy git log --oneline -20    # Full git log output (no truncation)
-rtk proxy npm install express      # Raw npm output (no filtering)
-rtk proxy curl https://api.example.com/data  # Any command works
+rtco proxy git log --oneline -20    # Full git log output (no truncation)
+rtco proxy npm install express      # Raw npm output (no filtering)
+rtco proxy curl https://api.example.com/data  # Any command works
 ```
 
-All proxy commands appear in `rtk gain --history` with 0% savings (input = output).
+All proxy commands appear in `rtco gain --history` with 0% savings (input = output).
 
 ## Coding Rules
 
@@ -127,9 +127,9 @@ cargo fmt --all && cargo clippy --all-targets && cargo test --all
 
 **Performance verification** (for filter changes):
 ```bash
-hyperfine 'rtk git log -10' --warmup 3          # before
+hyperfine 'rtco git log -10' --warmup 3          # before
 cargo build --release
-hyperfine 'target/release/rtk git log -10' --warmup 3  # after (should be <10ms)
+hyperfine 'target/release/rtco git log -10' --warmup 3  # after (should be <10ms)
 ```
 
 ## Working Directory Confirmation
@@ -137,7 +137,7 @@ hyperfine 'target/release/rtk git log -10' --warmup 3  # after (should be <10ms)
 **ALWAYS confirm working directory before starting any work**:
 
 ```bash
-pwd  # Verify you're in the rtk project root
+pwd  # Verify you're in the rtco project root
 git branch  # Verify correct branch (main, feature/*, etc.)
 ```
 

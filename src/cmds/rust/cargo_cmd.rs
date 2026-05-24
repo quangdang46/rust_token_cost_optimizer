@@ -1738,7 +1738,7 @@ error: aborting due to 2 previous errors
 "#;
         let result = filter_cargo_install(output);
         assert!(result.contains("cargo install"), "got: {}", result);
-        assert!(result.contains("rtk v0.11.0"), "got: {}", result);
+        assert!(result.contains("rtco v0.11.0"), "got: {}", result);
         assert!(result.contains("5 deps compiled"), "got: {}", result);
         assert!(result.contains("Replaced"), "got: {}", result);
         assert!(!result.contains("Compiling"), "got: {}", result);
@@ -1784,7 +1784,7 @@ error: aborting due to 1 previous error
 "#;
         let result = filter_cargo_install(output);
         assert!(result.contains("already installed"), "got: {}", result);
-        assert!(result.contains("rtk v0.11.0"), "got: {}", result);
+        assert!(result.contains("rtco v0.11.0"), "got: {}", result);
     }
 
     #[test]
@@ -1883,7 +1883,7 @@ error: aborting due to 2 previous errors
 
     #[test]
     fn test_format_crate_info() {
-        assert_eq!(format_crate_info("rtk", "v0.11.0", ""), "rtk v0.11.0");
+        assert_eq!(format_crate_info("rtk", "v0.11.0", ""), "rtco v0.11.0");
         assert_eq!(format_crate_info("rtk", "", ""), "rtk");
         assert_eq!(format_crate_info("", "", "package"), "package");
         assert_eq!(format_crate_info("", "v0.1.0", "fallback"), "fallback");

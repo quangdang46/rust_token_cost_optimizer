@@ -1,41 +1,41 @@
 ---
 title: Token Savings Analytics
-description: Measure and analyze your RTK token savings with rtk gain
+description: Measure and analyze your RTCO token savings with rtco gain
 sidebar:
   order: 1
 ---
 
 # Token Savings Analytics
 
-`rtk gain` shows how many tokens RTK has saved across all your commands, with daily, weekly, and monthly breakdowns.
+`rtco gain` shows how many tokens RTCO has saved across all your commands, with daily, weekly, and monthly breakdowns.
 
 ## Quick reference
 
 ```bash
 # Default summary
-rtk gain
+rtco gain
 
 # Temporal breakdowns
-rtk gain --daily          # all days since tracking started
-rtk gain --weekly         # aggregated by week
-rtk gain --monthly        # aggregated by month
-rtk gain --all            # all breakdowns at once
+rtco gain --daily          # all days since tracking started
+rtco gain --weekly         # aggregated by week
+rtco gain --monthly        # aggregated by month
+rtco gain --all            # all breakdowns at once
 
 # Classic flags
-rtk gain --graph          # ASCII graph, last 30 days
-rtk gain --history        # last 10 commands
-rtk gain --quota          # monthly quota savings estimate (default tier: 20x)
-rtk gain --quota -t pro   # use pro tier token budget for estimate
+rtco gain --graph          # ASCII graph, last 30 days
+rtco gain --history        # last 10 commands
+rtco gain --quota          # monthly quota savings estimate (default tier: 20x)
+rtco gain --quota -t pro   # use pro tier token budget for estimate
 
 # Export
-rtk gain --all --format json > savings.json
-rtk gain --all --format csv  > savings.csv
+rtco gain --all --format json > savings.json
+rtco gain --all --format csv  > savings.csv
 ```
 
 ## Daily breakdown
 
 ```bash
-rtk gain --daily
+rtco gain --daily
 ```
 
 ```
@@ -50,7 +50,7 @@ Date            Cmds      Input     Output      Saved   Save%
 TOTAL            196       1.3M      59.2K       1.2M   95.6%
 ```
 
-- **Cmds**: RTK commands executed
+- **Cmds**: RTCO commands executed
 - **Input**: Estimated tokens from raw command output
 - **Output**: Actual tokens after filtering
 - **Saved**: Input - Output (tokens that never reached the LLM)
@@ -59,8 +59,8 @@ TOTAL            196       1.3M      59.2K       1.2M   95.6%
 ## Weekly and monthly breakdowns
 
 ```bash
-rtk gain --weekly
-rtk gain --monthly
+rtco gain --weekly
+rtco gain --monthly
 ```
 
 Same columns as daily, aggregated by Sunday-Saturday week or calendar month.
@@ -103,7 +103,7 @@ Same columns as daily, aggregated by Sunday-Saturday week or calendar month.
 
 ## How token estimation works
 
-RTK estimates tokens using `text.len() / 4` (4 characters per token average). This is accurate to ±10% compared to actual LLM tokenization — sufficient for trend analysis.
+RTCO estimates tokens using `text.len() / 4` (4 characters per token average). This is accurate to ±10% compared to actual LLM tokenization — sufficient for trend analysis.
 
 ```
 Input Tokens  = estimate_tokens(raw_command_output)
@@ -116,35 +116,35 @@ Savings %     = (Saved / Input) × 100
 
 Savings data is stored locally in SQLite:
 
-- **Location**: `~/.local/share/rtk/history.db` (Linux / macOS)
+- **Location**: `~/.local/share/rtco/history.db` (Linux / macOS)
 - **Retention**: 90 days (automatic cleanup)
 - **Scope**: Global across all projects and Claude sessions
 
 ```bash
 # Inspect raw data
-sqlite3 ~/.local/share/rtk/history.db \
+sqlite3 ~/.local/share/rtco/history.db \
   "SELECT timestamp, rtk_cmd, saved_tokens FROM commands
    ORDER BY timestamp DESC LIMIT 10"
 
 # Backup
-cp ~/.local/share/rtk/history.db ~/backups/rtk-history-$(date +%Y%m%d).db
+cp ~/.local/share/rtco/history.db ~/backups/rtco-history-$(date +%Y%m%d).db
 
 # Reset
-rm ~/.local/share/rtk/history.db    # recreated on next command
+rm ~/.local/share/rtco/history.db    # recreated on next command
 ```
 
 ## Analysis workflows
 
 ```bash
 # Weekly progress: generate a CSV report every Monday
-rtk gain --weekly --format csv > reports/week-$(date +%Y-%W).csv
+rtco gain --weekly --format csv > reports/week-$(date +%Y-%W).csv
 
 # Monthly budget review
-rtk gain --monthly --format json | jq '.monthly[] |
+rtco gain --monthly --format json | jq '.monthly[] |
   {month, saved_tokens, quota_pct: (.saved_tokens / 6000000 * 100)}'
 
 # Cron: daily JSON snapshot for a dashboard
-0 0 * * * rtk gain --all --format json > /var/www/dashboard/rtk-stats.json
+0 0 * * * rtco gain --all --format json > /var/www/dashboard/rtco-stats.json
 ```
 
 **Python/pandas:**
@@ -152,7 +152,7 @@ rtk gain --monthly --format json | jq '.monthly[] |
 import pandas as pd
 import subprocess
 
-result = subprocess.run(['rtk', 'gain', '--all', '--format', 'csv'],
+result = subprocess.run(['rtco', 'gain', '--all', '--format', 'csv'],
                        capture_output=True, text=True)
 lines = result.stdout.split('\n')
 daily_start = lines.index('# Daily Data') + 2
@@ -172,34 +172,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: cargo install rtk
-      - run: rtk gain --weekly --format json > stats/week-$(date +%Y-%W).json
-      - run: git add stats/ && git commit -m "Weekly rtk stats" && git push
+      - run: cargo install rtco
+      - run: rtco gain --weekly --format json > stats/week-$(date +%Y-%W).json
+      - run: git add stats/ && git commit -m "Weekly rtco stats" && git push
 ```
 
 ## Quota estimate
 
-`--quota` estimates how many tokens RTK has saved relative to your monthly subscription budget, so you can see the cost impact of those savings.
+`--quota` estimates how many tokens RTCO has saved relative to your monthly subscription budget, so you can see the cost impact of those savings.
 
 ```bash
-rtk gain --quota          # uses 20x tier by default
-rtk gain --quota -t pro   # Claude Pro plan budget
-rtk gain --quota -t 5x    # 5× usage plan budget
-rtk gain --quota -t 20x   # 20× usage plan budget
+rtco gain --quota          # uses 20x tier by default
+rtco gain --quota -t pro   # Claude Pro plan budget
+rtco gain --quota -t 5x    # 5× usage plan budget
+rtco gain --quota -t 20x   # 20× usage plan budget
 ```
 
-The tiers (`pro`, `5x`, `20x`) correspond to Anthropic Claude API subscription levels, each with a different monthly token allocation. RTK uses those allocations as a denominator to express your savings as a percentage of your budget.
+The tiers (`pro`, `5x`, `20x`) correspond to Anthropic Claude API subscription levels, each with a different monthly token allocation. RTCO uses those allocations as a denominator to express your savings as a percentage of your budget.
 
 :::tip[Find missed savings]
-`rtk gain` shows what RTK saved. To find commands that ran *without* RTK and calculate what you lost, see [rtk discover](./discover.md).
+`rtco gain` shows what RTCO saved. To find commands that ran *without* RTCO and calculate what you lost, see [rtco discover](./discover.md).
 :::
 
 ## Troubleshooting
 
 **No data showing:**
 ```bash
-ls -lh ~/.local/share/rtk/history.db
-sqlite3 ~/.local/share/rtk/history.db "SELECT COUNT(*) FROM commands"
+ls -lh ~/.local/share/rtco/history.db
+sqlite3 ~/.local/share/rtco/history.db "SELECT COUNT(*) FROM commands"
 git status    # run any tracked command to generate data
 ```
 

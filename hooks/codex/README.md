@@ -5,5 +5,5 @@
 ## Specifics
 
 - Prompt-level guidance via awareness document -- no programmatic hook
-- `rtk-awareness.md` is injected into `AGENTS.md` with an `@RTK.md` reference
-- Installed to `$CODEX_HOME` when set, otherwise `~/.codex/`, by `rtk init --codex`
+- `rtco-awareness.md` is injected into `AGENTS.md` with an `@RTCO.md` reference
+- Installed to `$CODEX_HOME` when set, otherwise `~/.codex/`, by `rtco init --codex`

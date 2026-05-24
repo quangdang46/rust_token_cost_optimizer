@@ -27,7 +27,7 @@ impl SessionSummary {
 
 /// Count RTK-covered commands from extracted commands.
 /// A command is "covered" if it either:
-/// - starts with "rtk " (explicit rtk invocation), or
+/// - starts with "rtco " (explicit rtk invocation), or
 /// - would be rewritten by the hook (classify_command returns Supported)
 ///
 /// Chained commands (e.g. "cd ./path && rtk ls") are split so each part
@@ -39,7 +39,7 @@ fn count_rtk_commands(cmds: &[ExtractedCommand]) -> (usize, usize, usize) {
         let parts = split_command_chain(&c.command);
         for part in &parts {
             total += 1;
-            if part.starts_with("rtk ")
+            if part.starts_with("rtco ")
                 || matches!(classify_command(part), Classification::Supported { .. })
             {
                 rtk += 1;
@@ -220,9 +220,9 @@ mod tests {
     #[test]
     fn test_count_all_rtk() {
         let cmds = vec![
-            make_cmd("rtk git status", Some(200)),
-            make_cmd("rtk cargo test", Some(5000)),
-            make_cmd("rtk git log -10", Some(800)),
+            make_cmd("rtco git status", Some(200)),
+            make_cmd("rtco cargo test", Some(5000)),
+            make_cmd("rtco git log -10", Some(800)),
         ];
         let (total, rtk, output) = count_rtk_commands(&cmds);
         assert_eq!(total, 3);
@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn test_count_hook_rewritten_commands() {
-        // Hook rewrites "git status" → "rtk git status" but JSONL logs the original.
+        // Hook rewrites "git status" → "rtco git status" but JSONL logs the original.
         // count_rtk_commands should detect these via classify_command.
         let cmds = vec![
             make_cmd("git status", Some(500)),
@@ -249,9 +249,9 @@ mod tests {
     #[test]
     fn test_count_mixed_explicit_and_hook() {
         let cmds = vec![
-            make_cmd("rtk git status", Some(200)),  // explicit rtk
+            make_cmd("rtco git status", Some(200)),  // explicit rtk
             make_cmd("git log -5", Some(1000)),     // hook-rewritten (logged as raw)
-            make_cmd("rtk cargo test", Some(5000)), // explicit rtk
+            make_cmd("rtco cargo test", Some(5000)), // explicit rtk
             make_cmd("echo hello", None),           // not supported
         ];
         let (total, rtk, output) = count_rtk_commands(&cmds);
@@ -351,11 +351,11 @@ mod tests {
     fn test_parse_jsonl_session_and_count() {
         // Simulate a session with 3 Bash commands: 2 rtk, 1 raw
         let jsonl = [
-            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"rtk git status"}}]}}"#,
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"rtco git status"}}]}}"#,
             r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"On branch main"}]}}"#,
             r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Bash","input":{"command":"git log -5"}}]}}"#,
             r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":"commit abc123\ncommit def456"}]}}"#,
-            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t3","name":"Bash","input":{"command":"rtk cargo test"}}]}}"#,
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t3","name":"Bash","input":{"command":"rtco cargo test"}}]}}"#,
             r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t3","content":"test result: ok. 5 passed"}]}}"#,
         ];
 
@@ -369,7 +369,7 @@ mod tests {
 
         let (total, rtk, _output) = count_rtk_commands(&cmds);
         assert_eq!(total, 3, "should find 3 Bash commands");
-        // All 3 are RTK-covered: 2 explicit "rtk ..." + 1 hook-rewritten "git log"
+        // All 3 are RTK-covered: 2 explicit "rtco ..." + 1 hook-rewritten "git log"
         assert_eq!(rtk, 3, "all 3 commands should be RTK-covered");
     }
 
@@ -379,7 +379,7 @@ mod tests {
         let jsonl = [
             r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"/tmp/foo"}}]}}"#,
             r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Grep","input":{"pattern":"TODO"}}]}}"#,
-            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t3","name":"Bash","input":{"command":"rtk git status"}}]}}"#,
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t3","name":"Bash","input":{"command":"rtco git status"}}]}}"#,
             r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t3","content":"clean"}]}}"#,
         ];
 
@@ -435,6 +435,6 @@ mod tests {
         assert_eq!(cmds.len(), 1, "one Bash tool call");
         let (total, rtk, _) = count_rtk_commands(&cmds);
         assert_eq!(total, 2, "chain splits into cd + rtk ls");
-        assert_eq!(rtk, 1, "rtk ls is covered, cd is not");
+        assert_eq!(rtk, 1, "rtco ls is covered, cd is not");
     }
 }

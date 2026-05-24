@@ -42,7 +42,7 @@ Use this template to generate GitHub PR review comments. Fill in each section ba
 {- Description of what's done right.}
 
 ---
-*Automated review via [rtk](https://github.com/rtk-ai/rtk) `/pr-triage`*
+*Automated review via [rtco](https://github.com/rtco-ai/rtco) `/pr-triage`*
 ```
 
 ---
@@ -56,7 +56,7 @@ Use this template to generate GitHub PR review comments. Fill in each section ba
 - 🟡 Important : error handling gap, performance regression, scope creep, missing token savings assertion
 - 🟢 Suggestion : naming, DRY opportunity, documentation, style
 
-**RTK-specific checks to mention if relevant** :
+**RTCO-specific checks to mention if relevant** :
 - `lazy_static!` for regex (not inline `Regex::new()`)
 - `anyhow::Result` + `.context("msg")` (no bare `?`, no `.unwrap()`)
 - Fallback to raw command on filter failure

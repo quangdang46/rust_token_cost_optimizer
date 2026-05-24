@@ -1,130 +1,130 @@
-# RTK Installation Guide - For AI Coding Assistants
+# RTCO Installation Guide - For AI Coding Assistants
 
 ## ⚠️ Name Collision Warning
 
-**There are TWO completely different projects named "rtk":**
+**There are TWO completely different projects named "rtco":**
 
 1. ✅ **Rust Token Killer** (this project) - LLM token optimizer
-   - Repos: `rtk-ai/rtk`
-   - Has `rtk gain` command for token savings stats
+   - Repos: `rtco-ai/rtco`
+   - Has `rtco gain` command for token savings stats
 
-2. ❌ **Rust Type Kit** (reachingforthejack/rtk) - DIFFERENT PROJECT
+2. ❌ **Rust Type Kit** (reachingforthejack/rtco) - DIFFERENT PROJECT
    - Rust codebase query tool and type generator
    - **DO NOT install if you want token optimization**
 
 ## Pre-Installation Check (REQUIRED)
 
-**AI assistants should ALWAYS verify if RTK is already installed before attempting installation.**
+**AI assistants should ALWAYS verify if RTCO is already installed before attempting installation.**
 
 ```bash
-# Check if RTK is installed
-rtk --version
+# Check if RTCO is installed
+rtco --version
 
 # CRITICAL: Verify it's the Token Killer (not Type Kit)
-rtk gain    # Should show token savings stats, NOT "command not found"
+rtco gain    # Should show token savings stats, NOT "command not found"
 
 # Check installation path
-which rtk
+which rtco
 ```
 
-If `rtk gain` works, you have the **correct** RTK installed. **DO NOT reinstall**. Skip to "Project Initialization".
+If `rtco gain` works, you have the **correct** RTCO installed. **DO NOT reinstall**. Skip to "Project Initialization".
 
-If `rtk gain` fails but `rtk --version` succeeds, you have the **wrong** RTK (Type Kit). Uninstall and reinstall the correct one (see below).
+If `rtco gain` fails but `rtco --version` succeeds, you have the **wrong** RTCO (Type Kit). Uninstall and reinstall the correct one (see below).
 
-## Installation (only if RTK not available or wrong RTK installed)
+## Installation (only if RTCO not available or wrong RTCO installed)
 
-### Step 0: Uninstall Wrong RTK (if needed)
+### Step 0: Uninstall Wrong RTCO (if needed)
 
 If you accidentally installed Rust Type Kit:
 
 ```bash
-cargo uninstall rtk
+cargo uninstall rtco
 ```
 
 ### Quick Install (Linux/macOS)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rtco-ai/rtco/master/install.sh | sh
 ```
 
-After installation, **verify you have the correct rtk**:
+After installation, **verify you have the correct rtco**:
 ```bash
-rtk gain  # Must show token savings stats (not "command not found")
+rtco gain  # Must show token savings stats (not "command not found")
 ```
 
 ### Alternative: Manual Installation
 
 ```bash
-# From rtk-ai repository (NOT reachingforthejack!)
-cargo install --git https://github.com/rtk-ai/rtk
+# From rtco-ai repository (NOT reachingforthejack!)
+cargo install --git https://github.com/rtco-ai/rtco
 
 # OR (if published and correct on crates.io)
-cargo install rtk
+cargo install rtco
 
 # ALWAYS VERIFY after installation
-rtk gain  # MUST show token savings, not "command not found"
+rtco gain  # MUST show token savings, not "command not found"
 ```
 
-⚠️ **WARNING**: `cargo install rtk` from crates.io might install the wrong package. Always verify with `rtk gain`.
+⚠️ **WARNING**: `cargo install rtco` from crates.io might install the wrong package. Always verify with `rtco gain`.
 
 ## Project Initialization
 
 ### Which mode to choose?
 
 ```
-  Do you want RTK active across ALL Claude Code projects?
+  Do you want RTCO active across ALL Claude Code projects?
   │
-  ├─ YES → rtk init -g              (recommended)
-  │         Hook + RTK.md (~10 tokens in context)
+  ├─ YES → rtco init -g              (recommended)
+  │         Hook + RTCO.md (~10 tokens in context)
   │         Commands auto-rewritten transparently
   │
-  ├─ YES, minimal → rtk init -g --hook-only
+  ├─ YES, minimal → rtco init -g --hook-only
   │         Hook only, nothing added to CLAUDE.md
   │         Zero tokens in context
   │
-  └─ NO, single project → rtk init
+  └─ NO, single project → rtco init
             Local CLAUDE.md only (137 lines)
             No hook, no global effect
 ```
 
 ### Recommended: Global Hook-First Setup
 
-**Best for: All projects, automatic RTK usage**
+**Best for: All projects, automatic RTCO usage**
 
 ```bash
-rtk init -g
-# → Installs hook to ~/.claude/hooks/rtk-rewrite.sh
-# → Creates ~/.claude/RTK.md (10 lines, meta commands only)
-# → Adds @RTK.md reference to ~/.claude/CLAUDE.md
+rtco init -g
+# → Installs hook to ~/.claude/hooks/rtco-rewrite.sh
+# → Creates ~/.claude/RTCO.md (10 lines, meta commands only)
+# → Adds @RTCO.md reference to ~/.claude/CLAUDE.md
 # → Prompts: "Patch settings.json? [y/N]"
 # → If yes: patches + creates backup (~/.claude/settings.json.bak)
 
 # Automated alternatives:
-rtk init -g --auto-patch    # Patch without prompting
-rtk init -g --no-patch      # Print manual instructions instead
+rtco init -g --auto-patch    # Patch without prompting
+rtco init -g --no-patch      # Print manual instructions instead
 
 # Verify installation
-rtk init --show  # Check hook is installed and executable
+rtco init --show  # Check hook is installed and executable
 ```
 
 **Token savings**: ~99.5% reduction (2000 tokens → 10 tokens in context)
 
 **What is settings.json?**
-Claude Code's hook registry. RTK adds a PreToolUse hook that rewrites commands transparently. Without this, Claude won't invoke the hook automatically.
+Claude Code's hook registry. RTCO adds a PreToolUse hook that rewrites commands transparently. Without this, Claude won't invoke the hook automatically.
 
 ```
-  Claude Code          settings.json        rtk-rewrite.sh        RTK binary
+  Claude Code          settings.json        rtco-rewrite.sh        RTCO binary
        │                    │                     │                    │
        │  "git status"      │                     │                    │
        │ ──────────────────►│                     │                    │
        │                    │  PreToolUse trigger  │                    │
        │                    │ ───────────────────►│                    │
        │                    │                     │  rewrite command   │
-       │                    │                     │  → rtk git status  │
+       │                    │                     │  → rtco git status  │
        │                    │◄────────────────────│                    │
        │                    │  updated command     │                    │
        │                    │                                          │
-       │  execute: rtk git status                                      │
+       │  execute: rtco git status                                      │
        │ ─────────────────────────────────────────────────────────────►│
        │                                                               │  filter
        │  "3 modified, 1 untracked ✓"                                  │
@@ -132,7 +132,7 @@ Claude Code's hook registry. RTK adds a PreToolUse hook that rewrites commands t
 ```
 
 **Backup Safety**:
-RTK backs up existing settings.json before changes. Restore if needed:
+RTCO backs up existing settings.json before changes. Restore if needed:
 ```bash
 cp ~/.claude/settings.json.bak ~/.claude/settings.json
 ```
@@ -143,7 +143,7 @@ cp ~/.claude/settings.json.bak ~/.claude/settings.json
 
 ```bash
 cd /path/to/your/project
-rtk init  # Creates ./CLAUDE.md with full RTK instructions (137 lines)
+rtco init  # Creates ./CLAUDE.md with full RTCO instructions (137 lines)
 ```
 
 **Token savings**: Instructions loaded only for this project
@@ -153,24 +153,24 @@ rtk init  # Creates ./CLAUDE.md with full RTK instructions (137 lines)
 #### From old 137-line CLAUDE.md injection (pre-0.22)
 
 ```bash
-rtk init -g  # Automatically migrates to hook-first mode
+rtco init -g  # Automatically migrates to hook-first mode
 # → Removes old 137-line block
-# → Installs hook + RTK.md
-# → Adds @RTK.md reference
+# → Installs hook + RTCO.md
+# → Adds @RTCO.md reference
 ```
 
 #### From old hook with inline logic (pre-0.24) — ⚠️ Breaking Change
 
-RTK 0.24.0 replaced the inline command-detection hook (~200 lines) with a **thin delegator** that calls `rtk rewrite`. The binary now contains the rewrite logic, so adding new commands no longer requires a hook update.
+RTCO 0.24.0 replaced the inline command-detection hook (~200 lines) with a **thin delegator** that calls `rtco rewrite`. The binary now contains the rewrite logic, so adding new commands no longer requires a hook update.
 
 The old hook still works but won't benefit from new rules added in future releases.
 
 ```bash
 # Upgrade hook to thin delegator
-rtk init --global
+rtco init --global
 
 # Verify the new hook is active
-rtk init --show
+rtco init --show
 # Should show: ✅ Hook: ... (thin delegator, up to date)
 ```
 
@@ -178,32 +178,32 @@ rtk init --show
 
 ### First-Time User (Recommended)
 ```bash
-# 1. Install RTK
-cargo install --git https://github.com/rtk-ai/rtk
-rtk gain  # Verify (must show token stats)
+# 1. Install RTCO
+cargo install --git https://github.com/rtco-ai/rtco
+rtco gain  # Verify (must show token stats)
 
 # 2. Setup with prompts
-rtk init -g
+rtco init -g
 # → Answer 'y' when prompted to patch settings.json
 # → Creates backup automatically
 
 # 3. Restart Claude Code
-# 4. Test: git status (should use rtk)
+# 4. Test: git status (should use rtco)
 ```
 
 ### CI/CD or Automation
 ```bash
 # Non-interactive setup (no prompts)
-rtk init -g --auto-patch
+rtco init -g --auto-patch
 
 # Verify in scripts
-rtk init --show | grep "Hook:"
+rtco init --show | grep "Hook:"
 ```
 
 ### Conservative User (Manual Control)
 ```bash
 # Get manual instructions without patching
-rtk init -g --no-patch
+rtco init -g --no-patch
 
 # Review printed JSON snippet
 # Manually edit ~/.claude/settings.json
@@ -213,10 +213,10 @@ rtk init -g --no-patch
 ### Temporary Trial
 ```bash
 # Install hook
-rtk init -g --auto-patch
+rtco init -g --auto-patch
 
 # Later: remove everything
-rtk init -g --uninstall
+rtco init -g --uninstall
 
 # Restore backup if needed
 cp ~/.claude/settings.json.bak ~/.claude/settings.json
@@ -226,16 +226,16 @@ cp ~/.claude/settings.json.bak ~/.claude/settings.json
 
 ```bash
 # Basic test
-rtk ls .
+rtco ls .
 
 # Test with git
-rtk git status
+rtco git status
 
 # Test with pnpm
-rtk pnpm list
+rtco pnpm list
 
 # Test with Vitest
-rtk vitest
+rtco vitest
 ```
 
 ## Uninstalling
@@ -244,29 +244,29 @@ rtk vitest
 
 ```bash
 # Complete removal (global installations only)
-rtk init -g --uninstall
+rtco init -g --uninstall
 
 # What gets removed:
-#   - Hook: ~/.claude/hooks/rtk-rewrite.sh
-#   - Context: ~/.claude/RTK.md
-#   - Reference: @RTK.md line from ~/.claude/CLAUDE.md
-#   - Registration: RTK hook entry from settings.json
+#   - Hook: ~/.claude/hooks/rtco-rewrite.sh
+#   - Context: ~/.claude/RTCO.md
+#   - Reference: @RTCO.md line from ~/.claude/CLAUDE.md
+#   - Registration: RTCO hook entry from settings.json
 
 # Restart Claude Code after uninstall
 ```
 
-**For Local Projects**: Manually remove RTK block from `./CLAUDE.md`
+**For Local Projects**: Manually remove RTCO block from `./CLAUDE.md`
 
 ### Binary Removal
 
 ```bash
 # If installed via cargo
-cargo uninstall rtk
+cargo uninstall rtco
 
 # If installed via package manager
-brew uninstall rtk          # macOS Homebrew
-sudo apt remove rtk         # Debian/Ubuntu
-sudo dnf remove rtk         # Fedora/RHEL
+brew uninstall rtco          # macOS Homebrew
+sudo apt remove rtco         # Debian/Ubuntu
+sudo dnf remove rtco         # Fedora/RHEL
 ```
 
 ### Restore from Backup (if needed)
@@ -279,52 +279,52 @@ cp ~/.claude/settings.json.bak ~/.claude/settings.json
 
 ### Files
 ```bash
-rtk ls .              # Compact tree view
-rtk read file.rs      # Optimized reading
-rtk grep "pattern" .  # Grouped search results
+rtco ls .              # Compact tree view
+rtco read file.rs      # Optimized reading
+rtco grep "pattern" .  # Grouped search results
 ```
 
 ### Git
 ```bash
-rtk git status        # Compact status
-rtk git log -n 10     # Condensed logs
-rtk git diff          # Optimized diff
-rtk git add .         # → "ok ✓"
-rtk git commit -m "msg"  # → "ok ✓ abc1234"
-rtk git push          # → "ok ✓ main"
+rtco git status        # Compact status
+rtco git log -n 10     # Condensed logs
+rtco git diff          # Optimized diff
+rtco git add .         # → "ok ✓"
+rtco git commit -m "msg"  # → "ok ✓ abc1234"
+rtco git push          # → "ok ✓ main"
 ```
 
 ### Pnpm (fork only)
 ```bash
-rtk pnpm list     # Dependency tree (-70% tokens)
-rtk pnpm outdated # Available updates (-80-90%)
-rtk pnpm install  # Silent installation
+rtco pnpm list     # Dependency tree (-70% tokens)
+rtco pnpm outdated # Available updates (-80-90%)
+rtco pnpm install  # Silent installation
 ```
 
 ### Tests
 ```bash
-rtk cargo test      # Filtered Cargo test output (-90%)
-rtk go test         # Filtered Go tests (NDJSON, -90%)
-rtk jest            # Filtered Jest output (-99.6%)
-rtk vitest          # Filtered Vitest output (-99.6%)
-rtk playwright test # Filtered Playwright output (-94%)
-rtk pytest          # Filtered Python tests (-90%)
-rtk rake test       # Filtered Ruby tests (-90%)
-rtk rspec           # Filtered RSpec tests (-60%)
-rtk test <cmd>      # Generic test wrapper - failures only (-90%)
+rtco cargo test      # Filtered Cargo test output (-90%)
+rtco go test         # Filtered Go tests (NDJSON, -90%)
+rtco jest            # Filtered Jest output (-99.6%)
+rtco vitest          # Filtered Vitest output (-99.6%)
+rtco playwright test # Filtered Playwright output (-94%)
+rtco pytest          # Filtered Python tests (-90%)
+rtco rake test       # Filtered Ruby tests (-90%)
+rtco rspec           # Filtered RSpec tests (-60%)
+rtco test <cmd>      # Generic test wrapper - failures only (-90%)
 ```
 
 ### Statistics
 ```bash
-rtk gain              # Token savings
-rtk gain --graph      # With ASCII graph
-rtk gain --history    # With command history
+rtco gain              # Token savings
+rtco gain --graph      # With ASCII graph
+rtco gain --history    # With command history
 ```
 
 ## Validated Token Savings
 
 ### Production T3 Stack Project
-| Operation | Standard | RTK | Reduction |
+| Operation | Standard | RTCO | Reduction |
 |-----------|----------|-----|-----------|
 | `vitest` | 102,199 chars | 377 chars | **-99.6%** |
 | `git status` | 529 chars | 217 chars | **-59%** |
@@ -332,13 +332,13 @@ rtk gain --history    # With command history
 | `pnpm outdated` | ~12,000 tokens | ~1,200-2,400 | **-80-90%** |
 
 ### Typical Claude Code Session (30 min)
-- **Without RTK**: ~150,000 tokens
-- **With RTK**: ~45,000 tokens
+- **Without RTCO**: ~150,000 tokens
+- **With RTCO**: ~45,000 tokens
 - **Savings**: **70% reduction**
 
 ## Troubleshooting
 
-### RTK command not found after installation
+### RTCO command not found after installation
 ```bash
 # Check PATH
 echo $PATH | grep -o '[^:]*\.cargo[^:]*'
@@ -350,10 +350,10 @@ export PATH="$HOME/.cargo/bin:$PATH"
 source ~/.bashrc  # or source ~/.zshrc
 ```
 
-### RTK command not available (e.g., vitest)
+### RTCO command not available (e.g., vitest)
 ```bash
 # Check branch
-cd /path/to/rtk
+cd /path/to/rtco
 git branch
 
 # Switch to feat/vitest-support if needed
@@ -376,22 +376,22 @@ cargo install --path . --force
 
 ## Support and Contributing
 
-- **Website**: https://www.rtk-ai.app
-- **Contact**: contact@rtk-ai.app
+- **Website**: https://www.rtco-ai.app
+- **Contact**: contact@rtco-ai.app
 - **Troubleshooting**: See [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues
-- **GitHub issues**: https://github.com/rtk-ai/rtk/issues
-- **Pull Requests**: https://github.com/rtk-ai/rtk/pulls
+- **GitHub issues**: https://github.com/rtco-ai/rtco/issues
+- **Pull Requests**: https://github.com/rtco-ai/rtco/pulls
 
-⚠️ **If you installed the wrong rtk (Type Kit)**, see [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md#problem-rtk-gain-command-not-found)
+⚠️ **If you installed the wrong rtco (Type Kit)**, see [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md#problem-rtco-gain-command-not-found)
 
 ## AI Assistant Checklist
 
 Before each session:
 
-- [ ] Verify RTK is installed: `rtk --version`
+- [ ] Verify RTCO is installed: `rtco --version`
 - [ ] If not installed → follow "Install from fork"
-- [ ] If project not initialized → `rtk init`
-- [ ] Use `rtk` for ALL git/pnpm/test/vitest commands
-- [ ] Check savings: `rtk gain`
+- [ ] If project not initialized → `rtco init`
+- [ ] Use `rtco` for ALL git/pnpm/test/vitest commands
+- [ ] Check savings: `rtco gain`
 
-**Golden Rule**: AI coding assistants should ALWAYS use `rtk` as a proxy for shell commands that generate verbose output (git, pnpm, npm, cargo test, vitest, docker, kubectl).
+**Golden Rule**: AI coding assistants should ALWAYS use `rtco` as a proxy for shell commands that generate verbose output (git, pnpm, npm, cargo test, vitest, docker, kubectl).

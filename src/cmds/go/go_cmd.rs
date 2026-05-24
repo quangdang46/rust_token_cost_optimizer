@@ -161,7 +161,7 @@ pub fn run_other(args: &[OsString], verbose: u8) -> Result<i32> {
 
     timer.track(
         &format!("go {}", subcommand),
-        &format!("rtk go {}", subcommand),
+        &format!("rtco go {}", subcommand),
         &raw,
         &raw, // No filtering for unsupported commands
     );
@@ -288,7 +288,7 @@ fn run_go_tool_golangci_lint(args: &[OsString], verbose: u8) -> Result<i32> {
 
     timer.track(
         "go tool golangci-lint",
-        "rtk go tool golangci-lint",
+        "rtco go tool golangci-lint",
         &raw,
         &filtered,
     );

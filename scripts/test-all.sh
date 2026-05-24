@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# RTK Smoke Test Suite
+# RTCO Smoke Test Suite
 # Exercises every command to catch regressions after merge.
 # Exit code: number of failures (0 = all green)
 #
@@ -100,15 +100,15 @@ section() {
 
 # ── Preamble ─────────────────────────────────────────
 
-RTK=$(command -v rtk || echo "")
-if [[ -z "$RTK" ]]; then
-    echo "rtk not found in PATH. Run: cargo install --path ."
+RTCO=$(command -v rtco || echo "")
+if [[ -z "$RTCO" ]]; then
+    echo "rtco not found in PATH. Run: cargo install --path ."
     exit 1
 fi
 
-printf "${BOLD}RTK Smoke Test Suite${NC}\n"
-printf "Binary: %s\n" "$RTK"
-printf "Version: %s\n" "$(rtk --version)"
+printf "${BOLD}RTCO Smoke Test Suite${NC}\n"
+printf "Binary: %s\n" "$RTCO"
+printf "Version: %s\n" "$(rtco --version)"
 printf "Date: %s\n" "$(date '+%Y-%m-%d %H:%M')"
 
 # Need a git repo to test git commands
@@ -123,86 +123,86 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 section "Version & Help"
 
-assert_contains "rtk --version" "rtk" rtk --version
-assert_contains "rtk --help" "Usage:" rtk --help
+assert_contains "rtco --version" "rtco" rtco --version
+assert_contains "rtco --help" "Usage:" rtco --help
 
 # ── 2. Ls ────────────────────────────────────────────
 
 section "Ls"
 
-assert_ok      "rtk ls ."                     rtk ls .
-assert_ok      "rtk ls -la ."                 rtk ls -la .
-assert_ok      "rtk ls -lh ."                 rtk ls -lh .
-assert_ok      "rtk ls -l src/"               rtk ls -l src/
-assert_ok      "rtk ls src/ -l (flag after)"  rtk ls src/ -l
-assert_ok      "rtk ls multi paths"           rtk ls src/ scripts/
-assert_contains "rtk ls -a shows hidden"      ".git" rtk ls -a .
-assert_contains "rtk ls shows sizes"          "K"  rtk ls src/
-assert_contains "rtk ls shows dirs with /"    "/" rtk ls .
+assert_ok      "rtco ls ."                     rtco ls .
+assert_ok      "rtco ls -la ."                 rtco ls -la .
+assert_ok      "rtco ls -lh ."                 rtco ls -lh .
+assert_ok      "rtco ls -l src/"               rtco ls -l src/
+assert_ok      "rtco ls src/ -l (flag after)"  rtco ls src/ -l
+assert_ok      "rtco ls multi paths"           rtco ls src/ scripts/
+assert_contains "rtco ls -a shows hidden"      ".git" rtco ls -a .
+assert_contains "rtco ls shows sizes"          "K"  rtco ls src/
+assert_contains "rtco ls shows dirs with /"    "/" rtco ls .
 
 # ── 2b. Tree ─────────────────────────────────────────
 
 section "Tree"
 
 if command -v tree >/dev/null 2>&1; then
-    assert_ok      "rtk tree ."                rtk tree .
-    assert_ok      "rtk tree -L 2 ."           rtk tree -L 2 .
-    assert_ok      "rtk tree -d -L 1 ."        rtk tree -d -L 1 .
-    assert_contains "rtk tree shows src/"      "src" rtk tree -L 1 .
+    assert_ok      "rtco tree ."                rtco tree .
+    assert_ok      "rtco tree -L 2 ."           rtco tree -L 2 .
+    assert_ok      "rtco tree -d -L 1 ."        rtco tree -d -L 1 .
+    assert_contains "rtco tree shows src/"      "src" rtco tree -L 1 .
 else
-    skip_test "rtk tree" "tree not installed"
+    skip_test "rtco tree" "tree not installed"
 fi
 
 # ── 3. Read ──────────────────────────────────────────
 
 section "Read"
 
-assert_ok      "rtk read Cargo.toml"          rtk read Cargo.toml
-assert_ok      "rtk read --level none Cargo.toml"  rtk read --level none Cargo.toml
-assert_ok      "rtk read --level aggressive Cargo.toml" rtk read --level aggressive Cargo.toml
-assert_ok      "rtk read -n Cargo.toml"       rtk read -n Cargo.toml
-assert_ok      "rtk read --max-lines 5 Cargo.toml" rtk read --max-lines 5 Cargo.toml
+assert_ok      "rtco read Cargo.toml"          rtco read Cargo.toml
+assert_ok      "rtco read --level none Cargo.toml"  rtco read --level none Cargo.toml
+assert_ok      "rtco read --level aggressive Cargo.toml" rtco read --level aggressive Cargo.toml
+assert_ok      "rtco read -n Cargo.toml"       rtco read -n Cargo.toml
+assert_ok      "rtco read --max-lines 5 Cargo.toml" rtco read --max-lines 5 Cargo.toml
 
 section "Read (stdin support)"
 
-assert_ok      "rtk read stdin pipe"          bash -c 'echo "fn main() {}" | rtk read -'
+assert_ok      "rtco read stdin pipe"          bash -c 'echo "fn main() {}" | rtco read -'
 
 # ── 4. Git ───────────────────────────────────────────
 
 section "Git (existing)"
 
-assert_ok      "rtk git status"               rtk git status
-assert_ok      "rtk git status --short"       rtk git status --short
-assert_ok      "rtk git status -s"            rtk git status -s
-assert_ok      "rtk git status --porcelain"   rtk git status --porcelain
-assert_ok      "rtk git log"                  rtk git log
-assert_ok      "rtk git log -5"               rtk git log -- -5
-assert_ok      "rtk git diff"                 rtk git diff
-assert_ok      "rtk git diff --stat"          rtk git diff --stat
+assert_ok      "rtco git status"               rtco git status
+assert_ok      "rtco git status --short"       rtco git status --short
+assert_ok      "rtco git status -s"            rtco git status -s
+assert_ok      "rtco git status --porcelain"   rtco git status --porcelain
+assert_ok      "rtco git log"                  rtco git log
+assert_ok      "rtco git log -5"               rtco git log -- -5
+assert_ok      "rtco git diff"                 rtco git diff
+assert_ok      "rtco git diff --stat"          rtco git diff --stat
 
 section "Git (new: branch, fetch, stash, worktree)"
 
-assert_ok      "rtk git branch"               rtk git branch
-assert_ok      "rtk git fetch"                rtk git fetch
-assert_ok      "rtk git stash list"           rtk git stash list
-assert_ok      "rtk git worktree"             rtk git worktree
+assert_ok      "rtco git branch"               rtco git branch
+assert_ok      "rtco git fetch"                rtco git fetch
+assert_ok      "rtco git stash list"           rtco git stash list
+assert_ok      "rtco git worktree"             rtco git worktree
 
 section "Git (passthrough: unsupported subcommands)"
 
-assert_ok      "rtk git tag --list"           rtk git tag --list
-assert_ok      "rtk git remote -v"            rtk git remote -v
-assert_ok      "rtk git rev-parse HEAD"       rtk git rev-parse HEAD
+assert_ok      "rtco git tag --list"           rtco git tag --list
+assert_ok      "rtco git remote -v"            rtco git remote -v
+assert_ok      "rtco git rev-parse HEAD"       rtco git rev-parse HEAD
 
 # ── 5. GitHub CLI ────────────────────────────────────
 
 section "GitHub CLI"
 
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    assert_ok      "rtk gh pr list"           rtk gh pr list
-    assert_ok      "rtk gh run list"          rtk gh run list
-    assert_ok      "rtk gh issue list"        rtk gh issue list
+    assert_ok      "rtco gh pr list"           rtco gh pr list
+    assert_ok      "rtco gh run list"          rtco gh run list
+    assert_ok      "rtco gh issue list"        rtco gh issue list
     # pr create/merge/diff/comment/edit are write ops, test help only
-    assert_help    "rtk gh"                   rtk gh
+    assert_help    "rtco gh"                   rtco gh
 else
     skip_test "gh commands" "gh not authenticated"
 fi
@@ -211,78 +211,78 @@ fi
 
 section "Cargo (new)"
 
-assert_ok      "rtk cargo build"              rtk cargo build
-assert_ok      "rtk cargo clippy"             rtk cargo clippy
+assert_ok      "rtco cargo build"              rtco cargo build
+assert_ok      "rtco cargo clippy"             rtco cargo clippy
 # cargo test exits non-zero due to pre-existing failures; check output ignoring exit code
-output_cargo_test=$(rtk cargo test 2>&1 || true)
+output_cargo_test=$(rtco cargo test 2>&1 || true)
 if echo "$output_cargo_test" | grep -q "FAILURES\|test result:\|passed"; then
     PASS=$((PASS + 1))
-    printf "  ${GREEN}PASS${NC}  %s\n" "rtk cargo test"
+    printf "  ${GREEN}PASS${NC}  %s\n" "rtco cargo test"
 else
     FAIL=$((FAIL + 1))
-    FAILURES+=("rtk cargo test")
-    printf "  ${RED}FAIL${NC}  %s\n" "rtk cargo test"
+    FAILURES+=("rtco cargo test")
+    printf "  ${RED}FAIL${NC}  %s\n" "rtco cargo test"
     printf "        got: %s\n" "$(echo "$output_cargo_test" | head -3)"
 fi
-assert_help    "rtk cargo"                    rtk cargo
+assert_help    "rtco cargo"                    rtco cargo
 
 # ── 7. Curl ──────────────────────────────────────────
 
 section "Curl (new)"
 
-assert_contains "rtk curl JSON detect" "string" rtk curl https://httpbin.org/json
-assert_ok       "rtk curl plain text"          rtk curl https://httpbin.org/robots.txt
-assert_help     "rtk curl"                     rtk curl
+assert_contains "rtco curl JSON detect" "string" rtco curl https://httpbin.org/json
+assert_ok       "rtco curl plain text"          rtco curl https://httpbin.org/robots.txt
+assert_help     "rtco curl"                     rtco curl
 
 # ── 8. Npm / Npx ────────────────────────────────────
 
 section "Npm / Npx (new)"
 
-assert_help    "rtk npm"                      rtk npm
-assert_help    "rtk npx"                      rtk npx
+assert_help    "rtco npm"                      rtco npm
+assert_help    "rtco npx"                      rtco npx
 
 # ── 9. Pnpm ─────────────────────────────────────────
 
 section "Pnpm"
 
-assert_help    "rtk pnpm"                     rtk pnpm
-assert_help    "rtk pnpm build"               rtk pnpm build
-assert_help    "rtk pnpm typecheck"           rtk pnpm typecheck
+assert_help    "rtco pnpm"                     rtco pnpm
+assert_help    "rtco pnpm build"               rtco pnpm build
+assert_help    "rtco pnpm typecheck"           rtco pnpm typecheck
 
 if command -v pnpm >/dev/null 2>&1; then
-    assert_ok  "rtk pnpm help"                rtk pnpm help
+    assert_ok  "rtco pnpm help"                rtco pnpm help
 fi
 
 # ── 10. Grep ─────────────────────────────────────────
 
 section "Grep"
 
-assert_ok      "rtk grep pattern"             rtk grep "pub fn" src/
-assert_contains "rtk grep finds results"      "pub fn" rtk grep "pub fn" src/
-assert_ok      "rtk grep with file type"      rtk grep "pub fn" src/ -t rust
+assert_ok      "rtco grep pattern"             rtco grep "pub fn" src/
+assert_contains "rtco grep finds results"      "pub fn" rtco grep "pub fn" src/
+assert_ok      "rtco grep with file type"      rtco grep "pub fn" src/ -t rust
 
 section "Grep (extra args passthrough)"
 
-assert_ok      "rtk grep -i case insensitive" rtk grep "fn" src/ -i
-assert_ok      "rtk grep -A context lines"    rtk grep "fn run" src/ -A 2
+assert_ok      "rtco grep -i case insensitive" rtco grep "fn" src/ -i
+assert_ok      "rtco grep -A context lines"    rtco grep "fn run" src/ -A 2
 
 # ── 11. Find ─────────────────────────────────────────
 
 section "Find"
 
-assert_ok      "rtk find *.rs"                rtk find "*.rs" src/
-assert_contains "rtk find shows files"        ".rs" rtk find "*.rs" src/
+assert_ok      "rtco find *.rs"                rtco find "*.rs" src/
+assert_contains "rtco find shows files"        ".rs" rtco find "*.rs" src/
 
 # ── 12. Json ─────────────────────────────────────────
 
 section "Json"
 
 # Create temp JSON file for testing
-TMPJSON=$(mktemp /tmp/rtk-test-XXXXX.json)
+TMPJSON=$(mktemp /tmp/rtco-test-XXXXX.json)
 echo '{"name":"test","count":42,"items":[1,2,3]}' > "$TMPJSON"
 
-assert_ok      "rtk json file"                rtk json "$TMPJSON"
-assert_contains "rtk json shows schema"       "string" rtk json "$TMPJSON"
+assert_ok      "rtco json file"                rtco json "$TMPJSON"
+assert_contains "rtco json shows schema"       "string" rtco json "$TMPJSON"
 
 rm -f "$TMPJSON"
 
@@ -290,27 +290,27 @@ rm -f "$TMPJSON"
 
 section "Deps"
 
-assert_ok      "rtk deps ."                   rtk deps .
-assert_contains "rtk deps shows Cargo"        "Cargo" rtk deps .
+assert_ok      "rtco deps ."                   rtco deps .
+assert_contains "rtco deps shows Cargo"        "Cargo" rtco deps .
 
 # ── 14. Env ──────────────────────────────────────────
 
 section "Env"
 
-assert_ok      "rtk env"                      rtk env
-assert_ok      "rtk env --filter PATH"        rtk env --filter PATH
+assert_ok      "rtco env"                      rtco env
+assert_ok      "rtco env --filter PATH"        rtco env --filter PATH
 
 # ── 16. Log ──────────────────────────────────────────
 
 section "Log"
 
-TMPLOG=$(mktemp /tmp/rtk-log-XXXXX.log)
+TMPLOG=$(mktemp /tmp/rtco-log-XXXXX.log)
 for i in $(seq 1 20); do
     echo "[2025-01-01 12:00:00] INFO: repeated message" >> "$TMPLOG"
 done
 echo "[2025-01-01 12:00:01] ERROR: something failed" >> "$TMPLOG"
 
-assert_ok      "rtk log file"                 rtk log "$TMPLOG"
+assert_ok      "rtco log file"                 rtco log "$TMPLOG"
 
 rm -f "$TMPLOG"
 
@@ -318,93 +318,93 @@ rm -f "$TMPLOG"
 
 section "Summary"
 
-assert_ok      "rtk summary echo hello"       rtk summary echo hello
+assert_ok      "rtco summary echo hello"       rtco summary echo hello
 
 # ── 18. Err ──────────────────────────────────────────
 
 section "Err"
 
-assert_ok      "rtk err echo ok"              rtk err echo ok
+assert_ok      "rtco err echo ok"              rtco err echo ok
 
 # ── 19. Test runner ──────────────────────────────────
 
 section "Test runner"
 
-assert_ok      "rtk test echo ok"             rtk test echo ok
+assert_ok      "rtco test echo ok"             rtco test echo ok
 
 # ── 20. Gain ─────────────────────────────────────────
 
 section "Gain"
 
-assert_ok      "rtk gain"                     rtk gain
-assert_ok      "rtk gain --history"           rtk gain --history
+assert_ok      "rtco gain"                     rtco gain
+assert_ok      "rtco gain --history"           rtco gain --history
 
 # ── 21. Config & Init ────────────────────────────────
 
 section "Config & Init"
 
-assert_ok      "rtk config"                   rtk config
-assert_ok      "rtk init --show"              rtk init --show
+assert_ok      "rtco config"                   rtco config
+assert_ok      "rtco init --show"              rtco init --show
 
 # ── 22. Wget ─────────────────────────────────────────
 
 section "Wget"
 
 if command -v wget >/dev/null 2>&1; then
-    assert_ok  "rtk wget stdout"              rtk wget https://httpbin.org/robots.txt -O
+    assert_ok  "rtco wget stdout"              rtco wget https://httpbin.org/robots.txt -O
 else
-    skip_test "rtk wget" "wget not installed"
+    skip_test "rtco wget" "wget not installed"
 fi
 
 # ── 23. Tsc / Lint / Prettier / Next / Playwright ───
 
 section "JS Tooling (help only, no project context)"
 
-assert_help    "rtk tsc"                      rtk tsc
-assert_help    "rtk lint"                     rtk lint
-assert_help    "rtk prettier"                 rtk prettier
-assert_help    "rtk next"                     rtk next
-assert_help    "rtk playwright"               rtk playwright
+assert_help    "rtco tsc"                      rtco tsc
+assert_help    "rtco lint"                     rtco lint
+assert_help    "rtco prettier"                 rtco prettier
+assert_help    "rtco next"                     rtco next
+assert_help    "rtco playwright"               rtco playwright
 
 # ── 24. Prisma ───────────────────────────────────────
 
 section "Prisma (help only)"
 
-assert_help    "rtk prisma"                   rtk prisma
+assert_help    "rtco prisma"                   rtco prisma
 
 # ── 25. Vitest ───────────────────────────────────────
 
 section "Vitest (help only)"
 
-assert_help    "rtk vitest"                   rtk vitest
+assert_help    "rtco vitest"                   rtco vitest
 
 # ── 26. Docker / Kubectl (help only) ────────────────
 
 section "Docker / Kubectl (help only)"
 
-assert_help    "rtk docker"                   rtk docker
-assert_help    "rtk kubectl"                  rtk kubectl
+assert_help    "rtco docker"                   rtco docker
+assert_help    "rtco kubectl"                  rtco kubectl
 
 # ── 27. Python (conditional) ────────────────────────
 
 section "Python (conditional)"
 
 if command -v pytest &>/dev/null; then
-    assert_help    "rtk pytest"                    rtk pytest --help
+    assert_help    "rtco pytest"                    rtco pytest --help
 else
-    skip_test "rtk pytest" "pytest not installed"
+    skip_test "rtco pytest" "pytest not installed"
 fi
 
 if command -v ruff &>/dev/null; then
-    assert_help    "rtk ruff"                      rtk ruff --help
+    assert_help    "rtco ruff"                      rtco ruff --help
 else
-    skip_test "rtk ruff" "ruff not installed"
+    skip_test "rtco ruff" "ruff not installed"
 fi
 
 if command -v pip &>/dev/null; then
-    assert_help    "rtk pip"                       rtk pip --help
+    assert_help    "rtco pip"                       rtco pip --help
 else
-    skip_test "rtk pip" "pip not installed"
+    skip_test "rtco pip" "pip not installed"
 fi
 
 # ── 28. Go (conditional) ────────────────────────────
@@ -412,18 +412,18 @@ fi
 section "Go (conditional)"
 
 if command -v go &>/dev/null; then
-    assert_help    "rtk go"                        rtk go --help
-    assert_help    "rtk go test"                   rtk go test -h
-    assert_help    "rtk go build"                  rtk go build -h
-    assert_help    "rtk go vet"                    rtk go vet -h
+    assert_help    "rtco go"                        rtco go --help
+    assert_help    "rtco go test"                   rtco go test -h
+    assert_help    "rtco go build"                  rtco go build -h
+    assert_help    "rtco go vet"                    rtco go vet -h
 else
-    skip_test "rtk go" "go not installed"
+    skip_test "rtco go" "go not installed"
 fi
 
 if command -v golangci-lint &>/dev/null; then
-    assert_help    "rtk golangci-lint"             rtk golangci-lint --help
+    assert_help    "rtco golangci-lint"             rtco golangci-lint --help
 else
-    skip_test "rtk golangci-lint" "golangci-lint not installed"
+    skip_test "rtco golangci-lint" "golangci-lint not installed"
 fi
 
 # ── 29. Graphite (conditional) ─────────────────────
@@ -431,10 +431,10 @@ fi
 section "Graphite (conditional)"
 
 if command -v gt &>/dev/null; then
-    assert_help   "rtk gt"                          rtk gt --help
-    assert_ok     "rtk gt log short"                rtk gt log short
+    assert_help   "rtco gt"                          rtco gt --help
+    assert_ok     "rtco gt log short"                rtco gt log short
 else
-    skip_test "rtk gt" "gt not installed"
+    skip_test "rtco gt" "gt not installed"
 fi
 
 # ── 30. Ruby (conditional) ──────────────────────────
@@ -442,127 +442,127 @@ fi
 section "Ruby (conditional)"
 
 if command -v rspec &>/dev/null; then
-    assert_help    "rtk rspec"                     rtk rspec --help
+    assert_help    "rtco rspec"                     rtco rspec --help
 else
-    skip_test "rtk rspec" "rspec not installed"
+    skip_test "rtco rspec" "rspec not installed"
 fi
 
 if command -v rubocop &>/dev/null; then
-    assert_help    "rtk rubocop"                   rtk rubocop --help
+    assert_help    "rtco rubocop"                   rtco rubocop --help
 else
-    skip_test "rtk rubocop" "rubocop not installed"
+    skip_test "rtco rubocop" "rubocop not installed"
 fi
 
 if command -v rake &>/dev/null; then
-    assert_help    "rtk rake"                      rtk rake --help
+    assert_help    "rtco rake"                      rtco rake --help
 else
-    skip_test "rtk rake" "rake not installed"
+    skip_test "rtco rake" "rake not installed"
 fi
 
 # ── 31. Global flags ────────────────────────────────
 
 section "Global flags"
 
-assert_ok      "rtk -u ls ."                  rtk -u ls .
-assert_ok      "rtk --skip-env npm --help"    rtk --skip-env npm --help
+assert_ok      "rtco -u ls ."                  rtco -u ls .
+assert_ok      "rtco --skip-env npm --help"    rtco --skip-env npm --help
 
 # ── 32. CcEconomics ─────────────────────────────────
 
 section "CcEconomics"
 
-assert_ok      "rtk cc-economics"             rtk cc-economics
+assert_ok      "rtco cc-economics"             rtco cc-economics
 
 # ── 33. Learn ───────────────────────────────────────
 
 section "Learn"
 
-assert_ok      "rtk learn --help"             rtk learn --help
-assert_ok      "rtk learn (no sessions)"      rtk learn --since 0 2>&1 || true
+assert_ok      "rtco learn --help"             rtco learn --help
+assert_ok      "rtco learn (no sessions)"      rtco learn --since 0 2>&1 || true
 
 # ── 32. Rewrite ───────────────────────────────────────
 
 section "Rewrite"
 
-assert_contains "rewrite git status"          "rtk git status"         rtk rewrite "git status"
-assert_contains "rewrite cargo test"          "rtk cargo test"         rtk rewrite "cargo test"
-assert_contains "rewrite compound &&"         "rtk git status"         rtk rewrite "git status && cargo test"
-assert_contains "rewrite pipe preserves"      "| head"                 rtk rewrite "git log | head"
+assert_contains "rewrite git status"          "rtco git status"         rtco rewrite "git status"
+assert_contains "rewrite cargo test"          "rtco cargo test"         rtco rewrite "cargo test"
+assert_contains "rewrite compound &&"         "rtco git status"         rtco rewrite "git status && cargo test"
+assert_contains "rewrite pipe preserves"      "| head"                 rtco rewrite "git log | head"
 
 section "Rewrite (#345: RTK_DISABLED skip)"
 
-assert_fails   "rewrite RTK_DISABLED=1 skip"                          rtk rewrite "RTK_DISABLED=1 git status"
-assert_fails   "rewrite env RTK_DISABLED skip"                        rtk rewrite "FOO=1 RTK_DISABLED=1 cargo test"
+assert_fails   "rewrite RTK_DISABLED=1 skip"                          rtco rewrite "RTK_DISABLED=1 git status"
+assert_fails   "rewrite env RTK_DISABLED skip"                        rtco rewrite "FOO=1 RTK_DISABLED=1 cargo test"
 
 section "Rewrite (#346: 2>&1 preserved)"
 
-assert_contains "rewrite 2>&1 preserved"      "2>&1"                  rtk rewrite "cargo test 2>&1 | head"
+assert_contains "rewrite 2>&1 preserved"      "2>&1"                  rtco rewrite "cargo test 2>&1 | head"
 
 section "Rewrite (#196: gh --json skip)"
 
-assert_fails   "rewrite gh --json skip"                               rtk rewrite "gh pr list --json number"
-assert_fails   "rewrite gh --jq skip"                                 rtk rewrite "gh api /repos --jq .name"
-assert_fails   "rewrite gh --template skip"                           rtk rewrite "gh pr view 1 --template '{{.title}}'"
-assert_contains "rewrite gh normal works"     "rtk gh pr list"        rtk rewrite "gh pr list"
+assert_fails   "rewrite gh --json skip"                               rtco rewrite "gh pr list --json number"
+assert_fails   "rewrite gh --jq skip"                                 rtco rewrite "gh api /repos --jq .name"
+assert_fails   "rewrite gh --template skip"                           rtco rewrite "gh pr view 1 --template '{{.title}}'"
+assert_contains "rewrite gh normal works"     "rtco gh pr list"        rtco rewrite "gh pr list"
 
 # ── 33. Verify ────────────────────────────────────────
 
 section "Verify"
 
-assert_ok      "rtk verify"                   rtk verify
+assert_ok      "rtco verify"                   rtco verify
 
 # ── 34. Proxy ─────────────────────────────────────────
 
 section "Proxy"
 
-assert_ok      "rtk proxy echo hello"         rtk proxy echo hello
-assert_contains "rtk proxy passthrough"       "hello" rtk proxy echo hello
+assert_ok      "rtco proxy echo hello"         rtco proxy echo hello
+assert_contains "rtco proxy passthrough"       "hello" rtco proxy echo hello
 
 # ── 35. Discover ──────────────────────────────────────
 
 section "Discover"
 
-assert_ok      "rtk discover"                 rtk discover
+assert_ok      "rtco discover"                 rtco discover
 
 # ── 36. Diff ──────────────────────────────────────────
 
 section "Diff"
 
-assert_ok      "rtk diff two files"           rtk diff Cargo.toml LICENSE
+assert_ok      "rtco diff two files"           rtco diff Cargo.toml LICENSE
 
 # ── 37. Wc ────────────────────────────────────────────
 
 section "Wc"
 
-assert_ok      "rtk wc Cargo.toml"            rtk wc Cargo.toml
+assert_ok      "rtco wc Cargo.toml"            rtco wc Cargo.toml
 
 # ── 38. Smart ─────────────────────────────────────────
 
 section "Smart"
 
-assert_ok      "rtk smart src/main.rs"        rtk smart src/main.rs
+assert_ok      "rtco smart src/main.rs"        rtco smart src/main.rs
 
 # ── 39. Json edge cases ──────────────────────────────
 
 section "Json (edge cases)"
 
-assert_fails   "rtk json on TOML (#347)"                              rtk json Cargo.toml
+assert_fails   "rtco json on TOML (#347)"                              rtco json Cargo.toml
 
 # ── 40. Docker (conditional) ─────────────────────────
 
 section "Docker (conditional)"
 
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-    assert_ok  "rtk docker ps"               rtk docker ps
-    assert_ok  "rtk docker images"           rtk docker images
+    assert_ok  "rtco docker ps"               rtco docker ps
+    assert_ok  "rtco docker images"           rtco docker images
 else
-    skip_test "rtk docker" "docker not running"
+    skip_test "rtco docker" "docker not running"
 fi
 
 # ── 41. Hook check ───────────────────────────────────
 
 section "Hook check (#344)"
 
-assert_contains "rtk init --show hook version" "version" rtk init --show
+assert_contains "rtco init --show hook version" "version" rtco init --show
 
 # ══════════════════════════════════════════════════════
 # Report

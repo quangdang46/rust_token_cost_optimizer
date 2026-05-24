@@ -89,21 +89,21 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: |
           cd target/${{ matrix.target }}/release
-          tar -czvf ../../../rtk-${{ matrix.target }}.${{ matrix.archive }} rtk
+          tar -czvf ../../../rtco-${{ matrix.target }}.${{ matrix.archive }} rtco
           cd ../../..
 
       - name: Package (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           cd target/${{ matrix.target }}/release
-          7z a ../../../rtk-${{ matrix.target }}.${{ matrix.archive }} rtk.exe
+          7z a ../../../rtco-${{ matrix.target }}.${{ matrix.archive }} rtco.exe
           cd ../../..
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rtk-${{ matrix.target }}
-          path: rtk-${{ matrix.target }}.${{ matrix.archive }}
+          name: rtco-${{ matrix.target }}
+          path: rtco-${{ matrix.target }}.${{ matrix.archive }}
 
   build-deb:
     name: Build DEB package
@@ -127,7 +127,7 @@ jobs:
       - name: Upload DEB
         uses: actions/upload-artifact@v4
         with:
-          name: rtk-deb
+          name: rtco-deb
           path: target/debian/*.deb
 
   build-rpm:
@@ -157,7 +157,7 @@ jobs:
       - name: Upload RPM
         uses: actions/upload-artifact@v4
         with:
-          name: rtk-rpm
+          name: rtco-rpm
           path: target/generate-rpm/*.rpm
 
   release:
@@ -201,7 +201,7 @@ jobs:
             [ -f "$f" ] && cp "$f" "rtk_amd64.deb"
           done
           for f in *.rpm; do
-            [ -f "$f" ] && cp "$f" "rtk.x86_64.rpm"
+            [ -f "$f" ] && cp "$f" "rtco.x86_64.rpm"
           done
 
       - name: Create checksums
@@ -238,10 +238,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.version.outputs.tag }}"
-          RELEASE_URL="https://github.com/rtk-ai/rtk/releases/tag/${TAG}"
+          RELEASE_URL="https://github.com/rtco-ai/rtco/releases/tag/${TAG}"
 
           # Fetch release notes from GitHub API
-          NOTES=$(gh api "repos/rtk-ai/rtk/releases/tags/${TAG}" --jq '.body' 2>/dev/null | head -c 1800 || echo "")
+          NOTES=$(gh api "repos/rtco-ai/rtco/releases/tags/${TAG}" --jq '.body' 2>/dev/null | head -c 1800 || echo "")
           DESC=$(echo "${NOTES:-No release notes}" | jq -Rs .)
 
           jq -n \
@@ -271,7 +271,7 @@ jobs:
       - name: Download checksums
         run: |
           gh release download "${{ steps.version.outputs.tag }}" \
-            --repo rtk-ai/rtk \
+            --repo rtco-ai/rtco \
             --pattern checksums.txt
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -286,75 +286,75 @@ jobs:
 
       - name: Generate formula
         run: |
-          cat > rtk.rb << 'FORMULA'
+          cat > rtco.rb << 'FORMULA'
           class Rtk < Formula
             desc "Rust Token Killer - High-performance CLI proxy to minimize LLM token consumption"
-            homepage "https://www.rtk-ai.app"
+            homepage "https://www.rtco-ai.app"
             version "VERSION_PLACEHOLDER"
             license "MIT"
 
             if OS.mac? && Hardware::CPU.arm?
-              url "https://github.com/rtk-ai/rtk/releases/download/TAG_PLACEHOLDER/rtk-aarch64-apple-darwin.tar.gz"
+              url "https://github.com/rtco-ai/rtco/releases/download/TAG_PLACEHOLDER/rtco-aarch64-apple-darwin.tar.gz"
               sha256 "SHA_MAC_ARM_PLACEHOLDER"
             elsif OS.mac? && Hardware::CPU.intel?
-              url "https://github.com/rtk-ai/rtk/releases/download/TAG_PLACEHOLDER/rtk-x86_64-apple-darwin.tar.gz"
+              url "https://github.com/rtco-ai/rtco/releases/download/TAG_PLACEHOLDER/rtco-x86_64-apple-darwin.tar.gz"
               sha256 "SHA_MAC_INTEL_PLACEHOLDER"
             elsif OS.linux? && Hardware::CPU.arm?
-              url "https://github.com/rtk-ai/rtk/releases/download/TAG_PLACEHOLDER/rtk-aarch64-unknown-linux-gnu.tar.gz"
+              url "https://github.com/rtco-ai/rtco/releases/download/TAG_PLACEHOLDER/rtco-aarch64-unknown-linux-gnu.tar.gz"
               sha256 "SHA_LINUX_ARM_PLACEHOLDER"
             elsif OS.linux? && Hardware::CPU.intel?
-              url "https://github.com/rtk-ai/rtk/releases/download/TAG_PLACEHOLDER/rtk-x86_64-unknown-linux-musl.tar.gz"
+              url "https://github.com/rtco-ai/rtco/releases/download/TAG_PLACEHOLDER/rtco-x86_64-unknown-linux-musl.tar.gz"
               sha256 "SHA_LINUX_INTEL_PLACEHOLDER"
             end
 
             def install
-              bin.install "rtk"
+              bin.install "rtco"
             end
 
             def caveats
               <<~EOS
-                rtk is installed! Get started:
+                rtco is installed! Get started:
 
                   # Initialize for Claude Code
-                  rtk init -g          # Global hook-first setup (recommended)
-                  rtk init             # Add to ./CLAUDE.md (this project only)
+                  rtco init -g          # Global hook-first setup (recommended)
+                  rtco init             # Add to ./CLAUDE.md (this project only)
 
                   # See all commands
-                  rtk --help
+                  rtco --help
 
                   # Measure your token savings
-                  rtk gain
+                  rtco gain
 
-                Full documentation: https://www.rtk-ai.app
+                Full documentation: https://www.rtco-ai.app
               EOS
             end
 
             test do
-              system "#{bin}/rtk", "--version"
+              system "#{bin}/rtco", "--version"
             end
           end
           FORMULA
-          sed -i "s/VERSION_PLACEHOLDER/${{ steps.version.outputs.version }}/g" rtk.rb
-          sed -i "s/TAG_PLACEHOLDER/${{ steps.version.outputs.tag }}/g" rtk.rb
-          sed -i "s/SHA_MAC_ARM_PLACEHOLDER/${{ steps.sha.outputs.mac_arm }}/g" rtk.rb
-          sed -i "s/SHA_MAC_INTEL_PLACEHOLDER/${{ steps.sha.outputs.mac_intel }}/g" rtk.rb
-          sed -i "s/SHA_LINUX_ARM_PLACEHOLDER/${{ steps.sha.outputs.linux_arm }}/g" rtk.rb
-          sed -i "s/SHA_LINUX_INTEL_PLACEHOLDER/${{ steps.sha.outputs.linux_intel }}/g" rtk.rb
+          sed -i "s/VERSION_PLACEHOLDER/${{ steps.version.outputs.version }}/g" rtco.rb
+          sed -i "s/TAG_PLACEHOLDER/${{ steps.version.outputs.tag }}/g" rtco.rb
+          sed -i "s/SHA_MAC_ARM_PLACEHOLDER/${{ steps.sha.outputs.mac_arm }}/g" rtco.rb
+          sed -i "s/SHA_MAC_INTEL_PLACEHOLDER/${{ steps.sha.outputs.mac_intel }}/g" rtco.rb
+          sed -i "s/SHA_LINUX_ARM_PLACEHOLDER/${{ steps.sha.outputs.linux_arm }}/g" rtco.rb
+          sed -i "s/SHA_LINUX_INTEL_PLACEHOLDER/${{ steps.sha.outputs.linux_intel }}/g" rtco.rb
           # Remove leading spaces from heredoc
-          sed -i 's/^          //' rtk.rb
+          sed -i 's/^          //' rtco.rb
 
       - name: Push to homebrew-tap
         run: |
-          CONTENT=$(base64 -w 0 rtk.rb)
-          SHA=$(gh api repos/rtk-ai/homebrew-tap/contents/Formula/rtk.rb --jq '.sha' 2>/dev/null || echo "")
+          CONTENT=$(base64 -w 0 rtco.rb)
+          SHA=$(gh api repos/rtco-ai/homebrew-tap/contents/Formula/rtco.rb --jq '.sha' 2>/dev/null || echo "")
           if [ -n "$SHA" ]; then
-            gh api -X PUT repos/rtk-ai/homebrew-tap/contents/Formula/rtk.rb \
-              -f message="rtk ${{ steps.version.outputs.version }}" \
+            gh api -X PUT repos/rtco-ai/homebrew-tap/contents/Formula/rtco.rb \
+              -f message="rtco ${{ steps.version.outputs.version }}" \
               -f content="$CONTENT" \
               -f sha="$SHA"
           else
-            gh api -X PUT repos/rtk-ai/homebrew-tap/contents/Formula/rtk.rb \
-              -f message="rtk ${{ steps.version.outputs.version }}" \
+            gh api -X PUT repos/rtco-ai/homebrew-tap/contents/Formula/rtco.rb \
+              -f message="rtco ${{ steps.version.outputs.version }}" \
               -f content="$CONTENT"
           fi
         env:

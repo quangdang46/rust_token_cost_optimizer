@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 
-PLUGIN_PATH = Path(__file__).resolve().parents[1] / "rtk-rewrite" / "__init__.py"
+PLUGIN_PATH = Path(__file__).resolve().parents[1] / "rtco-rewrite" / "__init__.py"
 
 
 class FakeContext:
@@ -39,16 +39,16 @@ def load_plugin_module(path=PLUGIN_PATH, module_name="rtk_rewrite_plugin"):
 
 
 def write_fake_rtk(bin_dir):
-    fake_rtk = bin_dir / "rtk"
+    fake_rtk = bin_dir / "rtco"
     fake_rtk.write_text(
         "\n".join(
             [
                 f"#!{sys.executable}",
                 "import sys",
                 "if sys.argv[1:] == ['rewrite', 'git status']:",
-                "    print('rtk git status')",
+                "    print('rtco git status')",
                 "    raise SystemExit(0)",
-                "print('unexpected rtk args:', sys.argv[1:], file=sys.stderr)",
+                "print('unexpected rtco args:', sys.argv[1:], file=sys.stderr)",
                 "raise SystemExit(1)",
                 "",
             ]
@@ -65,7 +65,7 @@ class RtkRewritePluginTest(unittest.TestCase):
         module._rtk_missing_warned = False
         ctx = FakeContext()
 
-        with mock.patch.object(module.shutil, "which", return_value="/usr/bin/rtk"):
+        with mock.patch.object(module.shutil, "which", return_value="/usr/bin/rtco"):
             module.register(ctx)
 
         self.assertIn("pre_tool_call", ctx.hooks)
@@ -83,7 +83,7 @@ class RtkRewritePluginTest(unittest.TestCase):
 
         self.assertNotIn("pre_tool_call", ctx.hooks)
         self.assertEqual(
-            "rtk: hermes plugin warning: rtk binary not found in PATH; Hermes hook not registered\n",
+            "rtco: hermes plugin warning: rtco binary not found in PATH; Hermes hook not registered\n",
             stderr.getvalue(),
         )
 
@@ -98,7 +98,7 @@ class RtkRewritePluginTest(unittest.TestCase):
                 self.assertFalse(module._check_rtk())
 
         self.assertEqual(
-            "rtk: hermes plugin warning: rtk binary not found in PATH; Hermes hook not registered\n",
+            "rtco: hermes plugin warning: rtco binary not found in PATH; Hermes hook not registered\n",
             stderr.getvalue(),
         )
 
@@ -107,7 +107,7 @@ class RtkRewritePluginTest(unittest.TestCase):
         module._rtk_available = None
         module._rtk_missing_warned = False
 
-        with mock.patch.object(module.shutil, "which", return_value="/usr/bin/rtk"):
+        with mock.patch.object(module.shutil, "which", return_value="/usr/bin/rtco"):
             with mock.patch.object(module.sys, "stderr", new_callable=io.StringIO) as stderr:
                 self.assertTrue(module._check_rtk())
 
@@ -118,11 +118,11 @@ class RtkRewritePluginTest(unittest.TestCase):
         module._rtk_available = None
         module._rtk_missing_warned = False
 
-        with mock.patch.object(module.shutil, "which", return_value="/usr/bin/rtk") as which:
+        with mock.patch.object(module.shutil, "which", return_value="/usr/bin/rtco") as which:
             self.assertTrue(module._check_rtk())
             self.assertTrue(module._check_rtk())
 
-        which.assert_called_once_with("rtk")
+        which.assert_called_once_with("rtco")
 
     def test_rewrite_success_mutates_same_terminal_args_dict(self):
         module, callback = self.load_callback()
@@ -131,11 +131,11 @@ class RtkRewritePluginTest(unittest.TestCase):
         with mock.patch.object(
             module.subprocess,
             "run",
-            return_value=FakeCompletedProcess(stdout="rtk git status\n"),
+            return_value=FakeCompletedProcess(stdout="rtco git status\n"),
         ):
             callback(tool_name="terminal", args=args)
 
-        self.assertEqual({"command": "rtk git status"}, args)
+        self.assertEqual({"command": "rtco git status"}, args)
 
     def test_rewrite_returncode_three_mutates_same_terminal_args_dict(self):
         module, callback = self.load_callback()
@@ -144,11 +144,11 @@ class RtkRewritePluginTest(unittest.TestCase):
         with mock.patch.object(
             module.subprocess,
             "run",
-            return_value=FakeCompletedProcess(returncode=3, stdout="rtk git status\n"),
+            return_value=FakeCompletedProcess(returncode=3, stdout="rtco git status\n"),
         ):
             callback(tool_name="terminal", args=args)
 
-        self.assertEqual({"command": "rtk git status"}, args)
+        self.assertEqual({"command": "rtco git status"}, args)
 
     def test_rewrite_returncode_zero_mutates_when_rewrite_changes_command(self):
         module, callback = self.load_callback()
@@ -157,11 +157,11 @@ class RtkRewritePluginTest(unittest.TestCase):
         with mock.patch.object(
             module.subprocess,
             "run",
-            return_value=FakeCompletedProcess(stdout="rtk git status\n"),
+            return_value=FakeCompletedProcess(stdout="rtco git status\n"),
         ):
             callback(tool_name="terminal", args=args)
 
-        self.assertEqual({"command": "rtk git status"}, args)
+        self.assertEqual({"command": "rtco git status"}, args)
 
     def test_expected_passthrough_returncodes_do_not_warn_or_mutate(self):
         for returncode in (1, 2):
@@ -174,7 +174,7 @@ class RtkRewritePluginTest(unittest.TestCase):
                     "run",
                     return_value=FakeCompletedProcess(
                         returncode=returncode,
-                        stdout="rtk git status\n",
+                        stdout="rtco git status\n",
                         stderr="unexpected stderr",
                     ),
                 ):
@@ -191,25 +191,25 @@ class RtkRewritePluginTest(unittest.TestCase):
         with mock.patch.object(
             module.subprocess,
             "run",
-            return_value=FakeCompletedProcess(returncode=4, stdout="rtk git status\n", stderr="bad news"),
+            return_value=FakeCompletedProcess(returncode=4, stdout="rtco git status\n", stderr="bad news"),
         ):
             with mock.patch.object(module.sys, "stderr", new_callable=io.StringIO) as stderr:
                 callback(tool_name="terminal", args=args)
 
         self.assertEqual({"command": "git status"}, args)
-        self.assertEqual("rtk: hermes plugin warning: rtk rewrite failed with exit 4: bad news\n", stderr.getvalue())
+        self.assertEqual("rtco: hermes plugin warning: rtco rewrite failed with exit 4: bad news\n", stderr.getvalue())
 
     def test_rewrite_timeout_warns_and_preserves_original_command(self):
         module, callback = self.load_callback()
         args = {"command": "git status"}
 
-        timeout = subprocess.TimeoutExpired(cmd=["rtk", "rewrite", "git status"], timeout=2)
+        timeout = subprocess.TimeoutExpired(cmd=["rtco", "rewrite", "git status"], timeout=2)
         with mock.patch.object(module.subprocess, "run", side_effect=timeout):
             with mock.patch.object(module.sys, "stderr", new_callable=io.StringIO) as stderr:
                 callback(tool_name="terminal", args=args)
 
         self.assertEqual({"command": "git status"}, args)
-        self.assertEqual("rtk: hermes plugin warning: rtk rewrite timed out\n", stderr.getvalue())
+        self.assertEqual("rtco: hermes plugin warning: rtco rewrite timed out\n", stderr.getvalue())
 
     def test_file_not_found_preserves_original_command(self):
         module, callback = self.load_callback()
@@ -220,7 +220,7 @@ class RtkRewritePluginTest(unittest.TestCase):
                 callback(tool_name="terminal", args=args)
 
         self.assertEqual({"command": "git status"}, args)
-        self.assertIn("rtk: hermes plugin warning:", stderr.getvalue())
+        self.assertIn("rtco: hermes plugin warning:", stderr.getvalue())
 
     def test_unexpected_exception_prints_warning_and_keeps_command(self):
         module, callback = self.load_callback()
@@ -231,7 +231,7 @@ class RtkRewritePluginTest(unittest.TestCase):
                 callback(tool_name="terminal", args=args)
 
         self.assertEqual({"command": "git status"}, args)
-        self.assertEqual("rtk: hermes plugin warning: boom\n", stderr.getvalue())
+        self.assertEqual("rtco: hermes plugin warning: boom\n", stderr.getvalue())
 
     def test_non_terminal_tool_is_noop(self):
         module, callback = self.load_callback()
@@ -330,7 +330,7 @@ class InstalledRtkRewritePluginTest(unittest.TestCase):
                 msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}",
             )
 
-            plugin_dir = home_path / ".hermes" / "plugins" / "rtk-rewrite"
+            plugin_dir = home_path / ".hermes" / "plugins" / "rtco-rewrite"
             init_path = plugin_dir / "__init__.py"
             manifest_path = plugin_dir / "plugin.yaml"
             self.assertTrue(init_path.exists(), "installed plugin __init__.py must exist")
@@ -345,7 +345,7 @@ class InstalledRtkRewritePluginTest(unittest.TestCase):
                 args = {"command": "git status"}
                 callback(tool_name="terminal", args=args)
 
-            self.assertEqual({"command": "rtk git status"}, args)
+            self.assertEqual({"command": "rtco git status"}, args)
 
 
 if __name__ == "__main__":

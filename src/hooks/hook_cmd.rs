@@ -244,9 +244,9 @@ fn print_rewrite(cmd: &str) {
 
 // ── Audit logging ─────────────────────────────────────────────
 
-/// Best-effort audit log when RTK_HOOK_AUDIT=1.
+/// Best-effort audit log when RTCO_HOOK_AUDIT=1.
 fn audit_log(action: &str, original: &str, rewritten: &str) {
-    if std::env::var("RTK_HOOK_AUDIT").as_deref() != Ok("1") {
+    if std::env::var("RTCO_HOOK_AUDIT").as_deref() != Ok("1") {
         return;
     }
     let _ = audit_log_inner(action, original, rewritten);
@@ -592,7 +592,7 @@ mod tests {
 
     #[test]
     fn test_get_rewritten_already_rtk() {
-        assert!(get_rewritten("rtk git status").is_none());
+        assert!(get_rewritten("rtco git status").is_none());
     }
 
     #[test]
@@ -614,7 +614,7 @@ mod tests {
             "decision": "allow",
             "hookSpecificOutput": {
                 "tool_input": {
-                    "command": "rtk git status"
+                    "command": "rtco git status"
                 }
             }
         });
@@ -622,7 +622,7 @@ mod tests {
         assert_eq!(json["decision"], "allow");
         assert_eq!(
             json["hookSpecificOutput"]["tool_input"]["command"],
-            "rtk git status"
+            "rtco git status"
         );
     }
 
@@ -630,15 +630,15 @@ mod tests {
     fn test_gemini_hook_uses_rewrite_command() {
         assert_eq!(
             rewrite_command_no_prefixes("git status", &[]),
-            Some("rtk git status".into())
+            Some("rtco git status".into())
         );
         assert_eq!(
             rewrite_command_no_prefixes("cargo test", &[]),
-            Some("rtk cargo test".into())
+            Some("rtco cargo test".into())
         );
         assert_eq!(
-            rewrite_command_no_prefixes("rtk git status", &[]),
-            Some("rtk git status".into())
+            rewrite_command_no_prefixes("rtco git status", &[]),
+            Some("rtco git status".into())
         );
         assert_eq!(rewrite_command_no_prefixes("cat <<EOF", &[]), None);
     }
@@ -652,7 +652,7 @@ mod tests {
         );
         assert_eq!(
             rewrite_command_no_prefixes("git status", &excluded),
-            Some("rtk git status".into())
+            Some("rtco git status".into())
         );
     }
 
@@ -694,7 +694,7 @@ mod tests {
             .pointer("/hookSpecificOutput/updatedInput/command")
             .and_then(|c| c.as_str())
             .unwrap();
-        assert_eq!(cmd, "rtk git status");
+        assert_eq!(cmd, "rtco git status");
     }
 
     #[test]
@@ -703,7 +703,7 @@ mod tests {
         let result = run_claude_inner(&input).unwrap();
         let v: Value = serde_json::from_str(&result).unwrap();
         let updated = &v["hookSpecificOutput"]["updatedInput"];
-        assert_eq!(updated["command"], "rtk git status");
+        assert_eq!(updated["command"], "rtco git status");
         assert_eq!(updated["timeout"], 30000);
         assert_eq!(updated["description"], "Check repo status");
     }
@@ -720,7 +720,7 @@ mod tests {
 
     #[test]
     fn test_claude_already_rtk_passthrough() {
-        assert!(run_claude_inner(&claude_input("rtk git status")).is_none());
+        assert!(run_claude_inner(&claude_input("rtco git status")).is_none());
     }
 
     #[test]
@@ -757,7 +757,7 @@ mod tests {
             .pointer("/hookSpecificOutput/updatedInput/command")
             .and_then(|c| c.as_str())
             .unwrap();
-        assert_eq!(cmd, "rtk git add . && rtk cargo test");
+        assert_eq!(cmd, "rtco git add . && rtco cargo test");
     }
 
     #[test]
@@ -796,7 +796,7 @@ mod tests {
         let v: Value = serde_json::from_str(&result).unwrap();
         // Cursor preToolUse expects allow/deny for rewrite application.
         assert_eq!(v["permission"], "allow");
-        assert_eq!(v["updated_input"]["command"], "rtk git status");
+        assert_eq!(v["updated_input"]["command"], "rtco git status");
         assert!(v.get("hookSpecificOutput").is_none());
         // `continue: true` keeps the Cursor preToolUse panel from collapsing
         // to `Output: {}`; without it the rewrite is invisible to users.
@@ -823,7 +823,7 @@ mod tests {
 
     #[test]
     fn test_cursor_already_rtk_passthrough() {
-        let result = run_cursor_inner(&cursor_input("rtk git status"));
+        let result = run_cursor_inner(&cursor_input("rtco git status"));
         assert_eq!(result, "{}");
     }
 
@@ -860,7 +860,7 @@ mod tests {
         let v: Value = serde_json::from_str(&result).unwrap();
         assert_eq!(v["continue"], true);
         assert_eq!(v["permission"], "allow");
-        assert_eq!(v["updated_input"]["command"], "rtk git status");
+        assert_eq!(v["updated_input"]["command"], "rtco git status");
     }
 
     #[test]
@@ -875,7 +875,7 @@ mod tests {
         let v: Value = serde_json::from_str(&result).unwrap();
         assert_eq!(v["continue"], true);
         assert_eq!(v["permission"], "allow");
-        assert_eq!(v["updated_input"]["command"], "rtk git status");
+        assert_eq!(v["updated_input"]["command"], "rtco git status");
     }
 
     #[test]
@@ -895,8 +895,8 @@ mod tests {
 
     #[test]
     fn test_audit_log_silent_when_disabled() {
-        std::env::remove_var("RTK_HOOK_AUDIT");
-        audit_log("test", "git status", "rtk git status");
+        std::env::remove_var("RTCO_HOOK_AUDIT");
+        audit_log("test", "git status", "rtco git status");
     }
 
     #[test]
@@ -926,7 +926,7 @@ mod tests {
         );
         assert_eq!(parts[1], "rewrite");
         assert_eq!(parts[2], "git status");
-        assert_eq!(parts[3], "rtk git status");
+        assert_eq!(parts[3], "rtco git status");
 
         let _ = std::fs::remove_dir_all(&tmp);
     }

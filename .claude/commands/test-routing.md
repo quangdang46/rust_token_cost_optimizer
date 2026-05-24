@@ -1,11 +1,11 @@
 ---
 model: haiku
-description: Test RTK command routing without execution (dry-run) - verifies which commands have filters
+description: Test RTCO command routing without execution (dry-run) - verifies which commands have filters
 ---
 
 # /test-routing
 
-Vérifie le routing de commandes RTK sans exécution (dry-run). Utile pour tester si une commande a un filtre disponible avant de l'exécuter.
+Vérifie le routing de commandes RTCO sans exécution (dry-run). Utile pour tester si une commande a un filtre disponible avant de l'exécuter.
 
 ## Usage
 
@@ -17,57 +17,57 @@ Vérifie le routing de commandes RTK sans exécution (dry-run). Utile pour teste
 
 ```bash
 /test-routing git status
-# Output: ✅ RTK filter available: git status → rtk git status
+# Output: ✅ RTCO filter available: git status → rtco git status
 
 /test-routing npm install
-# Output: ⚠️  No RTK filter, would execute raw: npm install
+# Output: ⚠️  No RTCO filter, would execute raw: npm install
 
 /test-routing cargo test
-# Output: ✅ RTK filter available: cargo test → rtk cargo test
+# Output: ✅ RTCO filter available: cargo test → rtco cargo test
 ```
 
 ## Quand utiliser
 
-- **Avant d'exécuter une commande**: Vérifier si RTK a un filtre
+- **Avant d'exécuter une commande**: Vérifier si RTCO a un filtre
 - **Debugging hook integration**: Tester le command routing sans side-effects
-- **Documentation**: Identifier quelles commandes RTK supporte
+- **Documentation**: Identifier quelles commandes RTCO supporte
 - **Testing**: Valider routing logic sans exécuter de vraies commandes
 
 ## Implémentation
 
-### Option 1: Check RTK Help Output
+### Option 1: Check RTCO Help Output
 
 ```bash
 COMMAND="$1"
 shift
 ARGS="$@"
 
-# Check if RTK has subcommand for this command
-if rtk --help | grep -E "^  $COMMAND" >/dev/null 2>&1; then
-    echo "✅ RTK filter available: $COMMAND $ARGS → rtk $COMMAND $ARGS"
+# Check if RTCO has subcommand for this command
+if rtco --help | grep -E "^  $COMMAND" >/dev/null 2>&1; then
+    echo "✅ RTCO filter available: $COMMAND $ARGS → rtco $COMMAND $ARGS"
     echo ""
     echo "Expected behavior:"
-    echo "  - Command will be filtered through RTK"
+    echo "  - Command will be filtered through RTCO"
     echo "  - Output condensed for token efficiency"
     echo "  - Exit code preserved from original command"
 else
-    echo "⚠️  No RTK filter available, would execute raw: $COMMAND $ARGS"
+    echo "⚠️  No RTCO filter available, would execute raw: $COMMAND $ARGS"
     echo ""
     echo "Expected behavior:"
-    echo "  - Command executed without RTK filtering"
+    echo "  - Command executed without RTCO filtering"
     echo "  - Full command output (no token savings)"
     echo "  - Original command behavior unchanged"
 fi
 ```
 
-### Option 2: Check RTK Source Code
+### Option 2: Check RTCO Source Code
 
 ```bash
 COMMAND="$1"
 shift
 ARGS="$@"
 
-# List of supported RTK commands (from src/main.rs)
+# List of supported RTCO commands (from src/main.rs)
 RTK_COMMANDS=(
     "git"
     "grep"
@@ -104,7 +104,7 @@ RTK_COMMANDS=(
 
 # Check if command in supported list
 if [[ " ${RTK_COMMANDS[@]} " =~ " ${COMMAND} " ]]; then
-    echo "✅ RTK filter available: $COMMAND $ARGS → rtk $COMMAND $ARGS"
+    echo "✅ RTCO filter available: $COMMAND $ARGS → rtco $COMMAND $ARGS"
     echo ""
 
     # Show filter details if available
@@ -131,11 +131,11 @@ if [[ " ${RTK_COMMANDS[@]} " =~ " ${COMMAND} " ]]; then
             ;;
     esac
 else
-    echo "⚠️  No RTK filter available, would execute raw: $COMMAND $ARGS"
+    echo "⚠️  No RTCO filter available, would execute raw: $COMMAND $ARGS"
     echo ""
-    echo "Note: You can still use 'rtk proxy $COMMAND $ARGS' to:"
+    echo "Note: You can still use 'rtco proxy $COMMAND $ARGS' to:"
     echo "  - Execute command without filtering"
-    echo "  - Track usage in 'rtk gain --history'"
+    echo "  - Track usage in 'rtco gain --history'"
     echo "  - Measure potential for new filter development"
 fi
 ```
@@ -148,31 +148,31 @@ shift
 ARGS="$@"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🧪 RTK Command Routing Test"
+echo "🧪 RTCO Command Routing Test"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "Command: $COMMAND $ARGS"
 echo ""
 
-# Check if RTK installed
-if ! command -v rtk >/dev/null 2>&1; then
-    echo "❌ ERROR: RTK not installed"
+# Check if RTCO installed
+if ! command -v rtco >/dev/null 2>&1; then
+    echo "❌ ERROR: RTCO not installed"
     echo "   Install with: cargo install --path ."
     exit 1
 fi
 
-# Check RTK version
-RTK_VERSION=$(rtk --version 2>/dev/null | awk '{print $2}')
-echo "RTK Version: $RTK_VERSION"
+# Check RTCO version
+RTK_VERSION=$(rtco --version 2>/dev/null | awk '{print $2}')
+echo "RTCO Version: $RTK_VERSION"
 echo ""
 
 # Check if command has filter
-if rtk --help | grep -E "^  $COMMAND" >/dev/null 2>&1; then
+if rtco --help | grep -E "^  $COMMAND" >/dev/null 2>&1; then
     echo "✅ Filter: Available"
     echo ""
     echo "Routing:"
     echo "  Input:  $COMMAND $ARGS"
-    echo "  Route:  rtk $COMMAND $ARGS"
+    echo "  Route:  rtco $COMMAND $ARGS"
     echo "  Filter: Applied"
     echo ""
 
@@ -200,11 +200,11 @@ else
     echo ""
     echo "Routing:"
     echo "  Input:  $COMMAND $ARGS"
-    echo "  Route:  $COMMAND $ARGS (raw, no RTK)"
+    echo "  Route:  $COMMAND $ARGS (raw, no RTCO)"
     echo "  Filter: None"
     echo ""
     echo "Alternatives:"
-    echo "  - Use 'rtk proxy $COMMAND $ARGS' to track usage"
+    echo "  - Use 'rtco proxy $COMMAND $ARGS' to track usage"
     echo "  - Consider contributing a filter for this command"
 fi
 
@@ -220,18 +220,18 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 /test-routing git status
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧪 RTK Command Routing Test
+🧪 RTCO Command Routing Test
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Command: git status
 
-RTK Version: 0.16.0
+RTCO Version: 0.16.0
 
 ✅ Filter: Available
 
 Routing:
   Input:  git status
-  Route:  rtk git status
+  Route:  rtco git status
   Filter: Applied
 
 Expected Token Savings: 60-80%
@@ -246,39 +246,39 @@ Startup Time: <10ms
 /test-routing npm install express
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧪 RTK Command Routing Test
+🧪 RTCO Command Routing Test
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Command: npm install express
 
-RTK Version: 0.16.0
+RTCO Version: 0.16.0
 
 ⚠️  Filter: Not available
 
 Routing:
   Input:  npm install express
-  Route:  npm install express (raw, no RTK)
+  Route:  npm install express (raw, no RTCO)
   Filter: None
 
 Alternatives:
-  - Use 'rtk proxy npm install express' to track usage
+  - Use 'rtco proxy npm install express' to track usage
   - Consider contributing a filter for this command
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-### Cas 3: RTK non installé
+### Cas 3: RTCO non installé
 
 ```bash
 /test-routing cargo test
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧪 RTK Command Routing Test
+🧪 RTCO Command Routing Test
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Command: cargo test
 
-❌ ERROR: RTK not installed
+❌ ERROR: RTCO not installed
    Install with: cargo install --path .
 ```
 
@@ -286,11 +286,11 @@ Command: cargo test
 
 ### Use Case 1: Pre-Flight Check
 
-Avant d'exécuter une commande coûteuse, vérifier si RTK a un filtre :
+Avant d'exécuter une commande coûteuse, vérifier si RTCO a un filtre :
 
 ```bash
 /test-routing cargo build --all-targets
-# ✅ Filter available → use rtk cargo build
+# ✅ Filter available → use rtco cargo build
 # ⚠️  No filter → use raw cargo build
 ```
 
@@ -339,15 +339,15 @@ Dans Claude Code, cette command permet de :
 
 1. **Vérifier hook integration** : Test si hooks rewrites commands correctement
 2. **Debugging** : Identifier pourquoi certaines commandes ne sont pas filtrées
-3. **Documentation** : Montrer à l'utilisateur quelles commandes RTK supporte
+3. **Documentation** : Montrer à l'utilisateur quelles commandes RTCO supporte
 
 **Exemple workflow** :
 
 ```
-User: "Is git status supported by RTK?"
+User: "Is git status supported by RTCO?"
 Assistant: "Let me check with /test-routing git status"
 [Runs command]
-Assistant: "Yes! RTK has a filter for git status with 60-80% token savings."
+Assistant: "Yes! RTCO has a filter for git status with 60-80% token savings."
 ```
 
 ## Limitations
@@ -358,5 +358,5 @@ Assistant: "Yes! RTK has a filter for git status with 60-80% token savings."
 
 Pour tester le filtre complet, utiliser :
 ```bash
-rtk <cmd>  # Exécution réelle avec filtre
+rtco <cmd>  # Exécution réelle avec filtre
 ```

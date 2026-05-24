@@ -53,7 +53,7 @@ pub enum AgentTarget {
 
 #[derive(Parser)]
 #[command(
-    name = "rtk",
+    name = "rtco",
     version,
     about = "Rust Token Killer - Minimize LLM token consumption",
     long_about = "A high-performance CLI proxy designed to filter and summarize system outputs before they reach your LLM context."
@@ -736,7 +736,7 @@ enum Commands {
         args: Vec<String>,
     },
 
-    /// Show hook rewrite audit metrics (requires RTK_HOOK_AUDIT=1)
+    /// Show hook rewrite audit metrics (requires RTCO_HOOK_AUDIT=1)
     #[command(name = "hook-audit")]
     HookAudit {
         /// Show entries from last N days (0 = all time)
@@ -1164,7 +1164,7 @@ fn run_fallback(parse_error: clap::Error) -> Result<i32> {
     // Start timer before execution to capture actual command runtime
     let timer = core::tracking::TimedExecution::start();
 
-    // TOML filter lookup — bypass with RTK_NO_TOML=1
+    // TOML filter lookup — bypass with RTCO_NO_TOML=1
     // Use basename of args[0] so absolute paths (/usr/bin/make) still match "^make\b".
     let lookup_cmd = {
         let base = std::path::Path::new(&args[0])
@@ -1176,7 +1176,7 @@ fn run_fallback(parse_error: clap::Error) -> Result<i32> {
             .collect::<Vec<_>>()
             .join(" ")
     };
-    let toml_match = if std::env::var("RTK_NO_TOML").ok().as_deref() == Some("1") {
+    let toml_match = if std::env::var("RTCO_NO_TOML").ok().as_deref() == Some("1") {
         None
     } else {
         core::toml_filter::find_matching_filter(&lookup_cmd)
@@ -1229,7 +1229,7 @@ fn run_fallback(parse_error: clap::Error) -> Result<i32> {
 
                 timer.track(
                     &raw_command,
-                    &format!("rtk:toml {}", raw_command),
+                    &format!("rtco:toml {}", raw_command),
                     &combined_raw,
                     &filtered,
                 );
@@ -1255,7 +1255,7 @@ fn run_fallback(parse_error: clap::Error) -> Result<i32> {
 
         match status {
             Ok(s) => {
-                timer.track_passthrough(&raw_command, &format!("rtk fallback: {}", raw_command));
+                timer.track_passthrough(&raw_command, &format!("rtco fallback: {}", raw_command));
 
                 core::tracking::record_parse_failure_silent(&raw_command, &error_message, true);
 
@@ -1355,11 +1355,31 @@ fn validate_pnpm_filters(filters: &[String], command: &PnpmCommands) -> Option<S
     }
 }
 
+/// Migrate legacy `rtk` data directory to `rtco` on first run.
+/// Moves ~/.local/share/rtk -> ~/.local/share/rtco (and config equivalent).
+/// Silent no-op if already migrated, source absent, or destination exists.
+fn migrate_data_dir_once() {
+    if let Some(data_dir) = dirs::data_local_dir() {
+        let old = data_dir.join("rtk");
+        let new = data_dir.join("rtco");
+        if old.exists() && !new.exists() {
+            let _ = std::fs::rename(&old, &new);
+        }
+    }
+    if let Some(config_dir) = dirs::config_dir() {
+        let old = config_dir.join("rtk");
+        let new = config_dir.join("rtco");
+        if old.exists() && !new.exists() {
+            let _ = std::fs::rename(&old, &new);
+        }
+    }
+}
+
 fn main() {
     let code = match run_cli() {
         Ok(code) => code,
         Err(e) => {
-            eprintln!("rtk: {:#}", e);
+            eprintln!("rtco: {:#}", e);
             1
         }
     };
@@ -1389,6 +1409,8 @@ where
 }
 
 fn run_cli() -> Result<i32> {
+    // Migrate legacy ~/.local/share/rtk -> ~/.local/share/rtco on first run
+    migrate_data_dir_once();
     // Fire-and-forget telemetry ping (1/day, non-blocking)
     core::telemetry::maybe_ping();
 
@@ -1433,7 +1455,7 @@ fn run_cli() -> Result<i32> {
             for file in &files {
                 let result = if file == Path::new("-") {
                     if stdin_seen {
-                        eprintln!("rtk: warning: stdin specified more than once");
+                        eprintln!("rtco: warning: stdin specified more than once");
                         continue;
                     }
                     stdin_seen = true;
@@ -1846,13 +1868,13 @@ fn run_cli() -> Result<i32> {
                 hooks::init::run_pi_mode(global, ctx)?
             } else if agent == Some(AgentTarget::Kilocode) {
                 if global {
-                    anyhow::bail!("Kilo Code is project-scoped. Use: rtk init --agent kilocode");
+                    anyhow::bail!("Kilo Code is project-scoped. Use: rtco init --agent kilocode");
                 }
                 hooks::init::run_kilocode_mode(ctx)?;
             } else if agent == Some(AgentTarget::Antigravity) {
                 if global {
                     anyhow::bail!(
-                        "Antigravity is project-scoped. Use: rtk init --agent antigravity"
+                        "Antigravity is project-scoped. Use: rtco init --agent antigravity"
                     );
                 }
                 hooks::init::run_antigravity_mode(ctx)?;
@@ -2112,7 +2134,7 @@ fn run_cli() -> Result<i32> {
                                 let args_str = args.join(" ");
                                 timer.track_passthrough(
                                     &format!("npx {}", args_str),
-                                    &format!("rtk npx {} (passthrough)", args_str),
+                                    &format!("rtco npx {} (passthrough)", args_str),
                                 );
                                 core::utils::exit_code_from_status(&status, "npx prisma")
                             }
@@ -2123,7 +2145,7 @@ fn run_cli() -> Result<i32> {
                             .arg("prisma")
                             .status()
                             .context("Failed to run npx prisma")?;
-                        timer.track_passthrough("npx prisma", "rtk npx prisma (passthrough)");
+                        timer.track_passthrough("npx prisma", "rtco npx prisma (passthrough)");
                         core::utils::exit_code_from_status(&status, "npx prisma")
                     }
                 }
@@ -2417,7 +2439,7 @@ fn run_cli() -> Result<i32> {
             // Track usage (input = output since no filtering)
             timer.track(
                 &format!("{} {}", cmd_name, cmd_args.join(" ")),
-                &format!("rtk proxy {} {}", cmd_name, cmd_args.join(" ")),
+                &format!("rtco proxy {} {}", cmd_name, cmd_args.join(" ")),
                 &full_output,
                 &full_output,
             );
@@ -2520,7 +2542,7 @@ mod tests {
 
     #[test]
     fn test_git_commit_single_message() {
-        let cli = Cli::try_parse_from(["rtk", "git", "commit", "-m", "fix: typo"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "git", "commit", "-m", "fix: typo"]).unwrap();
         match cli.command {
             Commands::Git {
                 command: GitCommands::Commit { args },
@@ -2535,7 +2557,7 @@ mod tests {
     #[test]
     fn test_git_commit_multiple_messages() {
         let cli = Cli::try_parse_from([
-            "rtk",
+            "rtco",
             "git",
             "commit",
             "-m",
@@ -2561,7 +2583,7 @@ mod tests {
     // #327: git commit -am "msg" was rejected by Clap
     #[test]
     fn test_git_commit_am_flag() {
-        let cli = Cli::try_parse_from(["rtk", "git", "commit", "-am", "quick fix"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "git", "commit", "-am", "quick fix"]).unwrap();
         match cli.command {
             Commands::Git {
                 command: GitCommands::Commit { args },
@@ -2576,7 +2598,7 @@ mod tests {
     #[test]
     fn test_git_commit_amend() {
         let cli =
-            Cli::try_parse_from(["rtk", "git", "commit", "--amend", "-m", "new msg"]).unwrap();
+            Cli::try_parse_from(["rtco", "git", "commit", "--amend", "-m", "new msg"]).unwrap();
         match cli.command {
             Commands::Git {
                 command: GitCommands::Commit { args },
@@ -2591,7 +2613,7 @@ mod tests {
     #[test]
     fn test_git_global_options_parsing() {
         let cli =
-            Cli::try_parse_from(["rtk", "git", "--no-pager", "--no-optional-locks", "status"])
+            Cli::try_parse_from(["rtco", "git", "--no-pager", "--no-optional-locks", "status"])
                 .unwrap();
         match cli.command {
             Commands::Git {
@@ -2613,7 +2635,7 @@ mod tests {
     #[test]
     fn test_git_commit_long_flag_multiple() {
         let cli = Cli::try_parse_from([
-            "rtk",
+            "rtco",
             "git",
             "commit",
             "--message",
@@ -2647,13 +2669,13 @@ mod tests {
 
     #[test]
     fn test_try_parse_valid_git_status() {
-        let result = Cli::try_parse_from(["rtk", "git", "status"]);
+        let result = Cli::try_parse_from(["rtco", "git", "status"]);
         assert!(result.is_ok(), "git status should parse successfully");
     }
 
     #[test]
     fn test_try_parse_init_agent_hermes() {
-        let cli = Cli::try_parse_from(["rtk", "init", "--agent", "hermes"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "init", "--agent", "hermes"]).unwrap();
         match cli.command {
             Commands::Init { agent, .. } => {
                 assert_eq!(agent, Some(AgentTarget::Hermes));
@@ -2664,7 +2686,7 @@ mod tests {
 
     #[test]
     fn test_try_parse_kubectl_get_alias() {
-        let cli = Cli::try_parse_from(["rtk", "kubectl", "get", "pods", "-n", "default"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "kubectl", "get", "pods", "-n", "default"]).unwrap();
 
         match cli.command {
             Commands::Kubectl {
@@ -2676,7 +2698,7 @@ mod tests {
 
     #[test]
     fn test_try_parse_init_agent_hermes_uninstall() {
-        let cli = Cli::try_parse_from(["rtk", "init", "--agent", "hermes", "--uninstall"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "init", "--agent", "hermes", "--uninstall"]).unwrap();
         match cli.command {
             Commands::Init {
                 agent, uninstall, ..
@@ -2722,7 +2744,7 @@ mod tests {
 
     #[test]
     fn test_try_parse_help_is_display_help() {
-        match Cli::try_parse_from(["rtk", "--help"]) {
+        match Cli::try_parse_from(["rtco", "--help"]) {
             Err(e) => assert_eq!(e.kind(), ErrorKind::DisplayHelp),
             Ok(_) => panic!("Expected DisplayHelp error"),
         }
@@ -2730,7 +2752,7 @@ mod tests {
 
     #[test]
     fn test_try_parse_version_is_display_version() {
-        match Cli::try_parse_from(["rtk", "--version"]) {
+        match Cli::try_parse_from(["rtco", "--version"]) {
             Err(e) => assert_eq!(e.kind(), ErrorKind::DisplayVersion),
             Ok(_) => panic!("Expected DisplayVersion error"),
         }
@@ -2738,7 +2760,7 @@ mod tests {
 
     #[test]
     fn test_try_parse_unknown_subcommand_is_error() {
-        match Cli::try_parse_from(["rtk", "nonexistent-command"]) {
+        match Cli::try_parse_from(["rtco", "nonexistent-command"]) {
             Err(e) => assert!(!matches!(
                 e.kind(),
                 ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
@@ -2749,7 +2771,7 @@ mod tests {
 
     #[test]
     fn test_try_parse_git_with_dash_c_succeeds() {
-        let result = Cli::try_parse_from(["rtk", "git", "-C", "/path", "status"]);
+        let result = Cli::try_parse_from(["rtco", "git", "-C", "/path", "status"]);
         assert!(
             result.is_ok(),
             "git -C /path status should parse successfully"
@@ -2766,7 +2788,7 @@ mod tests {
 
     #[test]
     fn test_gain_failures_flag_parses() {
-        let result = Cli::try_parse_from(["rtk", "gain", "--failures"]);
+        let result = Cli::try_parse_from(["rtco", "gain", "--failures"]);
         assert!(result.is_ok());
         if let Ok(cli) = result {
             match cli.command {
@@ -2778,7 +2800,7 @@ mod tests {
 
     #[test]
     fn test_gain_failures_short_flag_parses() {
-        let result = Cli::try_parse_from(["rtk", "gain", "-F"]);
+        let result = Cli::try_parse_from(["rtco", "gain", "-F"]);
         assert!(result.is_ok());
         if let Ok(cli) = result {
             match cli.command {
@@ -2796,7 +2818,7 @@ mod tests {
             if matches!(*cmd, "proxy" | "run" | "rewrite" | "session") {
                 continue; // these use trailing_var_arg (accept any args by design)
             }
-            let result = Cli::try_parse_from(["rtk", cmd, "--nonexistent-flag-xyz"]);
+            let result = Cli::try_parse_from(["rtco", cmd, "--nonexistent-flag-xyz"]);
             assert!(
                 result.is_err(),
                 "Meta-command '{}' with bad flag should fail to parse",
@@ -2807,7 +2829,7 @@ mod tests {
 
     #[test]
     fn test_run_command_with_dash_c() {
-        let cli = Cli::try_parse_from(["rtk", "run", "-c", "git status && echo done"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "run", "-c", "git status && echo done"]).unwrap();
         match cli.command {
             Commands::Run { command, args } => {
                 assert_eq!(command, Some("git status && echo done".to_string()));
@@ -2819,7 +2841,7 @@ mod tests {
 
     #[test]
     fn test_run_command_positional_args() {
-        let cli = Cli::try_parse_from(["rtk", "run", "echo", "hello"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "run", "echo", "hello"]).unwrap();
         match cli.command {
             Commands::Run { command, args } => {
                 assert!(command.is_none());
@@ -2831,7 +2853,7 @@ mod tests {
 
     #[test]
     fn test_hook_claude_parses() {
-        let cli = Cli::try_parse_from(["rtk", "hook", "claude"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "hook", "claude"]).unwrap();
         assert!(matches!(
             cli.command,
             Commands::Hook {
@@ -2842,7 +2864,7 @@ mod tests {
 
     #[test]
     fn test_hook_check_parses() {
-        let cli = Cli::try_parse_from(["rtk", "hook", "check", "git", "status"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "hook", "check", "git", "status"]).unwrap();
         match cli.command {
             Commands::Hook {
                 command: HookCommands::Check { agent, command },
@@ -2857,7 +2879,7 @@ mod tests {
     #[test]
     fn test_hook_check_with_agent() {
         let cli =
-            Cli::try_parse_from(["rtk", "hook", "check", "--agent", "gemini", "cargo", "test"])
+            Cli::try_parse_from(["rtco", "hook", "check", "--agent", "gemini", "cargo", "test"])
                 .unwrap();
         match cli.command {
             Commands::Hook {
@@ -2873,7 +2895,7 @@ mod tests {
     #[test]
     fn test_hook_check_preserves_double_dash_in_command() {
         let cli = Cli::try_parse_from([
-            "rtk",
+            "rtco",
             "hook",
             "check",
             "shadowenv",
@@ -2898,15 +2920,15 @@ mod tests {
     fn test_meta_command_list_is_complete() {
         // Verify all meta-commands are in the guard list by checking they parse with valid syntax
         let meta_cmds_that_parse = [
-            vec!["rtk", "gain"],
-            vec!["rtk", "discover"],
-            vec!["rtk", "learn"],
-            vec!["rtk", "init"],
-            vec!["rtk", "config"],
-            vec!["rtk", "proxy", "echo", "hi"],
-            vec!["rtk", "run", "-c", "echo hi"],
-            vec!["rtk", "hook-audit"],
-            vec!["rtk", "cc-economics"],
+            vec!["rtco", "gain"],
+            vec!["rtco", "discover"],
+            vec!["rtco", "learn"],
+            vec!["rtco", "init"],
+            vec!["rtco", "config"],
+            vec!["rtco", "proxy", "echo", "hi"],
+            vec!["rtco", "run", "-c", "echo hi"],
+            vec!["rtco", "hook-audit"],
+            vec!["rtco", "cc-economics"],
         ];
         for args in &meta_cmds_that_parse {
             let result = Cli::try_parse_from(args.iter());
@@ -2959,18 +2981,18 @@ mod tests {
         // Clap rejected `-al` as an unknown flag. With trailing_var_arg + allow_hyphen_values,
         // multiple args are accepted and joined into a single command string.
         let cases = vec![
-            vec!["rtk", "rewrite", "ls", "-al"],
-            vec!["rtk", "rewrite", "git", "status"],
-            vec!["rtk", "rewrite", "npm", "exec"],
-            vec!["rtk", "rewrite", "cargo", "test"],
-            vec!["rtk", "rewrite", "du", "-sh", "."],
-            vec!["rtk", "rewrite", "head", "-50", "file.txt"],
+            vec!["rtco", "rewrite", "ls", "-al"],
+            vec!["rtco", "rewrite", "git", "status"],
+            vec!["rtco", "rewrite", "npm", "exec"],
+            vec!["rtco", "rewrite", "cargo", "test"],
+            vec!["rtco", "rewrite", "du", "-sh", "."],
+            vec!["rtco", "rewrite", "head", "-50", "file.txt"],
         ];
         for args in &cases {
             let result = Cli::try_parse_from(args.iter());
             assert!(
                 result.is_ok(),
-                "rtk rewrite {:?} should parse (was failing before trailing_var_arg fix)",
+                "rtco rewrite {:?} should parse (was failing before trailing_var_arg fix)",
                 &args[2..]
             );
             if let Ok(cli) = result {
@@ -2987,7 +3009,7 @@ mod tests {
     #[test]
     fn test_rewrite_clap_quoted_single_arg() {
         // Quoted form: `rtk rewrite "git status"` — single arg containing spaces
-        let result = Cli::try_parse_from(["rtk", "rewrite", "git status"]);
+        let result = Cli::try_parse_from(["rtco", "rewrite", "git status"]);
         assert!(result.is_ok());
         if let Ok(cli) = result {
             match cli.command {
@@ -3048,7 +3070,7 @@ mod tests {
     #[test]
     fn test_pnpm_subcommand_with_filter() {
         let cli = Cli::try_parse_from([
-            "rtk", "pnpm", "--filter", "@app1", "--filter", "@app2", "list", "--filter", "@app3",
+            "rtco", "pnpm", "--filter", "@app1", "--filter", "@app2", "list", "--filter", "@app3",
             "--filter", "@app4", "--prod",
         ])
         .unwrap();
@@ -3070,7 +3092,7 @@ mod tests {
 
     #[test]
     fn test_git_push_u_flag_passes_through() {
-        let cli = Cli::try_parse_from(["rtk", "git", "push", "-u", "origin", "my-branch"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "git", "push", "-u", "origin", "my-branch"]).unwrap();
         assert!(
             !cli.ultra_compact,
             "-u on git push must NOT be consumed as --ultra-compact"
@@ -3094,7 +3116,7 @@ mod tests {
     fn test_pnpm_subcommand_with_short_filter() {
         // -F is the short form of --filter in pnpm
         let cli =
-            Cli::try_parse_from(["rtk", "pnpm", "-F", "@app1", "-F", "@app2", "list"]).unwrap();
+            Cli::try_parse_from(["rtco", "pnpm", "-F", "@app1", "-F", "@app2", "list"]).unwrap();
         match cli.command {
             Commands::Pnpm { filter, .. } => {
                 assert_eq!(filter, vec!["@app1", "@app2"]);
@@ -3106,7 +3128,7 @@ mod tests {
     #[test]
     fn test_pnpm_typecheck_without_filters() {
         let cli = Cli::try_parse_from([
-            "rtk",
+            "rtco",
             "pnpm",
             "typecheck",
             "--filter",
@@ -3129,7 +3151,7 @@ mod tests {
     #[test]
     fn test_pnpm_typecheck_with_filters() {
         let cli = Cli::try_parse_from([
-            "rtk",
+            "rtco",
             "pnpm",
             "--filter",
             "@app1",
@@ -3155,7 +3177,7 @@ mod tests {
 
     #[test]
     fn test_ultra_compact_long_form_still_works() {
-        let cli = Cli::try_parse_from(["rtk", "--ultra-compact", "git", "status"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "--ultra-compact", "git", "status"]).unwrap();
         assert!(
             cli.ultra_compact,
             "--ultra-compact long form must still enable ultra-compact mode"
@@ -3168,7 +3190,7 @@ mod tests {
         // were dispatched to `npm` instead of `npx`. At the parse level, the
         // Npx variant must carry all args through unchanged so the dispatch
         // arm can forward them to npx.
-        let cli = Cli::try_parse_from(["rtk", "npx", "cowsay", "hello"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "npx", "cowsay", "hello"]).unwrap();
         match cli.command {
             Commands::Npx { args } => {
                 assert_eq!(args, vec!["cowsay", "hello"]);
@@ -3180,13 +3202,13 @@ mod tests {
     #[test]
     fn test_init_pi_flag_rejected() {
         // --pi has been removed; --agent pi is the canonical form
-        let result = Cli::try_parse_from(["rtk", "init", "--pi"]);
+        let result = Cli::try_parse_from(["rtco", "init", "--pi"]);
         assert!(result.is_err(), "--pi must be rejected as unknown argument");
     }
 
     #[test]
     fn test_init_agent_pi_parses() {
-        let cli = Cli::try_parse_from(["rtk", "init", "--agent", "pi"]).unwrap();
+        let cli = Cli::try_parse_from(["rtco", "init", "--agent", "pi"]).unwrap();
         match cli.command {
             Commands::Init { agent, .. } => {
                 assert_eq!(
@@ -3201,7 +3223,7 @@ mod tests {
 
     #[test]
     fn test_init_uninstall_agent_pi_parses() {
-        let cli = Cli::try_parse_from(["rtk", "init", "--uninstall", "--agent", "pi", "--global"])
+        let cli = Cli::try_parse_from(["rtco", "init", "--uninstall", "--agent", "pi", "--global"])
             .unwrap();
         match cli.command {
             Commands::Init {
