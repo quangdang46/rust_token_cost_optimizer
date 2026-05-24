@@ -208,7 +208,7 @@ fn random_salt() -> String {
 pub fn salt_file_path() -> PathBuf {
     dirs::data_local_dir()
         .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join("rtk")
+        .join(crate::core::constants::RTK_DATA_DIR)
         .join(".device_salt")
 }
 
@@ -482,14 +482,14 @@ mod tests {
     #[test]
     fn test_salt_file_path_is_in_rtk_dir() {
         let path = salt_file_path();
-        assert!(path.to_string_lossy().contains("rtk"));
+        assert!(path.to_string_lossy().contains("rtco"));
         assert!(path.to_string_lossy().contains(".device_salt"));
     }
 
     #[test]
     fn test_marker_path_exists() {
         let path = telemetry_marker_path();
-        assert!(path.to_string_lossy().contains("rtk"));
+        assert!(path.to_string_lossy().contains("rtco"));
     }
 
     #[test]

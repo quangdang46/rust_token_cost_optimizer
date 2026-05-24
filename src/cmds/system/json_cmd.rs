@@ -27,7 +27,7 @@ fn validate_json_extension(file: &Path) -> Result<()> {
                 fmt
             );
             if ext == "toml" && file.file_name().is_some_and(|n| n == "Cargo.toml") {
-                msg.push_str(" Tip: use `rtk deps` for Cargo.toml.");
+                msg.push_str(" Tip: use `rtco deps` for Cargo.toml.");
             }
             bail!("{}", msg);
         }

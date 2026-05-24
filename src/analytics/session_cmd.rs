@@ -287,10 +287,10 @@ mod tests {
     fn test_count_chained_commands_split() {
         // "cd ./path && rtk ls" is one ExtractedCommand but two logical commands.
         // cd is ignored/unsupported, ls is supported → 1 out of 2 covered.
-        let cmds = vec![make_cmd("cd ./your/app/path && rtk ls", Some(200))];
+        let cmds = vec![make_cmd("cd ./your/app/path && rtco ls", Some(200))];
         let (total, rtk, _) = count_rtk_commands(&cmds);
         assert_eq!(total, 2, "chain should split into 2 commands");
-        assert_eq!(rtk, 1, "only 'rtk ls' is RTK-covered");
+        assert_eq!(rtk, 1, "only 'rtco ls' is RTK-covered");
     }
 
     #[test]
@@ -420,7 +420,7 @@ mod tests {
         // Claude often runs "cd ./path && git status" as a single Bash call.
         // The adoption metric should split the chain and count each part.
         let jsonl = [
-            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"cd ./your/app/path && rtk ls"}}]}}"#,
+            r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"cd ./your/app/path && rtco ls"}}]}}"#,
             r#"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"file1.rs\nfile2.rs"}]}}"#,
         ];
 
@@ -434,7 +434,7 @@ mod tests {
 
         assert_eq!(cmds.len(), 1, "one Bash tool call");
         let (total, rtk, _) = count_rtk_commands(&cmds);
-        assert_eq!(total, 2, "chain splits into cd + rtk ls");
+        assert_eq!(total, 2, "chain splits into cd + rtco ls");
         assert_eq!(rtk, 1, "rtco ls is covered, cd is not");
     }
 }

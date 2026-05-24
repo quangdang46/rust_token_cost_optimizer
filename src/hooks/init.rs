@@ -110,122 +110,122 @@ const RTK_INSTRUCTIONS: &str = r##"<!-- rtco-instructions v2 -->
 
 ## Golden Rule
 
-**Always prefix commands with `rtk`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
+**Always prefix commands with `rtco`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
 
-**Important**: Even in command chains with `&&`, use `rtk`:
+**Important**: Even in command chains with `&&`, use `rtco`:
 ```bash
 # ❌ Wrong
 git add . && git commit -m "msg" && git push
 
 # ✅ Correct
-rtk git add . && rtk git commit -m "msg" && rtk git push
+rtco git add . && rtco git commit -m "msg" && rtco git push
 ```
 
 ## RTK Commands by Workflow
 
 ### Build & Compile (80-90% savings)
 ```bash
-rtk cargo build         # Cargo build output
-rtk cargo check         # Cargo check output
-rtk cargo clippy        # Clippy warnings grouped by file (80%)
-rtk tsc                 # TypeScript errors grouped by file/code (83%)
-rtk lint                # ESLint/Biome violations grouped (84%)
-rtk prettier --check    # Files needing format only (70%)
-rtk next build          # Next.js build with route metrics (87%)
+rtco cargo build         # Cargo build output
+rtco cargo check         # Cargo check output
+rtco cargo clippy        # Clippy warnings grouped by file (80%)
+rtco tsc                 # TypeScript errors grouped by file/code (83%)
+rtco lint                # ESLint/Biome violations grouped (84%)
+rtco prettier --check    # Files needing format only (70%)
+rtco next build          # Next.js build with route metrics (87%)
 ```
 
 ### Test (60-99% savings)
 ```bash
-rtk cargo test          # Cargo test failures only (90%)
-rtk go test             # Go test failures only (90%)
-rtk jest                # Jest failures only (99.5%)
-rtk vitest              # Vitest failures only (99.5%)
-rtk playwright test     # Playwright failures only (94%)
-rtk pytest              # Python test failures only (90%)
-rtk rake test           # Ruby test failures only (90%)
-rtk rspec               # RSpec test failures only (60%)
-rtk test <cmd>          # Generic test wrapper - failures only
+rtco cargo test          # Cargo test failures only (90%)
+rtco go test             # Go test failures only (90%)
+rtco jest                # Jest failures only (99.5%)
+rtco vitest              # Vitest failures only (99.5%)
+rtco playwright test     # Playwright failures only (94%)
+rtco pytest              # Python test failures only (90%)
+rtco rake test           # Ruby test failures only (90%)
+rtco rspec               # RSpec test failures only (60%)
+rtco test <cmd>          # Generic test wrapper - failures only
 ```
 
 ### Git (59-80% savings)
 ```bash
-rtk git status          # Compact status
-rtk git log             # Compact log (works with all git flags)
-rtk git diff            # Compact diff (80%)
-rtk git show            # Compact show (80%)
-rtk git add             # Ultra-compact confirmations (59%)
-rtk git commit          # Ultra-compact confirmations (59%)
-rtk git push            # Ultra-compact confirmations
-rtk git pull            # Ultra-compact confirmations
-rtk git branch          # Compact branch list
-rtk git fetch           # Compact fetch
-rtk git stash           # Compact stash
-rtk git worktree        # Compact worktree
+rtco git status          # Compact status
+rtco git log             # Compact log (works with all git flags)
+rtco git diff            # Compact diff (80%)
+rtco git show            # Compact show (80%)
+rtco git add             # Ultra-compact confirmations (59%)
+rtco git commit          # Ultra-compact confirmations (59%)
+rtco git push            # Ultra-compact confirmations
+rtco git pull            # Ultra-compact confirmations
+rtco git branch          # Compact branch list
+rtco git fetch           # Compact fetch
+rtco git stash           # Compact stash
+rtco git worktree        # Compact worktree
 ```
 
 Note: Git passthrough works for ALL subcommands, even those not explicitly listed.
 
 ### GitHub (26-87% savings)
 ```bash
-rtk gh pr view <num>    # Compact PR view (87%)
-rtk gh pr checks        # Compact PR checks (79%)
-rtk gh run list         # Compact workflow runs (82%)
-rtk gh issue list       # Compact issue list (80%)
-rtk gh api              # Compact API responses (26%)
+rtco gh pr view <num>    # Compact PR view (87%)
+rtco gh pr checks        # Compact PR checks (79%)
+rtco gh run list         # Compact workflow runs (82%)
+rtco gh issue list       # Compact issue list (80%)
+rtco gh api              # Compact API responses (26%)
 ```
 
 ### JavaScript/TypeScript Tooling (70-90% savings)
 ```bash
-rtk pnpm list           # Compact dependency tree (70%)
-rtk pnpm outdated       # Compact outdated packages (80%)
-rtk pnpm install        # Compact install output (90%)
-rtk npm run <script>    # Compact npm script output
-rtk npx <cmd>           # Compact npx command output
-rtk prisma              # Prisma without ASCII art (88%)
+rtco pnpm list           # Compact dependency tree (70%)
+rtco pnpm outdated       # Compact outdated packages (80%)
+rtco pnpm install        # Compact install output (90%)
+rtco npm run <script>    # Compact npm script output
+rtco npx <cmd>           # Compact npx command output
+rtco prisma              # Prisma without ASCII art (88%)
 ```
 
 ### Files & Search (60-75% savings)
 ```bash
-rtk ls <path>           # Tree format, compact (65%)
-rtk read <file>         # Code reading with filtering (60%)
-rtk grep <pattern>      # Search grouped by file (75%). Format flags (-c, -l, -L, -o, -Z) run raw.
-rtk find <pattern>      # Find grouped by directory (70%)
+rtco ls <path>           # Tree format, compact (65%)
+rtco read <file>         # Code reading with filtering (60%)
+rtco grep <pattern>      # Search grouped by file (75%). Format flags (-c, -l, -L, -o, -Z) run raw.
+rtco find <pattern>      # Find grouped by directory (70%)
 ```
 
 ### Analysis & Debug (70-90% savings)
 ```bash
-rtk err <cmd>           # Filter errors only from any command
-rtk log <file>          # Deduplicated logs with counts
-rtk json <file>         # JSON structure without values
-rtk deps                # Dependency overview
-rtk env                 # Environment variables compact
-rtk summary <cmd>       # Smart summary of command output
-rtk diff                # Ultra-compact diffs
+rtco err <cmd>           # Filter errors only from any command
+rtco log <file>          # Deduplicated logs with counts
+rtco json <file>         # JSON structure without values
+rtco deps                # Dependency overview
+rtco env                 # Environment variables compact
+rtco summary <cmd>       # Smart summary of command output
+rtco diff                # Ultra-compact diffs
 ```
 
 ### Infrastructure (85% savings)
 ```bash
-rtk docker ps           # Compact container list
-rtk docker images       # Compact image list
-rtk docker logs <c>     # Deduplicated logs
-rtk kubectl get         # Compact resource list
-rtk kubectl logs        # Deduplicated pod logs
+rtco docker ps           # Compact container list
+rtco docker images       # Compact image list
+rtco docker logs <c>     # Deduplicated logs
+rtco kubectl get         # Compact resource list
+rtco kubectl logs        # Deduplicated pod logs
 ```
 
 ### Network (65-70% savings)
 ```bash
-rtk curl <url>          # Compact HTTP responses (70%)
-rtk wget <url>          # Compact download output (65%)
+rtco curl <url>          # Compact HTTP responses (70%)
+rtco wget <url>          # Compact download output (65%)
 ```
 
 ### Meta Commands
 ```bash
-rtk gain                # View token savings statistics
-rtk gain --history      # View command history with savings
-rtk discover            # Analyze Claude Code sessions for missed RTK usage
-rtk proxy <cmd>         # Run command without filtering (for debugging)
-rtk init                # Add RTK instructions to CLAUDE.md
-rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
+rtco gain                # View token savings statistics
+rtco gain --history      # View command history with savings
+rtco discover            # Analyze Claude Code sessions for missed RTK usage
+rtco proxy <cmd>         # Run command without filtering (for debugging)
+rtco init                # Add RTK instructions to CLAUDE.md
+rtco init --global       # Add RTK to ~/.claude/CLAUDE.md
 ```
 
 ## Token Savings Overview
@@ -1547,7 +1547,7 @@ fn run_cline_mode(ctx: InitContext) -> Result<()> {
     let rules_path = PathBuf::from(".clinerules");
 
     let existing = fs::read_to_string(&rules_path).unwrap_or_default();
-    if existing.contains("RTK") || existing.contains("rtk") {
+    if existing.contains("RTCO") || existing.contains("rtco") || existing.contains("RTK") || existing.contains("rtk") {
         if !dry_run {
             println!("\nRTK already configured for Cline in this project.\n");
             println!("  Rules: .clinerules (already present)");
@@ -1592,7 +1592,7 @@ fn run_windsurf_mode(ctx: InitContext) -> Result<()> {
     let rules_path = PathBuf::from(".windsurfrules");
 
     let existing = fs::read_to_string(&rules_path).unwrap_or_default();
-    if existing.contains("RTK") || existing.contains("rtk") {
+    if existing.contains("RTCO") || existing.contains("rtco") || existing.contains("RTK") || existing.contains("rtk") {
         if !dry_run {
             println!("\nRTK already configured for Windsurf in this project.\n");
             println!("  Rules: .windsurfrules (already present)");
@@ -1632,7 +1632,7 @@ fn run_windsurf_mode(ctx: InitContext) -> Result<()> {
 
 // ─── Kilo Code support ────────────────────────────────────────
 
-const KILOCODE_RULES: &str = include_str!("../../hooks/kilocode/rules.md");
+const KILOCODE_RULES: &str = include_str!("../../hooks/kilocode/rtco-rules.md");
 
 pub fn run_kilocode_mode(ctx: InitContext) -> Result<()> {
     run_kilocode_mode_at(&std::env::current_dir()?, ctx)
@@ -1642,13 +1642,13 @@ fn run_kilocode_mode_at(base_dir: &Path, ctx: InitContext) -> Result<()> {
     let InitContext { verbose, dry_run } = ctx;
     // Kilo Code reads .kilocode/rules/ from the project root (workspace-scoped)
     let target_dir = base_dir.join(".kilocode/rules");
-    let rules_path = target_dir.join("rtk-rules.md");
+    let rules_path = target_dir.join("rtco-rules.md");
 
     let existing = fs::read_to_string(&rules_path).unwrap_or_default();
-    if existing.contains("RTK") || existing.contains("rtk") {
+    if existing.contains("RTCO") || existing.contains("rtco") || existing.contains("RTK") || existing.contains("rtk") {
         if !dry_run {
             println!("\nRTK already configured for Kilo Code in this project.\n");
-            println!("  Rules: .kilocode/rules/rtk-rules.md (already present)");
+            println!("  Rules: .kilocode/rules/rtco-rules.md (already present)");
         }
     } else {
         let new_content = if existing.trim().is_empty() {
@@ -1668,14 +1668,14 @@ fn run_kilocode_mode_at(base_dir: &Path, ctx: InitContext) -> Result<()> {
             fs::create_dir_all(&target_dir)
                 .context("Failed to create .kilocode/rules directory")?;
             fs::write(&rules_path, &new_content)
-                .context("Failed to write .kilocode/rules/rtk-rules.md")?;
+                .context("Failed to write .kilocode/rules/rtco-rules.md")?;
 
             if verbose > 0 {
-                eprintln!("Wrote .kilocode/rules/rtk-rules.md");
+                eprintln!("Wrote .kilocode/rules/rtco-rules.md");
             }
 
             println!("\nRTK configured for Kilo Code.\n");
-            println!("  Rules: .kilocode/rules/rtk-rules.md (installed)");
+            println!("  Rules: .kilocode/rules/rtco-rules.md (installed)");
         }
     }
     if dry_run {
@@ -1690,7 +1690,7 @@ fn run_kilocode_mode_at(base_dir: &Path, ctx: InitContext) -> Result<()> {
 
 // ─── Google Antigravity support ───────────────────────────────
 
-const ANTIGRAVITY_RULES: &str = include_str!("../../hooks/antigravity/rules.md");
+const ANTIGRAVITY_RULES: &str = include_str!("../../hooks/antigravity/antigravity-rtco-rules.md");
 
 pub fn run_antigravity_mode(ctx: InitContext) -> Result<()> {
     run_antigravity_mode_at(&std::env::current_dir()?, ctx)
@@ -1700,13 +1700,13 @@ fn run_antigravity_mode_at(base_dir: &Path, ctx: InitContext) -> Result<()> {
     let InitContext { verbose, dry_run } = ctx;
     // Antigravity reads .agents/rules/ from the project root (workspace-scoped)
     let target_dir = base_dir.join(".agents/rules");
-    let rules_path = target_dir.join("antigravity-rtk-rules.md");
+    let rules_path = target_dir.join("antigravity-rtco-rules.md");
 
     let existing = fs::read_to_string(&rules_path).unwrap_or_default();
-    if existing.contains("RTK") || existing.contains("rtk") {
+    if existing.contains("RTCO") || existing.contains("rtco") || existing.contains("RTK") || existing.contains("rtk") {
         if !dry_run {
             println!("\nRTK already configured for Antigravity in this project.\n");
-            println!("  Rules: .agents/rules/antigravity-rtk-rules.md (already present)");
+            println!("  Rules: .agents/rules/antigravity-rtco-rules.md (already present)");
         }
     } else {
         let new_content = if existing.trim().is_empty() {
@@ -1725,14 +1725,14 @@ fn run_antigravity_mode_at(base_dir: &Path, ctx: InitContext) -> Result<()> {
         } else {
             fs::create_dir_all(&target_dir).context("Failed to create .agents/rules directory")?;
             fs::write(&rules_path, &new_content)
-                .context("Failed to write .agents/rules/antigravity-rtk-rules.md")?;
+                .context("Failed to write .agents/rules/antigravity-rtco-rules.md")?;
 
             if verbose > 0 {
-                eprintln!("Wrote .agents/rules/antigravity-rtk-rules.md");
+                eprintln!("Wrote .agents/rules/antigravity-rtco-rules.md");
             }
 
             println!("\nRTK configured for Google Antigravity.\n");
-            println!("  Rules: .agents/rules/antigravity-rtk-rules.md (installed)");
+            println!("  Rules: .agents/rules/antigravity-rtco-rules.md (installed)");
         }
     }
     if dry_run {
@@ -2481,7 +2481,7 @@ fn patch_claude_md(path: &Path, ctx: InitContext) -> Result<bool> {
     // Check if @RTK.md already present
     if content.contains(RTK_MD_REF) {
         if verbose > 0 {
-            eprintln!("@RTK.md reference already present in CLAUDE.md");
+            eprintln!("@RTCO.md reference already present in CLAUDE.md");
         }
         if migrated {
             if dry_run {
@@ -2498,7 +2498,7 @@ fn patch_claude_md(path: &Path, ctx: InitContext) -> Result<bool> {
 
     // Add @RTK.md
     let new_content = if content.is_empty() {
-        "@RTK.md\n".to_string()
+        "@RTCO.md\n".to_string()
     } else {
         format!("{}\n\n@RTK.md\n", content.trim())
     };
@@ -3862,28 +3862,28 @@ const COPILOT_HOOK_JSON: &str = r#"{
 const COPILOT_INSTRUCTIONS: &str = r#"<!-- rtco-instructions v2 -->
 # RTK — Token-Optimized CLI
 
-**rtk** is a CLI proxy that filters and compresses command outputs, saving 60-90% tokens.
+**rtco** is a CLI proxy that filters and compresses command outputs, saving 60-90% tokens.
 
 ## Rule
 
-Always prefix shell commands with `rtk`:
+Always prefix shell commands with `rtco`:
 
 ```bash
 # Instead of:              Use:
-git status                 rtk git status
-git log -10                rtk git log -10
-cargo test                 rtk cargo test
-docker ps                  rtk docker ps
-kubectl get pods           rtk kubectl pods
+git status                 rtco git status
+git log -10                rtco git log -10
+cargo test                 rtco cargo test
+docker ps                  rtco docker ps
+kubectl get pods           rtco kubectl pods
 ```
 
 ## Meta commands (use directly)
 
 ```bash
-rtk gain              # Token savings dashboard
-rtk gain --history    # Per-command savings history
-rtk discover          # Find missed rtk opportunities
-rtk proxy <cmd>       # Run raw (no filtering) but track usage
+rtco gain              # Token savings dashboard
+rtco gain --history    # Per-command savings history
+rtco discover          # Find missed rtco opportunities
+rtco proxy <cmd>       # Run raw (no filtering) but track usage
 ```
 <!-- /rtco-instructions -->
 "#;
@@ -4111,10 +4111,10 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let claude_md = temp.path().join("CLAUDE.md");
 
-        fs::write(&claude_md, "# My stuff\n\n@RTK.md\n").unwrap();
+        fs::write(&claude_md, "# My stuff\n\n@RTCO.md\n").unwrap();
 
         let content = fs::read_to_string(&claude_md).unwrap();
-        let count = content.matches("@RTK.md").count();
+        let count = content.matches("@RTCO.md").count();
         assert_eq!(count, 1);
     }
 
@@ -4131,7 +4131,7 @@ mod tests {
         assert!(!second_added);
 
         let content = fs::read_to_string(&agents_md).unwrap();
-        assert_eq!(content.matches("@RTK.md").count(), 1);
+        assert_eq!(content.matches("@RTCO.md").count(), 1);
     }
 
     #[test]
@@ -4183,10 +4183,10 @@ mod tests {
         let temp = TempDir::new().unwrap();
         run_kilocode_mode_at(temp.path(), InitContext::default()).unwrap();
 
-        let rules_path = temp.path().join(".kilocode/rules/rtk-rules.md");
+        let rules_path = temp.path().join(".kilocode/rules/rtco-rules.md");
         assert!(rules_path.exists(), "Rules file should be created");
         let content = fs::read_to_string(&rules_path).unwrap();
-        assert!(content.contains("RTK"), "Rules file should contain RTK");
+        assert!(content.contains("RTCO"), "Rules file should contain RTCO");
     }
 
     #[test]
@@ -4194,7 +4194,7 @@ mod tests {
         let temp = TempDir::new().unwrap();
         run_kilocode_mode_at(temp.path(), InitContext::default()).unwrap();
 
-        let path = temp.path().join(".kilocode/rules/rtk-rules.md");
+        let path = temp.path().join(".kilocode/rules/rtco-rules.md");
         let first = fs::read_to_string(&path).unwrap();
 
         // Second run should not overwrite
@@ -4208,10 +4208,10 @@ mod tests {
         let temp = TempDir::new().unwrap();
         run_antigravity_mode_at(temp.path(), InitContext::default()).unwrap();
 
-        let rules_path = temp.path().join(".agents/rules/antigravity-rtk-rules.md");
+        let rules_path = temp.path().join(".agents/rules/antigravity-rtco-rules.md");
         assert!(rules_path.exists(), "Rules file should be created");
         let content = fs::read_to_string(&rules_path).unwrap();
-        assert!(content.contains("RTK"), "Rules file should contain RTK");
+        assert!(content.contains("RTCO"), "Rules file should contain RTCO");
     }
 
     #[test]
@@ -4219,7 +4219,7 @@ mod tests {
         let temp = TempDir::new().unwrap();
         run_antigravity_mode_at(temp.path(), InitContext::default()).unwrap();
 
-        let path = temp.path().join(".agents/rules/antigravity-rtk-rules.md");
+        let path = temp.path().join(".agents/rules/antigravity-rtco-rules.md");
         let first = fs::read_to_string(&path).unwrap();
 
         // Second run should not overwrite
@@ -4237,7 +4237,7 @@ mod tests {
 
         assert!(added);
         let content = fs::read_to_string(&agents_md).unwrap();
-        assert_eq!(content, "@RTK.md\n");
+        assert_eq!(content, "@RTCO.md\n");
     }
 
     #[test]
@@ -4258,7 +4258,7 @@ mod tests {
         assert!(added);
         let content = fs::read_to_string(&agents_md).unwrap();
         assert!(!content.contains("old"));
-        assert_eq!(content.matches("@RTK.md").count(), 1);
+        assert_eq!(content.matches("@RTCO.md").count(), 1);
     }
 
     #[test]
@@ -4812,9 +4812,9 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let codex_dir = temp.path();
         let agents_md = codex_dir.join("AGENTS.md");
-        let rtk_md = codex_dir.join("RTK.md");
+        let rtk_md = codex_dir.join("RTCO.md");
 
-        fs::write(&agents_md, "# Team rules\n\n@RTK.md\n").unwrap();
+        fs::write(&agents_md, "# Team rules\n\n@RTCO.md\n").unwrap();
         fs::write(&rtk_md, "codex config").unwrap();
 
         let removed_first = uninstall_codex_at(codex_dir, InitContext::default()).unwrap();
@@ -4825,7 +4825,7 @@ mod tests {
         assert!(!rtk_md.exists());
 
         let content = fs::read_to_string(&agents_md).unwrap();
-        assert!(!content.contains("@RTK.md"));
+        assert!(!content.contains("@RTCO.md"));
         assert!(content.contains("# Team rules"));
     }
 
@@ -4834,7 +4834,7 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let codex_dir = temp.path();
         let agents_md = codex_dir.join("AGENTS.md");
-        let rtk_md = codex_dir.join("RTK.md");
+        let rtk_md = codex_dir.join("RTCO.md");
         let absolute_ref = codex_rtk_md_ref(codex_dir);
 
         fs::write(&agents_md, format!("# Team rules\n\n{}\n", absolute_ref)).unwrap();
@@ -4934,7 +4934,7 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let codex_dir = temp.path();
         let agents_md = codex_dir.join("AGENTS.md");
-        let rtk_md = codex_dir.join("RTK.md");
+        let rtk_md = codex_dir.join("RTCO.md");
 
         fs::write(
             &agents_md,
@@ -5795,11 +5795,11 @@ mod tests {
 
         let after_at_removal: String = content
             .lines()
-            .filter(|line| !line.trim().starts_with("@RTK.md"))
+            .filter(|line| !line.trim().starts_with("@RTCO.md"))
             .collect::<Vec<_>>()
             .join("\n");
 
-        assert!(!after_at_removal.contains("@RTK.md"));
+        assert!(!after_at_removal.contains("@RTCO.md"));
         assert!(after_at_removal.contains(RTK_BLOCK_START));
 
         let (final_content, did_remove) = remove_rtk_block(&after_at_removal);

@@ -1263,7 +1263,7 @@ mod tests {
     fn test_rewrite_compound_and() {
         assert_eq!(
             rewrite_command_no_prefixes("git add . && cargo test", &[]),
-            Some("rtco git add . && rtk cargo test".into())
+            Some("rtco git add . && rtco cargo test".into())
         );
     }
 
@@ -1274,7 +1274,7 @@ mod tests {
                 "cargo fmt --all && cargo clippy --all-targets && cargo test",
                 &[]
             ),
-            Some("rtco cargo fmt --all && rtk cargo clippy --all-targets && rtk cargo test".into())
+            Some("rtco cargo fmt --all && rtco cargo clippy --all-targets && rtco cargo test".into())
         );
     }
 
@@ -1290,7 +1290,7 @@ mod tests {
     fn test_rewrite_background_single_amp() {
         assert_eq!(
             rewrite_command_no_prefixes("cargo test & git status", &[]),
-            Some("rtco cargo test & rtk git status".into())
+            Some("rtco cargo test & rtco git status".into())
         );
     }
 
@@ -1307,7 +1307,7 @@ mod tests {
         // `&&` must still work after adding `&` support
         assert_eq!(
             rewrite_command_no_prefixes("cargo test && git status", &[]),
-            Some("rtco cargo test && rtk git status".into())
+            Some("rtco cargo test && rtco git status".into())
         );
     }
 
@@ -1325,7 +1325,7 @@ mod tests {
     fn test_rewrite_with_env_prefix() {
         assert_eq!(
             rewrite_command_no_prefixes("GIT_SSH_COMMAND=ssh git push", &[]),
-            Some("GIT_SSH_COMMAND=ssh rtk git push".into())
+            Some("GIT_SSH_COMMAND=ssh rtco git push".into())
         );
     }
 
@@ -1510,7 +1510,7 @@ mod tests {
         // First segment already RTK, second gets rewritten
         assert_eq!(
             rewrite_command_no_prefixes("rtco git add . && cargo test", &[]),
-            Some("rtco git add . && rtk cargo test".into())
+            Some("rtco git add . && rtco cargo test".into())
         );
     }
 
@@ -1591,7 +1591,7 @@ mod tests {
     fn test_rewrite_non_rtk_disabled_env_still_rewrites() {
         assert_eq!(
             rewrite_command_no_prefixes("SOME_VAR=1 git status", &[]),
-            Some("SOME_VAR=1 rtk git status".into())
+            Some("SOME_VAR=1 rtco git status".into())
         );
     }
 
@@ -1602,7 +1602,7 @@ mod tests {
                 r#"GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git push"#,
                 &[]
             ),
-            Some(r#"GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" rtk git push"#.into())
+            Some(r#"GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" rtco git push"#.into())
         );
     }
 
@@ -1610,7 +1610,7 @@ mod tests {
     fn test_rewrite_env_single_quoted_value_with_spaces() {
         assert_eq!(
             rewrite_command_no_prefixes("EDITOR='vim -u NONE' git commit", &[]),
-            Some("EDITOR='vim -u NONE' rtk git commit".into())
+            Some("EDITOR='vim -u NONE' rtco git commit".into())
         );
     }
 
@@ -1618,7 +1618,7 @@ mod tests {
     fn test_rewrite_env_quoted_plus_unquoted() {
         assert_eq!(
             rewrite_command_no_prefixes(r#"FOO="bar baz" BAR=1 git status"#, &[]),
-            Some(r#"FOO="bar baz" BAR=1 rtk git status"#.into())
+            Some(r#"FOO="bar baz" BAR=1 rtco git status"#.into())
         );
     }
 
@@ -1626,7 +1626,7 @@ mod tests {
     fn test_rewrite_env_escaped_quotes_in_value() {
         assert_eq!(
             rewrite_command_no_prefixes(r#"FOO="he said \"hello\"" git status"#, &[]),
-            Some(r#"FOO="he said \"hello\"" rtk git status"#.into())
+            Some(r#"FOO="he said \"hello\"" rtco git status"#.into())
         );
     }
 
@@ -1720,7 +1720,7 @@ mod tests {
         // background `&` must still work after redirect fix
         assert_eq!(
             rewrite_command_no_prefixes("cargo test & git status", &[]),
-            Some("rtco cargo test & rtk git status".into())
+            Some("rtco cargo test & rtco git status".into())
         );
     }
 
@@ -2506,7 +2506,7 @@ mod tests {
     fn test_rewrite_env_prefixed_golangci_lint_with_value_flag_before_run() {
         assert_eq!(
             rewrite_command_no_prefixes("FOO=1 golangci-lint --color never run ./...", &[]),
-            Some("FOO=1 rtk golangci-lint --color never run ./...".into())
+            Some("FOO=1 rtco golangci-lint --color never run ./...".into())
         );
     }
 
@@ -2514,7 +2514,7 @@ mod tests {
     fn test_rewrite_env_prefixed_golangci_lint_with_inline_value_flag_before_run() {
         assert_eq!(
             rewrite_command_no_prefixes("FOO=1 golangci-lint --color=never run ./...", &[]),
-            Some("FOO=1 rtk golangci-lint --color=never run ./...".into())
+            Some("FOO=1 rtco golangci-lint --color=never run ./...".into())
         );
     }
 
@@ -3079,7 +3079,7 @@ mod tests {
         // `||` fallback: left rewritten, right rewritten
         assert_eq!(
             rewrite_command_no_prefixes("cargo test || cargo build", &[]),
-            Some("rtco cargo test || rtk cargo build".into())
+            Some("rtco cargo test || rtco cargo build".into())
         );
     }
 
@@ -3087,7 +3087,7 @@ mod tests {
     fn test_rewrite_compound_semicolon() {
         assert_eq!(
             rewrite_command_no_prefixes("git status; cargo test", &[]),
-            Some("rtco git status; rtk cargo test".into())
+            Some("rtco git status; rtco cargo test".into())
         );
     }
 
@@ -3116,7 +3116,7 @@ mod tests {
                 &[]
             ),
             Some(
-                "rtco cargo fmt --all && rtk cargo clippy && rtk cargo test && rtk git status"
+                "rtco cargo fmt --all && rtco cargo clippy && rtco cargo test && rtco git status"
                     .into()
             )
         );
@@ -3143,7 +3143,7 @@ mod tests {
     fn test_rewrite_sudo_docker() {
         assert_eq!(
             rewrite_command_no_prefixes("sudo docker ps", &[]),
-            Some("sudo rtk docker ps".into())
+            Some("sudo rtco docker ps".into())
         );
     }
 
@@ -3151,7 +3151,7 @@ mod tests {
     fn test_rewrite_env_var_prefix() {
         assert_eq!(
             rewrite_command_no_prefixes("GIT_SSH_COMMAND=ssh git push origin main", &[]),
-            Some("GIT_SSH_COMMAND=ssh rtk git push origin main".into())
+            Some("GIT_SSH_COMMAND=ssh rtco git push origin main".into())
         );
     }
 
@@ -3596,7 +3596,7 @@ mod tests {
     fn test_shell_prefix_noglob() {
         assert_eq!(
             rewrite_command_no_prefixes("noglob git status", &[]),
-            Some("noglob rtk git status".into())
+            Some("noglob rtco git status".into())
         );
     }
 
@@ -3604,7 +3604,7 @@ mod tests {
     fn test_shell_prefix_command() {
         assert_eq!(
             rewrite_command_no_prefixes("command git status", &[]),
-            Some("command rtk git status".into())
+            Some("command rtco git status".into())
         );
     }
 
@@ -3612,15 +3612,15 @@ mod tests {
     fn test_shell_prefix_builtin_exec_nocorrect() {
         assert_eq!(
             rewrite_command_no_prefixes("builtin git status", &[]),
-            Some("builtin rtk git status".into())
+            Some("builtin rtco git status".into())
         );
         assert_eq!(
             rewrite_command_no_prefixes("exec git status", &[]),
-            Some("exec rtk git status".into())
+            Some("exec rtco git status".into())
         );
         assert_eq!(
             rewrite_command_no_prefixes("nocorrect git status", &[]),
-            Some("nocorrect rtk git status".into())
+            Some("nocorrect rtco git status".into())
         );
     }
 
@@ -3639,7 +3639,7 @@ mod tests {
         let prefixes = vec!["shadowenv exec --".to_string()];
         assert_eq!(
             super::rewrite_command("shadowenv exec -- git status", &[], &prefixes),
-            Some("shadowenv exec -- rtk git status".into())
+            Some("shadowenv exec -- rtco git status".into())
         );
     }
 
@@ -3648,7 +3648,7 @@ mod tests {
         let prefixes = vec!["shadowenv exec --".to_string()];
         assert_eq!(
             super::rewrite_command("shadowenv exec -- cargo test", &[], &prefixes),
-            Some("shadowenv exec -- rtk cargo test".into())
+            Some("shadowenv exec -- rtco cargo test".into())
         );
     }
 
@@ -3677,7 +3677,7 @@ mod tests {
         let prefixes = vec!["shadowenv exec --".to_string()];
         assert_eq!(
             super::rewrite_command("noglob shadowenv exec -- git status", &[], &prefixes),
-            Some("noglob shadowenv exec -- rtk git status".into())
+            Some("noglob shadowenv exec -- rtco git status".into())
         );
     }
 
@@ -3686,7 +3686,7 @@ mod tests {
         let prefixes = vec!["bundle exec".to_string()];
         assert_eq!(
             super::rewrite_command("RAILS_ENV=test bundle exec git status", &[], &prefixes),
-            Some("RAILS_ENV=test bundle exec rtk git status".into())
+            Some("RAILS_ENV=test bundle exec rtco git status".into())
         );
     }
 
@@ -3694,7 +3694,7 @@ mod tests {
     fn test_env_prefix_composed_with_builtin() {
         assert_eq!(
             rewrite_command_no_prefixes("sudo noglob git status", &[]),
-            Some("sudo noglob rtk git status".into())
+            Some("sudo noglob rtco git status".into())
         );
     }
 
@@ -3703,7 +3703,7 @@ mod tests {
         let prefixes = vec!["shadowenv exec --".to_string(), "direnv exec .".to_string()];
         assert_eq!(
             super::rewrite_command("direnv exec . git status", &[], &prefixes),
-            Some("direnv exec . rtk git status".into())
+            Some("direnv exec . rtco git status".into())
         );
     }
 
@@ -3726,7 +3726,7 @@ mod tests {
         let prefixes = vec!["docker".to_string(), "docker exec app".to_string()];
         assert_eq!(
             super::rewrite_command("docker exec app git status", &[], &prefixes),
-            Some("docker exec app rtk git status".into())
+            Some("docker exec app rtco git status".into())
         );
     }
 
@@ -3769,7 +3769,7 @@ mod tests {
                 &[],
                 &prefixes
             ),
-            Some("shadowenv exec -- rtk git status && shadowenv exec -- rtk cargo test".into())
+            Some("shadowenv exec -- rtco git status && shadowenv exec -- rtco cargo test".into())
         );
     }
 
@@ -3838,7 +3838,7 @@ mod tests {
     fn test_rewrite_pipe_then_and() {
         assert_eq!(
             rewrite_command_no_prefixes("git log | head -5 && git stash", &[]),
-            Some("rtco git log | head -5 && rtk git stash".into())
+            Some("rtco git log | head -5 && rtco git stash".into())
         );
     }
 
@@ -3846,7 +3846,7 @@ mod tests {
     fn test_rewrite_pipe_then_semicolon() {
         assert_eq!(
             rewrite_command_no_prefixes("cargo test | head; git status", &[]),
-            Some("rtco cargo test | head; rtk git status".into())
+            Some("rtco cargo test | head; rtco git status".into())
         );
     }
 
@@ -3854,7 +3854,7 @@ mod tests {
     fn test_rewrite_pipe_then_or() {
         assert_eq!(
             rewrite_command_no_prefixes("cargo test | grep FAIL || git stash", &[]),
-            Some("rtco cargo test | grep FAIL || rtk git stash".into())
+            Some("rtco cargo test | grep FAIL || rtco git stash".into())
         );
     }
 
@@ -3865,7 +3865,7 @@ mod tests {
                 "RUST_BACKTRACE=1 cargo test 2>&1 | grep FAILED && git stash",
                 &[]
             ),
-            Some("RUST_BACKTRACE=1 rtk cargo test 2>&1 | grep FAILED && rtk git stash".into())
+            Some("RUST_BACKTRACE=1 rtco cargo test 2>&1 | grep FAILED && rtco git stash".into())
         );
     }
 
@@ -3873,7 +3873,7 @@ mod tests {
     fn test_rewrite_and_then_pipe() {
         assert_eq!(
             rewrite_command_no_prefixes("git status && cargo test | grep FAIL", &[]),
-            Some("rtco git status && rtk cargo test | grep FAIL".into())
+            Some("rtco git status && rtco cargo test | grep FAIL".into())
         );
     }
 
@@ -3881,7 +3881,7 @@ mod tests {
     fn test_rewrite_multi_pipe_then_and() {
         assert_eq!(
             rewrite_command_no_prefixes("git log | head | tail && git status", &[]),
-            Some("rtco git log | head | tail && rtk git status".into())
+            Some("rtco git log | head | tail && rtco git status".into())
         );
     }
 }

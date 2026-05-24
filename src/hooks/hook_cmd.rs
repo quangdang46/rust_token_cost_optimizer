@@ -660,7 +660,7 @@ mod tests {
     fn test_gemini_hook_env_prefix_preserved() {
         assert_eq!(
             rewrite_command_no_prefixes("RUST_LOG=debug cargo test", &[]),
-            Some("RUST_LOG=debug rtk cargo test".into())
+            Some("RUST_LOG=debug rtco cargo test".into())
         );
     }
 
@@ -746,7 +746,7 @@ mod tests {
             .pointer("/hookSpecificOutput/updatedInput/command")
             .and_then(|c| c.as_str())
             .unwrap();
-        assert_eq!(cmd, "GIT_PAGER=cat rtk git status");
+        assert_eq!(cmd, "GIT_PAGER=cat rtco git status");
     }
 
     #[test]
@@ -845,7 +845,7 @@ mod tests {
         assert_eq!(v["permission"], "allow");
         assert_eq!(
             v["updated_input"]["command"],
-            "cd \"/tmp/proj\" && rtk git status"
+            "cd \"/tmp/proj\" && rtco git status"
         );
     }
 
@@ -913,7 +913,7 @@ mod tests {
                 .open(&log_path)
                 .unwrap();
             let ts = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S");
-            writeln!(file, "{} | rewrite | git status | rtk git status", ts).unwrap();
+            writeln!(file, "{} | rewrite | git status | rtco git status", ts).unwrap();
         }
 
         let content = std::fs::read_to_string(&log_path).unwrap();
