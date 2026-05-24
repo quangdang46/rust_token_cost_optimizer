@@ -6,8 +6,19 @@ use std::process::Command;
 use crate::core::stream::{self, FilterMode, StdinMode, StreamFilter};
 use crate::core::tracking;
 
+/// Tee the raw output and emit a `[full output: …]` hint after the filtered
+/// body. The non-sensitive entry point — see `print_with_hint_sensitive`
+/// for the credential-scrubbing variant used by psql / aws / curl.
 pub fn print_with_hint(filtered: &str, raw: &str, tee_label: &str, exit_code: i32) {
     if let Some(hint) = crate::core::tee::tee_and_hint(raw, tee_label, exit_code) {
+        println!("{}\n{}", filtered, hint);
+    } else {
+        println!("{}", filtered);
+    }
+}
+
+fn print_with_hint_sensitive(filtered: &str, raw: &str, tee_label: &str, exit_code: i32) {
+    if let Some(hint) = crate::core::tee::tee_and_hint_sensitive(raw, tee_label, exit_code) {
         println!("{}\n{}", filtered, hint);
     } else {
         println!("{}", filtered);
@@ -17,6 +28,10 @@ pub fn print_with_hint(filtered: &str, raw: &str, tee_label: &str, exit_code: i3
 #[derive(Default)]
 pub struct RunOptions<'a> {
     pub tee_label: Option<&'a str>,
+    /// When the tee label points at a known-sensitive command family (psql
+    /// results, AWS streamed output), route through the credential-scrubbing
+    /// `*_sensitive` tee API. See `src/core/tee.rs` for the redaction policy.
+    pub tee_sensitive: bool,
     pub filter_stdout_only: bool,
     pub skip_filter_on_failure: bool,
     pub no_trailing_newline: bool,
@@ -48,6 +63,15 @@ impl<'a> RunOptions<'a> {
 
     pub fn early_exit_on_failure(mut self) -> Self {
         self.skip_filter_on_failure = true;
+        self
+    }
+
+    /// Mark this command as known to handle credential-shaped output. The
+    /// tee write path will force its content redactor on the raw output and
+    /// keep doing so even if a future config knob disables the default
+    /// safety-net redaction for non-sensitive callers.
+    pub fn tee_sensitive(mut self) -> Self {
+        self.tee_sensitive = true;
         self
     }
 
@@ -111,7 +135,11 @@ pub fn run(
             let filtered = filter_fn(text_to_filter);
 
             if let Some(label) = opts.tee_label {
-                print_with_hint(&filtered, raw, label, exit_code);
+                if opts.tee_sensitive {
+                    print_with_hint_sensitive(&filtered, raw, label, exit_code);
+                } else {
+                    print_with_hint(&filtered, raw, label, exit_code);
+                }
             } else if opts.no_trailing_newline {
                 print!("{}", filtered);
             } else {
@@ -137,9 +165,12 @@ pub fn run(
                     .with_context(|| format!("Failed to run {}", tool_name))?;
 
             if let Some(label) = opts.tee_label {
-                if let Some(hint) =
+                let hint = if opts.tee_sensitive {
+                    crate::core::tee::tee_and_hint_sensitive(&result.raw, label, result.exit_code)
+                } else {
                     crate::core::tee::tee_and_hint(&result.raw, label, result.exit_code)
-                {
+                };
+                if let Some(hint) = hint {
                     println!("{}", hint);
                 }
             }
