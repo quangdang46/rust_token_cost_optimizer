@@ -1,361 +1,191 @@
 name: Release
 
 on:
-  workflow_call:
-    inputs:
-      tag:
-        description: 'Tag to release'
-        required: true
-        type: string
-      prerelease:
-        description: 'Mark as pre-release'
-        required: false
-        type: boolean
-        default: false
+  push:
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release (e.g., v0.1.0)'
+        description: 'Tag to release (e.g., v0.41.0)'
         required: true
-      prerelease:
-        description: 'Mark as pre-release'
-        type: boolean
-        default: false
 
 permissions:
   contents: write
 
 env:
   CARGO_TERM_COLOR: always
+  BIN_NAME: rtco
 
 jobs:
+  verify-versions:
+    name: Verify manifest versions match tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cargo.toml version == tag
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          TAG="${TAG#v}"
+          CARGO=$(awk '/^\[package\]/{p=1; next} p && /^\[/{exit}
+                       p && /^[[:space:]]*version[[:space:]]*=/{
+                         match($0, /"[^"]+"/); print substr($0, RSTART+1, RLENGTH-2); exit }' Cargo.toml)
+          echo "tag=$TAG  Cargo.toml=$CARGO"
+          [ "$CARGO" = "$TAG" ] || { echo "::error::Cargo.toml ($CARGO) ≠ tag ($TAG)"; exit 1; }
+
   build:
-    name: Build ${{ matrix.target }}
+    name: Build ${{ matrix.suffix }}
+    needs: [verify-versions]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # macOS
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            archive: tar.gz
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            archive: tar.gz
-          # Linux
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
-            archive: tar.gz
-            musl: true
-          - target: aarch64-unknown-linux-gnu
+            suffix: linux-x86_64
+            ext: tar.gz
+            use_cross: true
+          - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
-            archive: tar.gz
-            cross: true
-          # Windows
+            suffix: linux-aarch64
+            ext: tar.gz
+            use_cross: true
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            suffix: macos-x86_64
+            ext: tar.gz
+            use_cross: false
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            suffix: macos-aarch64
+            ext: tar.gz
+            use_cross: false
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            archive: zip
-
+            suffix: windows-x86_64
+            ext: zip
+            use_cross: false
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install cross-compilation tools
-        if: matrix.cross
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
-      - name: Install musl tools
-        if: matrix.musl
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools
+      - name: Install cross
+        if: matrix.use_cross
+        run: cargo install cross --git https://github.com/cross-rs/cross --rev 99b8069c4f4e89f835e7ef36b50fe9d72fde5d77
 
-      - name: Build
+      - name: Build (cross)
+        if: matrix.use_cross
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Build (cargo)
+        if: ${{ !matrix.use_cross }}
         run: cargo build --release --target ${{ matrix.target }}
-        env:
-          RTK_TELEMETRY_URL: ${{ vars.RTK_TELEMETRY_URL }}
-          RTK_TELEMETRY_TOKEN: ${{ secrets.RTK_TELEMETRY_TOKEN }}
 
-      - name: Package (Unix)
-        if: matrix.os != 'windows-latest'
+      # ── Package: tar.gz for Unix ──
+      - name: Package (tar.gz)
+        if: matrix.ext == 'tar.gz'
+        shell: bash
         run: |
-          cd target/${{ matrix.target }}/release
-          tar -czvf ../../../rtco-${{ matrix.target }}.${{ matrix.archive }} rtco
-          cd ../../..
+          set -euo pipefail
+          VERSION="${{ needs.verify-versions.outputs.tag }}"
+          STAGE=$(mktemp -d)
+          cp "target/${{ matrix.target }}/release/${BIN_NAME}" "$STAGE/${BIN_NAME}"
+          [ -f LICENSE ]   && cp LICENSE   "$STAGE/LICENSE"   || true
+          [ -f README.md ] && cp README.md "$STAGE/README.md" || true
+          ARCHIVE="${BIN_NAME}-${VERSION}-${{ matrix.suffix }}.tar.gz"
+          tar -czf "$ARCHIVE" -C "$STAGE" .
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
+          else
+            shasum -a 256 "$ARCHIVE" > "$ARCHIVE.sha256"
+          fi
+          echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
 
-      - name: Package (Windows)
-        if: matrix.os == 'windows-latest'
+      # ── Package: zip for Windows ──
+      - name: Package (zip)
+        if: matrix.ext == 'zip'
+        shell: pwsh
         run: |
-          cd target/${{ matrix.target }}/release
-          7z a ../../../rtco-${{ matrix.target }}.${{ matrix.archive }} rtco.exe
-          cd ../../..
+          $Version = "${{ needs.verify-versions.outputs.tag }}"
+          $Stage   = New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP "stage-$Version") -Force
+          Copy-Item "target/${{ matrix.target }}/release/$env:BIN_NAME.exe" (Join-Path $Stage "$env:BIN_NAME.exe")
+          if (Test-Path LICENSE)   { Copy-Item LICENSE   (Join-Path $Stage "LICENSE") }
+          if (Test-Path README.md) { Copy-Item README.md (Join-Path $Stage "README.md") }
+
+          $Archive = "$env:BIN_NAME-$Version-${{ matrix.suffix }}.zip"
+          # Compress across the staged contents, not the dir itself, so the
+          # archive root matches the tar.gz layout on the other targets
+          # (binary at top level).
+          Compress-Archive -Path (Join-Path $Stage '*') -DestinationPath $Archive -Force
+          $hash = (Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash.ToLower()
+          # GNU sha256sum format so `sha256sum -c` and the install scripts
+          # both parse the sidecar interchangeably.
+          "$hash  $Archive" | Out-File -FilePath "$Archive.sha256" -Encoding ascii -NoNewline
+          "ARCHIVE=$Archive" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rtco-${{ matrix.target }}
-          path: rtco-${{ matrix.target }}.${{ matrix.archive }}
-
-  build-deb:
-    name: Build DEB package
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-deb
-        run: cargo install cargo-deb
-
-      - name: Build DEB
-        run: cargo deb
-        env:
-          RTK_TELEMETRY_URL: ${{ vars.RTK_TELEMETRY_URL }}
-          RTK_TELEMETRY_TOKEN: ${{ secrets.RTK_TELEMETRY_TOKEN }}
-
-      - name: Upload DEB
-        uses: actions/upload-artifact@v4
-        with:
-          name: rtco-deb
-          path: target/debian/*.deb
-
-  build-rpm:
-    name: Build RPM package
-    runs-on: ubuntu-latest
-    container: fedora:latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          dnf install -y rust cargo rpm-build
-
-      - name: Install cargo-generate-rpm
-        run: cargo install cargo-generate-rpm
-
-      - name: Build release
-        run: cargo build --release
-        env:
-          RTK_TELEMETRY_URL: ${{ vars.RTK_TELEMETRY_URL }}
-          RTK_TELEMETRY_TOKEN: ${{ secrets.RTK_TELEMETRY_TOKEN }}
-
-      - name: Generate RPM
-        run: cargo generate-rpm
-
-      - name: Upload RPM
-        uses: actions/upload-artifact@v4
-        with:
-          name: rtco-rpm
-          path: target/generate-rpm/*.rpm
+          name: ${{ env.BIN_NAME }}-${{ matrix.suffix }}
+          path: |
+            ${{ env.ARCHIVE }}
+            ${{ env.ARCHIVE }}.sha256
+          if-no-files-found: error
 
   release:
-    name: Create Release
-    needs: [build, build-deb, build-rpm]
+    name: Publish GitHub Release
+    needs: [verify-versions, build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/create-github-app-token@v3
-        id: app-token
-        with:
-          client-id: ${{ secrets.APP_CLIENT_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          permission-contents: write
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
-      - name: Get version
-        id: version
+      - name: Generate combined SHA256SUMS
+        working-directory: artifacts
         run: |
-          TAG="${{ inputs.tag }}"
-          if [ -z "$TAG" ]; then
-            TAG="${{ github.event.release.tag_name }}"
+          set -euo pipefail
+          shopt -s nullglob
+          archives=( ${BIN_NAME}-*.tar.gz ${BIN_NAME}-*.zip )
+          if [ ${#archives[@]} -eq 0 ]; then
+            echo "::error::No archives found in artifacts/"
+            ls -la
+            exit 1
           fi
-          echo "version=$TAG" >> $GITHUB_OUTPUT
+          sha256sum "${archives[@]}" > SHA256SUMS
+          cat SHA256SUMS
 
-      - name: Flatten artifacts
-        run: |
-          mkdir -p release
-          find artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} release/ \;
-
-      - name: Create version-agnostic package names
-        run: |
-          cd release
-          for f in *.deb; do
-            [ -f "$f" ] && cp "$f" "rtk_amd64.deb"
-          done
-          for f in *.rpm; do
-            [ -f "$f" ] && cp "$f" "rtco.x86_64.rpm"
-          done
-
-      - name: Create checksums
-        run: |
-          cd release
-          sha256sum * > checksums.txt
-
-      - name: Upload Release Assets
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.version }}
-          files: release/*
-          prerelease: ${{ inputs.prerelease }}
-          token: ${{ steps.app-token.outputs.token }}
-
-  notify-discord:
-    name: Notify Discord
-    needs: [release]
-    if: ${{ !inputs.prerelease }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get version
-        id: version
-        run: |
-          TAG="${{ inputs.tag }}"
-          if [ -z "$TAG" ]; then
-            TAG="${{ github.event.release.tag_name }}"
-          fi
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-
-      - name: Send Discord notification
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.RTK_DISCORD_RELEASE }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          RELEASE_URL="https://github.com/rtco-ai/rtco/releases/tag/${TAG}"
-
-          # Fetch release notes from GitHub API
-          NOTES=$(gh api "repos/rtco-ai/rtco/releases/tags/${TAG}" --jq '.body' 2>/dev/null | head -c 1800 || echo "")
-          DESC=$(echo "${NOTES:-No release notes}" | jq -Rs .)
-
-          jq -n \
-            --arg title "RTK ${TAG} released" \
-            --arg url "$RELEASE_URL" \
-            --argjson desc "$DESC" \
-            '{embeds: [{title: $title, url: $url, description: $desc, color: 5814783, footer: {text: "Rust Token Killer"}}]}' \
-          | curl -sf -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK"
-
-  homebrew:
-    name: Update Homebrew formula
-    needs: [release]
-    if: ${{ !inputs.prerelease }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get version
-        id: version
-        run: |
-          TAG="${{ inputs.tag }}"
-          if [ -z "$TAG" ]; then
-            TAG="${{ github.event.release.tag_name }}"
-          fi
-          VERSION="${TAG#v}"
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Download checksums
-        run: |
-          gh release download "${{ steps.version.outputs.tag }}" \
-            --repo rtco-ai/rtco \
-            --pattern checksums.txt
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Parse checksums
-        id: sha
-        run: |
-          echo "mac_arm=$(grep aarch64-apple-darwin.tar.gz checksums.txt | head -1 | awk '{print $1}')" >> $GITHUB_OUTPUT
-          echo "mac_intel=$(grep x86_64-apple-darwin.tar.gz checksums.txt | head -1 | awk '{print $1}')" >> $GITHUB_OUTPUT
-          echo "linux_arm=$(grep aarch64-unknown-linux-gnu.tar.gz checksums.txt | head -1 | awk '{print $1}')" >> $GITHUB_OUTPUT
-          echo "linux_intel=$(grep x86_64-unknown-linux-musl.tar.gz checksums.txt | head -1 | awk '{print $1}')" >> $GITHUB_OUTPUT
-
-      - name: Generate formula
-        run: |
-          cat > rtco.rb << 'FORMULA'
-          class Rtk < Formula
-            desc "Rust Token Killer - High-performance CLI proxy to minimize LLM token consumption"
-            homepage "https://www.rtco-ai.app"
-            version "VERSION_PLACEHOLDER"
-            license "MIT"
-
-            if OS.mac? && Hardware::CPU.arm?
-              url "https://github.com/rtco-ai/rtco/releases/download/TAG_PLACEHOLDER/rtco-aarch64-apple-darwin.tar.gz"
-              sha256 "SHA_MAC_ARM_PLACEHOLDER"
-            elsif OS.mac? && Hardware::CPU.intel?
-              url "https://github.com/rtco-ai/rtco/releases/download/TAG_PLACEHOLDER/rtco-x86_64-apple-darwin.tar.gz"
-              sha256 "SHA_MAC_INTEL_PLACEHOLDER"
-            elsif OS.linux? && Hardware::CPU.arm?
-              url "https://github.com/rtco-ai/rtco/releases/download/TAG_PLACEHOLDER/rtco-aarch64-unknown-linux-gnu.tar.gz"
-              sha256 "SHA_LINUX_ARM_PLACEHOLDER"
-            elsif OS.linux? && Hardware::CPU.intel?
-              url "https://github.com/rtco-ai/rtco/releases/download/TAG_PLACEHOLDER/rtco-x86_64-unknown-linux-musl.tar.gz"
-              sha256 "SHA_LINUX_INTEL_PLACEHOLDER"
-            end
-
-            def install
-              bin.install "rtco"
-            end
-
-            def caveats
-              <<~EOS
-                rtco is installed! Get started:
-
-                  # Initialize for Claude Code
-                  rtco init -g          # Global hook-first setup (recommended)
-                  rtco init             # Add to ./CLAUDE.md (this project only)
-
-                  # See all commands
-                  rtco --help
-
-                  # Measure your token savings
-                  rtco gain
-
-                Full documentation: https://www.rtco-ai.app
-              EOS
-            end
-
-            test do
-              system "#{bin}/rtco", "--version"
-            end
-          end
-          FORMULA
-          sed -i "s/VERSION_PLACEHOLDER/${{ steps.version.outputs.version }}/g" rtco.rb
-          sed -i "s/TAG_PLACEHOLDER/${{ steps.version.outputs.tag }}/g" rtco.rb
-          sed -i "s/SHA_MAC_ARM_PLACEHOLDER/${{ steps.sha.outputs.mac_arm }}/g" rtco.rb
-          sed -i "s/SHA_MAC_INTEL_PLACEHOLDER/${{ steps.sha.outputs.mac_intel }}/g" rtco.rb
-          sed -i "s/SHA_LINUX_ARM_PLACEHOLDER/${{ steps.sha.outputs.linux_arm }}/g" rtco.rb
-          sed -i "s/SHA_LINUX_INTEL_PLACEHOLDER/${{ steps.sha.outputs.linux_intel }}/g" rtco.rb
-          # Remove leading spaces from heredoc
-          sed -i 's/^          //' rtco.rb
-
-      - name: Push to homebrew-tap
-        run: |
-          CONTENT=$(base64 -w 0 rtco.rb)
-          SHA=$(gh api repos/rtco-ai/homebrew-tap/contents/Formula/rtco.rb --jq '.sha' 2>/dev/null || echo "")
-          if [ -n "$SHA" ]; then
-            gh api -X PUT repos/rtco-ai/homebrew-tap/contents/Formula/rtco.rb \
-              -f message="rtco ${{ steps.version.outputs.version }}" \
-              -f content="$CONTENT" \
-              -f sha="$SHA"
-          else
-            gh api -X PUT repos/rtco-ai/homebrew-tap/contents/Formula/rtco.rb \
-              -f message="rtco ${{ steps.version.outputs.version }}" \
-              -f content="$CONTENT"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          tag_name: ${{ needs.verify-versions.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            artifacts/${{ env.BIN_NAME }}-*.tar.gz
+            artifacts/${{ env.BIN_NAME }}-*.tar.gz.sha256
+            artifacts/${{ env.BIN_NAME }}-*.zip
+            artifacts/${{ env.BIN_NAME }}-*.zip.sha256
+            artifacts/SHA256SUMS

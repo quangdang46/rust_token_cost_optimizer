@@ -1274,7 +1274,9 @@ mod tests {
                 "cargo fmt --all && cargo clippy --all-targets && cargo test",
                 &[]
             ),
-            Some("rtco cargo fmt --all && rtco cargo clippy --all-targets && rtco cargo test".into())
+            Some(
+                "rtco cargo fmt --all && rtco cargo clippy --all-targets && rtco cargo test".into()
+            )
         );
     }
 

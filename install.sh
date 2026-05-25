@@ -1,151 +1,258 @@
-#!/usr/bin/env sh
-# rtco installer - https://github.com/rtco-ai/rtco
-# Usage: curl -fsSL https://raw.githubusercontent.com/rtco-ai/rtco/refs/heads/master/install.sh | sh
+#!/usr/bin/env bash
+# install.sh — one-shot installer for rtco on Linux + macOS.
+#
+# Usage:
+#   curl -fsSL "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh" | bash
+#
+# Pin a version or pass flags by downloading once, then running directly:
+#   curl -fsSL "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh" -o install.sh
+#   bash install.sh --version v0.40.0 --easy-mode --verify
 
-set -e
+set -euo pipefail
+umask 022
 
-REPO="rtco-ai/rtco"
+# === Config ===
 BINARY_NAME="rtco"
-INSTALL_DIR="${RTK_INSTALL_DIR:-$HOME/.local/bin}"
+OWNER="quangdang46"
+REPO="rust_token_cost_optimizer"
+DEST="${DEST:-$HOME/.local/bin}"
+VERSION="${VERSION:-}"
+QUIET=0
+EASY=0
+VERIFY=0
+FROM_SOURCE=0
+UNINSTALL=0
+MAX_RETRIES=3
+DOWNLOAD_TIMEOUT=120
+LOCK_DIR="/tmp/${BINARY_NAME}-install.lock.d"
+TMP=""
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# === Logging ===
+log_info()    { [ "$QUIET" -eq 1 ] && return; printf '[%s] %s\n' "$BINARY_NAME" "$*" >&2; }
+log_warn()    { printf '[%s] WARN: %s\n' "$BINARY_NAME" "$*" >&2; }
+log_success() { [ "$QUIET" -eq 1 ] && return; printf '✓ %s\n' "$*" >&2; }
+die()         { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-info() {
-    printf "${GREEN}[INFO]${NC} %s\n" "$1"
+# === Cleanup & lock ===
+cleanup() { [ -n "${TMP:-}" ] && rm -rf "$TMP" 2>/dev/null || true; rm -rf "$LOCK_DIR" 2>/dev/null || true; }
+trap cleanup EXIT
+acquire_lock() {
+    mkdir "$LOCK_DIR" 2>/dev/null || die "Another install is running. If stuck: rm -rf $LOCK_DIR"
+    echo $$ > "$LOCK_DIR/pid"
 }
 
-warn() {
-    printf "${YELLOW}[WARN]${NC} %s\n" "$1"
+usage() {
+    cat <<EOF
+$BINARY_NAME installer
+
+Usage:
+  curl -fsSL https://raw.githubusercontent.com/$OWNER/$REPO/master/install.sh | bash
+  bash install.sh [flags]
+
+Flags:
+  --version vX.Y.Z   Pin a specific release (default: latest)
+  --dest <path>      Install to <path> (default: \$HOME/.local/bin)
+  --system           Shortcut for --dest /usr/local/bin (may need sudo)
+  --easy-mode        Append \$DEST to PATH in ~/.bashrc / ~/.zshrc
+  --verify           Run \`$BINARY_NAME --version\` after install
+  --from-source      Build from source via cargo (requires Rust)
+  --quiet, -q        Suppress info logs
+  --uninstall        Remove the binary and any easy-mode PATH lines
+  -h, --help         Show this help and exit
+EOF
+    exit 0
 }
 
-error() {
-    printf "${RED}[ERROR]${NC} %s\n" "$1"
-    exit 1
-}
+# === Args ===
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --dest)        DEST="$2";   shift 2;;
+        --dest=*)      DEST="${1#*=}"; shift;;
+        --version)     VERSION="$2"; shift 2;;
+        --version=*)   VERSION="${1#*=}"; shift;;
+        --system)      DEST="/usr/local/bin"; shift;;
+        --easy-mode)   EASY=1;      shift;;
+        --verify)      VERIFY=1;    shift;;
+        --from-source) FROM_SOURCE=1; shift;;
+        --quiet|-q)    QUIET=1;     shift;;
+        --uninstall)   UNINSTALL=1; shift;;
+        -h|--help)     usage;;
+        *) shift;;
+    esac
+done
 
-# Detect OS
-detect_os() {
+# === Uninstall ===
+if [ "$UNINSTALL" -eq 1 ]; then
+    rm -f "$DEST/$BINARY_NAME"
+    for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+        [ -f "$rc" ] && sed -i.bak "/${BINARY_NAME} installer/d" "$rc" 2>/dev/null || true
+        [ -f "$rc.bak" ] && rm -f "$rc.bak"
+    done
+    log_success "$BINARY_NAME uninstalled"
+    exit 0
+fi
+
+# === Platform detection — map to release-asset suffix ===
+detect_platform() {
+    local os arch
     case "$(uname -s)" in
-        Linux*)  OS="linux";;
-        Darwin*) OS="darwin";;
-        *)       error "Unsupported operating system: $(uname -s)";;
+        Linux*)               os="linux" ;;
+        Darwin*)              os="macos" ;;
+        MINGW*|MSYS*|CYGWIN*) os="windows" ;;
+        *) die "Unsupported OS: $(uname -s)" ;;
     esac
-}
-
-# Detect architecture
-detect_arch() {
     case "$(uname -m)" in
-        x86_64|amd64)  ARCH="x86_64";;
-        arm64|aarch64) ARCH="aarch64";;
-        *)             error "Unsupported architecture: $(uname -m)";;
+        x86_64|amd64)  arch="x86_64" ;;
+        aarch64|arm64) arch="aarch64" ;;
+        *) die "Unsupported arch: $(uname -m)" ;;
     esac
+    # Asset suffix in release.yml: <bin>-<tag>-<os>-<arch>.<ext>
+    echo "${os}-${arch}"
 }
 
-# Get latest release version
-# Primary: parse the 302 redirect on /releases/latest (no API call, no rate limit).
-# Fallback: the GitHub REST API (subject to 60 req/hour anonymous limit).
-get_latest_version() {
-    # Try the web redirect first — does not count against the API rate limit.
-    VERSION=$(curl -sI "https://github.com/${REPO}/releases/latest" \
-        | grep -i '^location:' \
-        | sed -E 's|.*/tag/([^[:space:]]+).*|\1|' \
-        | tr -d '\r')
-
-    # Fallback to the REST API if the redirect didn't yield a tag.
-    if [ -z "$VERSION" ]; then
-        warn "Redirect lookup failed, falling back to GitHub API..."
-        VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-            | grep '"tag_name":' \
-            | sed -E 's/.*"([^"]+)".*/\1/')
+# === Version resolution: API → redirect fallback ===
+resolve_version() {
+    [ -n "$VERSION" ] && {
+        case "$VERSION" in v*) ;; *) VERSION="v$VERSION" ;; esac
+        return 0
+    }
+    VERSION=$(curl -fsSL --connect-timeout 10 --max-time 30 \
+        -H "Accept: application/vnd.github.v3+json" \
+        "https://api.github.com/repos/${OWNER}/${REPO}/releases/latest" 2>/dev/null \
+        | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/') || true
+    if ! [[ "$VERSION" =~ ^v[0-9] ]]; then
+        VERSION=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+            "https://github.com/${OWNER}/${REPO}/releases/latest" 2>/dev/null \
+            | sed -E 's|.*/tag/||') || true
     fi
-
-    if [ -z "$VERSION" ]; then
-        error "Failed to get latest version (GitHub API may be rate-limited; set RTK_VERSION=vX.Y.Z to pin)"
-    fi
+    [[ "$VERSION" =~ ^v[0-9] ]] || die "Could not resolve latest version. Pass --version vX.Y.Z to pin."
+    log_info "Latest: $VERSION"
 }
 
-# Build target triple
-get_target() {
-    case "$OS" in
-        linux)
-            case "$ARCH" in
-                x86_64)  TARGET="x86_64-unknown-linux-musl";;
-                aarch64) TARGET="aarch64-unknown-linux-gnu";;
-            esac
-            ;;
-        darwin)
-            TARGET="${ARCH}-apple-darwin"
-            ;;
-    esac
+# === Download with retry + resume ===
+download_file() {
+    local url="$1" dest="$2"
+    local partial="${dest}.part"
+    local attempt=0
+    while [ "$attempt" -lt "$MAX_RETRIES" ]; do
+        attempt=$((attempt + 1))
+        if curl -fL \
+                --connect-timeout 30 \
+                --max-time "$DOWNLOAD_TIMEOUT" \
+                --retry 2 \
+                $( [ -s "$partial" ] && echo "--continue-at -" ) \
+                $( [ "$QUIET" -eq 0 ] && [ -t 2 ] && echo "--progress-bar" || echo "-sS" ) \
+                -o "$partial" "$url"; then
+            mv -f "$partial" "$dest"
+            return 0
+        fi
+        [ "$attempt" -lt "$MAX_RETRIES" ] && { log_warn "Retry $attempt..."; sleep 3; }
+    done
+    return 1
 }
 
-# Download and install
-install() {
-    info "Detected: $OS $ARCH"
-    info "Target: $TARGET"
-    info "Version: $VERSION"
-
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${BINARY_NAME}-${TARGET}.tar.gz"
-    TEMP_DIR=$(mktemp -d)
-    ARCHIVE="${TEMP_DIR}/${BINARY_NAME}.tar.gz"
-
-    info "Downloading from: $DOWNLOAD_URL"
-    if ! curl -fsSL "$DOWNLOAD_URL" -o "$ARCHIVE"; then
-        error "Failed to download binary"
-    fi
-
-    # Verify archive contents before extraction (CWE-22 path traversal).
-    # Reject any entry with an absolute path or a ".." component.
-    info "Verifying archive..."
-    if tar -tzf "$ARCHIVE" | grep -qE '^/|(^|/)\.\.(/|$)'; then
-        error "Archive contains unsafe paths (absolute or directory traversal) — refusing to extract"
-    fi
-
-    info "Extracting..."
-    tar -xzf "$ARCHIVE" -C "$TEMP_DIR"
-
-    mkdir -p "$INSTALL_DIR"
-    mv "${TEMP_DIR}/${BINARY_NAME}" "${INSTALL_DIR}/"
-
-    chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
-
-    # Cleanup
-    rm -rf "$TEMP_DIR"
-
-    info "Successfully installed ${BINARY_NAME} to ${INSTALL_DIR}/${BINARY_NAME}"
+# === Atomic install ===
+install_binary_atomic() {
+    local src="$1" dest="$2"
+    local tmp="${dest}.tmp.$$"
+    install -m 0755 "$src" "$tmp"
+    mv -f "$tmp" "$dest" || { rm -f "$tmp"; die "Failed to install binary to $dest"; }
 }
 
-# Verify installation
-verify() {
-    if command -v "$BINARY_NAME" >/dev/null 2>&1; then
-        info "Verification: $($BINARY_NAME --version)"
+# === PATH update ===
+maybe_add_path() {
+    case ":$PATH:" in *":$DEST:"*) return 0;; esac
+    if [ "$EASY" -eq 1 ]; then
+        for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+            [ -f "$rc" ] && [ -w "$rc" ] || continue
+            grep -qF "$DEST" "$rc" && continue
+            printf '\nexport PATH="%s:$PATH"  # %s installer\n' "$DEST" "$BINARY_NAME" >> "$rc"
+        done
+        log_warn "PATH updated — restart shell or: export PATH=\"$DEST:\$PATH\""
     else
-        warn "Binary installed but not in PATH. Add to your shell profile:"
-        warn "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+        log_warn "$DEST is not on your PATH. Either rerun with --easy-mode or run: export PATH=\"$DEST:\$PATH\""
     fi
 }
 
+# === Build from source fallback ===
+build_from_source() {
+    command -v cargo >/dev/null || die "cargo not found — install Rust: https://rustup.rs"
+    log_info "Building from source via cargo (this may take a few minutes)..."
+    git clone --depth 1 "https://github.com/${OWNER}/${REPO}.git" "$TMP/src"
+    (cd "$TMP/src" && CARGO_TARGET_DIR="$TMP/target" cargo build --release --bin "$BINARY_NAME")
+    install_binary_atomic "$TMP/target/release/$BINARY_NAME" "$DEST/$BINARY_NAME"
+}
+
+# === Main ===
 main() {
-    info "Installing $BINARY_NAME..."
+    acquire_lock
+    TMP=$(mktemp -d)
+    mkdir -p "$DEST"
 
-    detect_os
-    detect_arch
-    get_target
-    if [ -n "$RTK_VERSION" ]; then
-        VERSION="$RTK_VERSION"
-        info "Using pinned version from RTK_VERSION: $VERSION"
+    local platform; platform=$(detect_platform)
+    log_info "Platform: $platform | Dest: $DEST"
+
+    if [ "$FROM_SOURCE" -eq 0 ]; then
+        resolve_version
+        local ext="tar.gz"
+        case "$platform" in windows*) ext="zip" ;; esac
+        local archive="${BINARY_NAME}-${VERSION}-${platform}.${ext}"
+        local url="https://github.com/${OWNER}/${REPO}/releases/download/${VERSION}/${archive}"
+
+        log_info "Downloading ${archive}"
+        if download_file "$url" "$TMP/$archive"; then
+            # Verify checksum if sidecar exists
+            if download_file "${url}.sha256" "$TMP/checksum.sha256" 2>/dev/null; then
+                local expected actual
+                expected=$(awk '{print $1}' "$TMP/checksum.sha256")
+                if command -v sha256sum >/dev/null 2>&1; then
+                    actual=$(sha256sum "$TMP/$archive" | awk '{print $1}')
+                else
+                    actual=$(shasum -a 256 "$TMP/$archive" | awk '{print $1}')
+                fi
+                [ "$expected" = "$actual" ] || die "Checksum mismatch for $archive (expected $expected, got $actual)"
+                log_info "Checksum verified"
+            else
+                log_warn "No checksum sidecar — skipping verification"
+            fi
+            # Extract
+            case "$archive" in
+                *.tar.gz) tar -xzf "$TMP/$archive" -C "$TMP" ;;
+                *.zip)
+                    command -v unzip >/dev/null || die "unzip not found"
+                    unzip -q "$TMP/$archive" -d "$TMP" ;;
+            esac
+            local bin
+            bin=$(find "$TMP" -maxdepth 3 -name "$BINARY_NAME" -type f -perm -111 2>/dev/null | head -1)
+            [ -n "$bin" ] || die "Binary not found inside $archive"
+            install_binary_atomic "$bin" "$DEST/$BINARY_NAME"
+        else
+            log_warn "Binary download failed — falling back to building from source..."
+            build_from_source
+        fi
     else
-        get_latest_version
+        build_from_source
     fi
-    install
-    verify
+
+    maybe_add_path
+
+    if [ "$VERIFY" -eq 1 ]; then
+        "$DEST/$BINARY_NAME" --version || die "Verification failed — binary did not run"
+    fi
 
     echo ""
-    info "Installation complete! Run '$BINARY_NAME --help' to get started."
+    log_success "$BINARY_NAME installed → $DEST/$BINARY_NAME"
+    if [ -x "$DEST/$BINARY_NAME" ]; then
+        local v; v=$("$DEST/$BINARY_NAME" --version 2>/dev/null || true)
+        [ -n "$v" ] && echo "  $v"
+    fi
+    echo ""
+    echo "  Quick start:"
+    echo "    $BINARY_NAME --help"
 }
 
-main
+# curl | bash safety: buffer entire script before executing so a truncated
+# download cannot run a partial main().
+if [[ "${BASH_SOURCE[0]:-}" == "${0:-}" ]] || [[ -z "${BASH_SOURCE[0]:-}" ]]; then
+    { main "$@"; }
+fi
