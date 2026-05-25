@@ -1547,7 +1547,11 @@ fn run_cline_mode(ctx: InitContext) -> Result<()> {
     let rules_path = PathBuf::from(".clinerules");
 
     let existing = fs::read_to_string(&rules_path).unwrap_or_default();
-    if existing.contains("RTCO") || existing.contains("rtco") || existing.contains("RTK") || existing.contains("rtk") {
+    if existing.contains("RTCO")
+        || existing.contains("rtco")
+        || existing.contains("RTK")
+        || existing.contains("rtk")
+    {
         if !dry_run {
             println!("\nRTK already configured for Cline in this project.\n");
             println!("  Rules: .clinerules (already present)");
@@ -1592,7 +1596,11 @@ fn run_windsurf_mode(ctx: InitContext) -> Result<()> {
     let rules_path = PathBuf::from(".windsurfrules");
 
     let existing = fs::read_to_string(&rules_path).unwrap_or_default();
-    if existing.contains("RTCO") || existing.contains("rtco") || existing.contains("RTK") || existing.contains("rtk") {
+    if existing.contains("RTCO")
+        || existing.contains("rtco")
+        || existing.contains("RTK")
+        || existing.contains("rtk")
+    {
         if !dry_run {
             println!("\nRTK already configured for Windsurf in this project.\n");
             println!("  Rules: .windsurfrules (already present)");
@@ -1645,7 +1653,11 @@ fn run_kilocode_mode_at(base_dir: &Path, ctx: InitContext) -> Result<()> {
     let rules_path = target_dir.join("rtco-rules.md");
 
     let existing = fs::read_to_string(&rules_path).unwrap_or_default();
-    if existing.contains("RTCO") || existing.contains("rtco") || existing.contains("RTK") || existing.contains("rtk") {
+    if existing.contains("RTCO")
+        || existing.contains("rtco")
+        || existing.contains("RTK")
+        || existing.contains("rtk")
+    {
         if !dry_run {
             println!("\nRTK already configured for Kilo Code in this project.\n");
             println!("  Rules: .kilocode/rules/rtco-rules.md (already present)");
@@ -1703,7 +1715,11 @@ fn run_antigravity_mode_at(base_dir: &Path, ctx: InitContext) -> Result<()> {
     let rules_path = target_dir.join("antigravity-rtco-rules.md");
 
     let existing = fs::read_to_string(&rules_path).unwrap_or_default();
-    if existing.contains("RTCO") || existing.contains("rtco") || existing.contains("RTK") || existing.contains("rtk") {
+    if existing.contains("RTCO")
+        || existing.contains("rtco")
+        || existing.contains("RTK")
+        || existing.contains("rtk")
+    {
         if !dry_run {
             println!("\nRTK already configured for Antigravity in this project.\n");
             println!("  Rules: .agents/rules/antigravity-rtco-rules.md (already present)");
@@ -4488,7 +4504,8 @@ mod tests {
 
     #[test]
     fn test_hermes_config_patch_removes_duplicate_rtk_rewrite() {
-        let existing = "plugins:\n  enabled:\n    - rtco-rewrite\n    - other\n    - rtco-rewrite\n";
+        let existing =
+            "plugins:\n  enabled:\n    - rtco-rewrite\n    - other\n    - rtco-rewrite\n";
         let patched = patch_hermes_config(existing);
 
         assert!(patched.contains("    - other\n"));
@@ -4663,7 +4680,8 @@ mod tests {
 
     #[test]
     fn test_hermes_config_unpatch_removes_duplicate_block_rtk_rewrite() {
-        let existing = "plugins:\n  enabled:\n    - rtco-rewrite\n    - other\n    - rtco-rewrite\n";
+        let existing =
+            "plugins:\n  enabled:\n    - rtco-rewrite\n    - other\n    - rtco-rewrite\n";
 
         let patched = unpatch_hermes_config(existing);
 

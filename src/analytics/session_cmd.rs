@@ -250,9 +250,9 @@ mod tests {
     fn test_count_mixed_explicit_and_hook() {
         let cmds = vec![
             make_cmd("rtco git status", Some(200)),  // explicit rtk
-            make_cmd("git log -5", Some(1000)),     // hook-rewritten (logged as raw)
+            make_cmd("git log -5", Some(1000)),      // hook-rewritten (logged as raw)
             make_cmd("rtco cargo test", Some(5000)), // explicit rtk
-            make_cmd("echo hello", None),           // not supported
+            make_cmd("echo hello", None),            // not supported
         ];
         let (total, rtk, output) = count_rtk_commands(&cmds);
         assert_eq!(total, 4);

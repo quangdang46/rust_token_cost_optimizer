@@ -63,36 +63,65 @@ rtco filters and compresses command outputs before they reach your LLM context. 
 brew install rtco
 ```
 
-### Quick Install (Linux/macOS)
+### Quick Install (Linux / macOS)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rtco-ai/rtco/refs/heads/master/install.sh | sh
+curl -fsSL "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh?$(date +%s)" | bash
 ```
 
-> Installs to `~/.local/bin`. Add to PATH if needed:
-> ```bash
-> echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc  # or ~/.zshrc
-> ```
+Installs to `~/.local/bin`. Add `--easy-mode` to update PATH automatically, or run:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc  # or ~/.zshrc
+```
+
+### Quick Install (Windows, PowerShell 5.1+)
+
+```powershell
+irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" | iex
+```
+
+To pin a version or pass flags, download once:
+
+```powershell
+irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" -OutFile install.ps1
+.\install.ps1 -Version v0.40.0 -EasyMode -Verify
+```
+
+### Installer flags (shared by `install.sh` and `install.ps1`)
+
+| Flag (sh / ps1)                  | Effect                                                                |
+|----------------------------------|-----------------------------------------------------------------------|
+| `--version vX.Y.Z` / `-Version`  | Pin a specific release (default: latest)                              |
+| `--dest <path>` / `-Dest`        | Install to a custom directory                                         |
+| `--system` / `-System`           | Install to `/usr/local/bin` (Unix) or `%ProgramFiles%\rtco` (Windows) |
+| `--easy-mode` / `-EasyMode`      | Append install dir to user PATH                                       |
+| `--verify` / `-Verify`           | Run `rtco --version` after install                                    |
+| `--from-source`                  | Build from source via `cargo` (Unix only)                             |
+| `--quiet` / `-Quiet`             | Suppress info logs                                                    |
+| `--uninstall` / `-Uninstall`     | Remove the binary and any easy-mode PATH lines                        |
 
 ### Cargo
 
 ```bash
-cargo install --git https://github.com/rtco-ai/rtco
+cargo install --git https://github.com/quangdang46/rust_token_cost_optimizer
 ```
 
 ### Pre-built Binaries
 
-Download from [releases](https://github.com/rtco-ai/rtco/releases):
-- macOS: `rtco-x86_64-apple-darwin.tar.gz` / `rtco-aarch64-apple-darwin.tar.gz`
-- Linux: `rtco-x86_64-unknown-linux-musl.tar.gz` / `rtco-aarch64-unknown-linux-gnu.tar.gz`
-- Windows: `rtco-x86_64-pc-windows-msvc.zip`
+Download from [releases](https://github.com/quangdang46/rust_token_cost_optimizer/releases):
+- macOS: `rtco-vX.Y.Z-macos-x86_64.tar.gz` / `rtco-vX.Y.Z-macos-aarch64.tar.gz`
+- Linux: `rtco-vX.Y.Z-linux-x86_64.tar.gz` / `rtco-vX.Y.Z-linux-aarch64.tar.gz`
+- Windows: `rtco-vX.Y.Z-windows-x86_64.zip`
+
+Each archive ships with a `.sha256` sidecar; the release page also includes a combined `SHA256SUMS` for one-shot `sha256sum -c --ignore-missing SHA256SUMS` verification.
 
 > **Windows users**: Extract the zip and place `rtco.exe` somewhere in your PATH (e.g. `C:\Users\<you>\.local\bin`). Run RTCO from **Command Prompt**, **PowerShell**, or **Windows Terminal** — do not double-click the `.exe` (it will flash and close). For the best experience, use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) where the full hook system works natively. See [Windows setup](#windows) below for details.
 
 ### Verify Installation
 
 ```bash
-rtco --version   # Should show "rtco 0.28.2"
+rtco --version   # Should show "rtco 0.40.0"
 rtco gain        # Should show token savings stats
 ```
 

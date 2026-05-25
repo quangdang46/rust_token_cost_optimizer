@@ -2720,7 +2720,8 @@ mod tests {
 
     #[test]
     fn test_try_parse_init_agent_hermes_uninstall() {
-        let cli = Cli::try_parse_from(["rtco", "init", "--agent", "hermes", "--uninstall"]).unwrap();
+        let cli =
+            Cli::try_parse_from(["rtco", "init", "--agent", "hermes", "--uninstall"]).unwrap();
         match cli.command {
             Commands::Init {
                 agent, uninstall, ..
@@ -2900,9 +2901,10 @@ mod tests {
 
     #[test]
     fn test_hook_check_with_agent() {
-        let cli =
-            Cli::try_parse_from(["rtco", "hook", "check", "--agent", "gemini", "cargo", "test"])
-                .unwrap();
+        let cli = Cli::try_parse_from([
+            "rtco", "hook", "check", "--agent", "gemini", "cargo", "test",
+        ])
+        .unwrap();
         match cli.command {
             Commands::Hook {
                 command: HookCommands::Check { agent, command },
@@ -3114,7 +3116,8 @@ mod tests {
 
     #[test]
     fn test_git_push_u_flag_passes_through() {
-        let cli = Cli::try_parse_from(["rtco", "git", "push", "-u", "origin", "my-branch"]).unwrap();
+        let cli =
+            Cli::try_parse_from(["rtco", "git", "push", "-u", "origin", "my-branch"]).unwrap();
         assert!(
             !cli.ultra_compact,
             "-u on git push must NOT be consumed as --ultra-compact"
