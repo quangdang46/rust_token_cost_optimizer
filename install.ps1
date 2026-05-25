@@ -1,5 +1,5 @@
-﻿<#
-install.ps1 — one-shot installer for rtco on Windows.
+<#
+install.ps1 -- one-shot installer for rtco on Windows.
 
 Usage:
   irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" | iex
@@ -38,6 +38,16 @@ $ErrorActionPreference = 'Stop'
 # Disable the slow IE-style progress bar in Invoke-WebRequest, which can
 # turn a 2-second download into several minutes on Windows PowerShell.
 $ProgressPreference    = 'SilentlyContinue'
+
+# Force TLS 1.2 (and 1.3 if available). Windows PowerShell 5.1 still
+# defaults to TLS 1.0/1.1 for .NET HTTP clients, which GitHub releases
+# / api.github.com now reject -- surfaces as "The request was aborted:
+# The connection was closed unexpectedly." The -bor preserves any newer
+# protocols the runtime already has enabled.
+try {
+    [Net.ServicePointManager]::SecurityProtocol =
+        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+} catch { }
 
 $BinaryName = 'rtco'
 $BinaryFile = "$BinaryName.exe"
@@ -194,7 +204,7 @@ try {
 
     Write-Info "downloading $archive"
     if (-not (Get-FileWithRetry -Url "$base/$archive" -OutPath $archivePath)) {
-        Die "failed to download $archive — pin a release that exists or build from source."
+        Die "failed to download $archive -- pin a release that exists or build from source."
     }
 
     # Tolerant sidecar parser: accepts either a bare hash or
@@ -208,7 +218,7 @@ try {
         }
         Write-Info "checksum verified"
     } else {
-        Write-Warn "no checksum sidecar — skipping verification"
+        Write-Warn "no checksum sidecar -- skipping verification"
     }
 
     $extractDir = Join-Path $tempDir 'extract'
