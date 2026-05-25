@@ -6,7 +6,7 @@
 //! a real terminal where a human reads the output and the tee file gives the
 //! LLM a way to recover the raw response.
 
-use crate::core::tee::force_tee_hint;
+use crate::core::tee::force_tee_hint_sensitive;
 use crate::core::tracking;
 use crate::core::{stream::exec_capture, utils::resolved_command};
 use anyhow::{Context, Result};
@@ -76,7 +76,7 @@ fn filter_curl_output(raw: &str, is_tty: bool) -> FilterResult<'_> {
     // - stdout is not a terminal (pipes / redirects need the full body, #1282)
     // - body fits under the truncation threshold
     //
-    // Critically, do NOT call `force_tee_hint` on this path — it has a side effect
+    // Critically, do NOT call `force_tee_hint_sensitive` on this path — it has a side effect
     // (writes the raw body to a tee log file) and we don't need a recovery file
     // when the consumer already receives the full body.
     if !is_tty || looks_like_json || trimmed.len() < MAX_RESPONSE_SIZE {
@@ -88,7 +88,7 @@ fn filter_curl_output(raw: &str, is_tty: bool) -> FilterResult<'_> {
 
     // We're about to truncate for a human reader. Write a tee file so they (or
     // the LLM in their stead) can recover the full body from the printed hint.
-    let Some(hint) = force_tee_hint(raw, "curl") else {
+    let Some(hint) = force_tee_hint_sensitive(raw, "curl") else {
         // Tee disabled (RTCO_TEE=0 or below MIN_TEE_SIZE): we have nowhere to
         // point a recovery hint to, so pass through rather than emit an
         // unrecoverable truncation marker.
