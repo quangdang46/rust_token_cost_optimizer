@@ -2202,6 +2202,50 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_classify_sqlite3() {
+        assert!(matches!(
+            classify_command("sqlite3 mydb.db \".tables\""),
+            Classification::Supported {
+                rtk_equivalent: "rtco sqlite",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_classify_sqlite3_query() {
+        assert!(matches!(
+            classify_command("sqlite3 /path/to/db.db \"SELECT * FROM users;\""),
+            Classification::Supported {
+                rtk_equivalent: "rtco sqlite",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_rewrite_sqlite3() {
+        assert_eq!(
+            rewrite_command_no_prefixes("sqlite3 mydb.db \".tables\"", &[]),
+            Some("rtco sqlite mydb.db \".tables\"".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_sqlite3_query() {
+        assert_eq!(
+            rewrite_command_no_prefixes(
+                "sqlite3 /path/to/db.db \"SELECT name FROM sqlite_master WHERE type='table';\"",
+                &[]
+            ),
+            Some(
+                "rtco sqlite /path/to/db.db \"SELECT name FROM sqlite_master WHERE type='table';\""
+                    .into()
+            )
+        );
+    }
+
     // --- Python tooling ---
 
     #[test]
@@ -3059,6 +3103,57 @@ mod tests {
         );
     }
 
+    // --- Maven ---
+
+    #[test]
+    fn test_classify_mvn_test() {
+        assert!(matches!(
+            classify_command("mvn test"),
+            Classification::Supported {
+                rtk_equivalent: "rtco mvn",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_classify_mvn_verify() {
+        assert!(matches!(
+            classify_command("mvn verify"),
+            Classification::Supported {
+                rtk_equivalent: "rtco mvn",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_classify_mvn_failsafe_integration_test() {
+        assert!(matches!(
+            classify_command("mvn failsafe:integration-test"),
+            Classification::Supported {
+                rtk_equivalent: "rtco mvn",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_rewrite_mvn_test() {
+        assert_eq!(
+            rewrite_command_no_prefixes("mvn test", &[]),
+            Some("rtco mvn test".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_mvn_verify() {
+        assert_eq!(
+            rewrite_command_no_prefixes("mvn verify", &[]),
+            Some("rtco mvn verify".into())
+        );
+    }
+
     #[test]
     fn test_rewrite_gradlew_test_savings() {
         assert_eq!(
@@ -3883,5 +3978,101 @@ mod tests {
             rewrite_command_no_prefixes("git log | head | tail && git status", &[]),
             Some("rtco git log | head | tail && rtco git status".into())
         );
+    }
+
+    // --- PHP (rtk#1892) ---
+
+    #[test]
+    fn test_classify_php_bare() {
+        assert!(matches!(
+            classify_command("php"),
+            Classification::Supported {
+                rtk_equivalent: "rtco php",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_classify_php_artisan() {
+        assert!(matches!(
+            classify_command("php artisan migrate"),
+            Classification::Supported {
+                rtk_equivalent: "rtco php",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_classify_php_script() {
+        assert!(matches!(
+            classify_command("php script.php"),
+            Classification::Supported {
+                rtk_equivalent: "rtco php",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn test_classify_phpunit_not_php() {
+        // phpunit is a different tool (PHPUnit test runner) — must not be misclassified
+        // as the php interpreter rule (rtk#1892 regression guard).
+        // Unsupported / Ignored are both fine — we only forbid a php-rule match.
+        if let Classification::Supported { rtk_equivalent, .. } = classify_command("phpunit tests/")
+        {
+            assert_ne!(
+                rtk_equivalent, "rtco php",
+                "phpunit must not be rewritten via the php rule"
+            );
+        }
+    }
+
+    #[test]
+    fn test_rewrite_php_bare() {
+        assert_eq!(
+            rewrite_command_no_prefixes("php", &[]),
+            Some("rtco php".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_php_artisan_migrate() {
+        assert_eq!(
+            rewrite_command_no_prefixes("php artisan migrate", &[]),
+            Some("rtco php artisan migrate".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_php_artisan_serve() {
+        assert_eq!(
+            rewrite_command_no_prefixes("php artisan serve", &[]),
+            Some("rtco php artisan serve".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_php_script_file() {
+        assert_eq!(
+            rewrite_command_no_prefixes("php script.php --opt", &[]),
+            Some("rtco php script.php --opt".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_phpunit_not_rewritten_as_php() {
+        // phpunit must NOT be rewritten to `rtco php unit` or `rtco php …`.
+        // (It may be left unchanged, or rewritten via its own future rule —
+        // but the php rule must not steal it.)
+        let result = rewrite_command_no_prefixes("phpunit tests/", &[]);
+        if let Some(ref rewritten) = result {
+            assert!(
+                !rewritten.starts_with("rtco php "),
+                "phpunit should not be rewritten via php rule, got: {}",
+                rewritten
+            );
+        }
     }
 }

@@ -555,6 +555,15 @@ pub const RULES: &[RtkRule] = &[
         subcmd_status: &[],
     },
     RtkRule {
+        pattern: r"^sqlite3(\s|$)",
+        rtk_cmd: "rtco sqlite",
+        rewrite_prefixes: &["sqlite3"],
+        category: "Infra",
+        savings_pct: 60.0,
+        subcmd_savings: &[],
+        subcmd_status: &[],
+    },
+    RtkRule {
         pattern: r"^ansible-playbook\b",
         rtk_cmd: "rtco ansible-playbook",
         rewrite_prefixes: &["ansible-playbook"],
@@ -577,6 +586,19 @@ pub const RULES: &[RtkRule] = &[
         rtk_cmd: "rtco composer",
         rewrite_prefixes: &["composer"],
         category: "PackageManager",
+        savings_pct: 65.0,
+        subcmd_savings: &[],
+        subcmd_status: &[],
+    },
+    // PHP interpreter (artisan, scripts, -v, etc.). Routed via fallback passthrough
+    // so any invocation works without a dedicated handler. Restored in rtk#1892 after
+    // a regression silently dropped the rule. Pattern uses `(\s|$)` so it matches
+    // `php` alone and `php …` but never `phpunit`, `phpcs`, `phpstan`.
+    RtkRule {
+        pattern: r"^php(\s|$)",
+        rtk_cmd: "rtco php",
+        rewrite_prefixes: &["php"],
+        category: "Build",
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
@@ -690,7 +712,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_status: &[],
     },
     RtkRule {
-        pattern: r"^mvn\s+(compile|package|clean|install)\b",
+        pattern: r"^mvn\s+(compile|package|clean|install|test|verify|integration-test|failsafe:integration-test)\b",
         rtk_cmd: "rtco mvn",
         rewrite_prefixes: &["mvn"],
         category: "Build",

@@ -7,7 +7,7 @@ mod learn;
 mod parser;
 
 // Re-export command modules for routing
-use cmds::cloud::{aws_cmd, container, curl_cmd, psql_cmd, wget_cmd};
+use cmds::cloud::{aws_cmd, container, curl_cmd, psql_cmd, sqlite_cmd, wget_cmd};
 use cmds::dotnet::{binlog, dotnet_cmd, dotnet_format_report, dotnet_trx};
 use cmds::git::{diff_cmd, gh_cmd, git, glab_cmd, gt_cmd};
 use cmds::go::{go_cmd, golangci_cmd};
@@ -15,7 +15,7 @@ use cmds::js::{
     lint_cmd, next_cmd, npm_cmd, playwright_cmd, pnpm_cmd, prettier_cmd, prisma_cmd, tsc_cmd,
     vitest_cmd,
 };
-use cmds::jvm::gradlew_cmd;
+use cmds::jvm::{gradlew_cmd, mvn_cmd};
 use cmds::python::{mypy_cmd, pip_cmd, pytest_cmd, ruff_cmd};
 use cmds::ruby::{rake_cmd, rspec_cmd, rubocop_cmd};
 use cmds::rust::{cargo_cmd, runner};
@@ -197,6 +197,14 @@ enum Commands {
     #[command(disable_help_flag = true)]
     Psql {
         /// psql arguments
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+
+    /// SQLite3 CLI with compact output (strip separators, tab-separated data)
+    #[command(disable_help_flag = true)]
+    Sqlite {
+        /// sqlite3 arguments (database file, SQL query, or dot-commands)
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
@@ -732,6 +740,14 @@ enum Commands {
     #[command(name = "gradlew")]
     Gradlew {
         /// Gradle tasks and arguments (e.g., assembleDebug, testDebugUnitTest, lint, --info)
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+
+    /// Maven with compact output (compile, package, test, verify — Surefire/Failsafe XML parsed)
+    #[command(name = "mvn")]
+    Mvn {
+        /// Maven phases and arguments (e.g., test, verify, -Dtest=Foo, -X, --debug)
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
@@ -1641,6 +1657,8 @@ fn run_cli() -> Result<i32> {
 
         Commands::Psql { args } => psql_cmd::run(&args, cli.verbose)?,
 
+        Commands::Sqlite { args } => sqlite_cmd::run(&args, cli.verbose)?,
+
         Commands::Pnpm { filter, command } => {
             // Warns user if filters are used with unsupported subcommands like typecheck
             if let Some(warning) = validate_pnpm_filters(&filter, &command) {
@@ -1710,11 +1728,12 @@ fn run_cli() -> Result<i32> {
 
         Commands::Diff { file1, file2 } => {
             if let Some(f2) = file2 {
-                diff_cmd::run(&file1, &f2, cli.verbose)?;
+                // GNU diff exit-code contract: 0 identical, 1 differ, 2 error.
+                diff_cmd::run(&file1, &f2, cli.verbose)?
             } else {
                 diff_cmd::run_stdin(cli.verbose)?;
+                0
             }
-            0
         }
 
         Commands::Log { file } => {
@@ -2191,6 +2210,8 @@ fn run_cli() -> Result<i32> {
 
         Commands::Gradlew { args } => gradlew_cmd::run(&args, cli.verbose)?,
 
+        Commands::Mvn { args } => mvn_cmd::run(&args, cli.verbose)?,
+
         Commands::HookAudit { since } => {
             hooks::hook_audit_cmd::run(since, cli.verbose)?;
             0
@@ -2508,6 +2529,7 @@ fn is_operational_command(cmd: &Commands) -> bool {
             | Commands::Dotnet { .. }
             | Commands::Docker { .. }
             | Commands::Kubectl { .. }
+            | Commands::Sqlite { .. }
             | Commands::Summary { .. }
             | Commands::Grep { .. }
             | Commands::Wget { .. }
