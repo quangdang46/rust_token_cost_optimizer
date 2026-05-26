@@ -359,7 +359,7 @@ fn run_aws_filtered(
     filter_fn: fn(&str) -> Option<FilterResult>,
 ) -> Result<i32> {
     let cmd_label = format!("aws {}", sub_args.join(" "));
-    let rtk_label = format!("rtco {}", cmd_label);
+    let rtco_label = format!("rtco {}", cmd_label);
     let slug = cmd_label.replace(' ', "_");
     let timer = tracking::TimedExecution::start();
     let (stdout, stderr, status) = run_aws_json(sub_args, extra_args, verbose)?;
@@ -378,7 +378,7 @@ fn run_aws_filtered(
         } else {
             eprintln!("{}", stderr.trim());
         }
-        timer.track(&cmd_label, &rtk_label, &raw, &stderr);
+        timer.track(&cmd_label, &rtco_label, &raw, &stderr);
         return Ok(exit_code);
     }
 
@@ -399,7 +399,7 @@ fn run_aws_filtered(
         println!("{}", result.text);
     }
 
-    timer.track(&cmd_label, &rtk_label, &raw, &result.text);
+    timer.track(&cmd_label, &rtco_label, &raw, &result.text);
     Ok(0)
 }
 
@@ -454,7 +454,7 @@ fn run_s3_ls(extra_args: &[String], verbose: u8) -> Result<i32> {
 fn run_s3_transfer(operation: &str, extra_args: &[String], verbose: u8) -> Result<i32> {
     let timer = tracking::TimedExecution::start();
     let cmd_label = format!("aws s3 {}", operation);
-    let rtk_label = format!("rtco aws s3 {}", operation);
+    let rtco_label = format!("rtco aws s3 {}", operation);
     let slug = format!("aws_s3_{}", operation);
 
     let mut cmd = resolved_command("aws");
@@ -484,7 +484,7 @@ fn run_s3_transfer(operation: &str, extra_args: &[String], verbose: u8) -> Resul
         } else {
             eprintln!("{}", stderr.trim());
         }
-        timer.track(&cmd_label, &rtk_label, &raw, &stderr);
+        timer.track(&cmd_label, &rtco_label, &raw, &stderr);
         return Ok(exit_code);
     }
 
@@ -499,7 +499,7 @@ fn run_s3_transfer(operation: &str, extra_args: &[String], verbose: u8) -> Resul
         println!("{}", result.text);
     }
 
-    timer.track(&cmd_label, &rtk_label, &raw, &result.text);
+    timer.track(&cmd_label, &rtco_label, &raw, &result.text);
     Ok(0)
 }
 

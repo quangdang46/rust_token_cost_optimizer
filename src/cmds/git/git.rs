@@ -966,12 +966,12 @@ fn run_status(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
         } else {
             format!("git status {}", args.join(" "))
         };
-        let rtk_cmd = if args.is_empty() {
+        let rtco_cmd = if args.is_empty() {
             "rtco git status".to_string()
         } else {
             format!("rtco git status {}", args.join(" "))
         };
-        timer.track(&original_cmd, &rtk_cmd, &raw_output, &message);
+        timer.track(&original_cmd, &rtco_cmd, &raw_output, &message);
         return Ok(result.exit_code);
     }
 
@@ -995,13 +995,13 @@ fn run_status(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
     } else {
         format!("git status {}", args.join(" "))
     };
-    let rtk_cmd = if args.is_empty() {
+    let rtco_cmd = if args.is_empty() {
         "rtco git status".to_string()
     } else {
         format!("rtco git status {}", args.join(" "))
     };
 
-    timer.track(&original_cmd, &rtk_cmd, &raw_output, &final_output);
+    timer.track(&original_cmd, &rtco_cmd, &raw_output, &final_output);
 
     Ok(0)
 }

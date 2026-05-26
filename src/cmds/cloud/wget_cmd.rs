@@ -70,31 +70,31 @@ pub fn run_stdout(url: &str, args: &[String], verbose: u8) -> Result<i32> {
         let lines: Vec<&str> = result.stdout.lines().collect();
         let total = lines.len();
 
-        let mut rtk_output = String::new();
+        let mut rtco_output = String::new();
         if total > 20 {
-            rtk_output.push_str(&format!(
+            rtco_output.push_str(&format!(
                 "{} ok | {} lines | {}\n",
                 compact_url(url),
                 total,
                 format_size(result.stdout.len() as u64)
             ));
-            rtk_output.push_str("--- first 10 lines ---\n");
+            rtco_output.push_str("--- first 10 lines ---\n");
             for line in lines.iter().take(10) {
-                rtk_output.push_str(&format!("{}\n", truncate_line(line, 100)));
+                rtco_output.push_str(&format!("{}\n", truncate_line(line, 100)));
             }
-            rtk_output.push_str(&format!("... +{} more lines", total - 10));
+            rtco_output.push_str(&format!("... +{} more lines", total - 10));
         } else {
-            rtk_output.push_str(&format!("{} ok | {} lines\n", compact_url(url), total));
+            rtco_output.push_str(&format!("{} ok | {} lines\n", compact_url(url), total));
             for line in &lines {
-                rtk_output.push_str(&format!("{}\n", line));
+                rtco_output.push_str(&format!("{}\n", line));
             }
         }
-        print!("{}", rtk_output);
+        print!("{}", rtco_output);
         timer.track(
             &format!("wget -O - {}", url),
             "rtco wget -o",
             &result.stdout,
-            &rtk_output,
+            &rtco_output,
         );
     } else {
         let error = parse_error(&result.stderr, "");

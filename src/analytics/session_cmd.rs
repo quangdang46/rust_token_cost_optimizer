@@ -12,7 +12,7 @@ struct SessionSummary {
     id: String,
     date: String,
     total_cmds: usize,
-    rtk_cmds: usize,
+    rtco_cmds: usize,
     output_tokens: usize,
 }
 
@@ -21,7 +21,7 @@ impl SessionSummary {
         if self.total_cmds == 0 {
             return 0.0;
         }
-        self.rtk_cmds as f64 / self.total_cmds as f64 * 100.0
+        self.rtco_cmds as f64 / self.total_cmds as f64 * 100.0
     }
 }
 
@@ -103,7 +103,7 @@ pub fn run(_verbose: u8) -> Result<()> {
             continue;
         }
 
-        let (total_cmds, rtk_cmds, output_tokens) = count_rtk_commands(&cmds);
+        let (total_cmds, rtco_cmds, output_tokens) = count_rtk_commands(&cmds);
 
         // Extract session ID from filename
         let id = path
@@ -134,7 +134,7 @@ pub fn run(_verbose: u8) -> Result<()> {
             id: short_id.to_string(),
             date,
             total_cmds,
-            rtk_cmds,
+            rtco_cmds,
             output_tokens,
         });
     }
@@ -161,14 +161,14 @@ pub fn run(_verbose: u8) -> Result<()> {
         let pct = s.adoption_pct();
         let bar = progress_bar(pct, 5);
         total_cmds += s.total_cmds;
-        total_rtk += s.rtk_cmds;
+        total_rtk += s.rtco_cmds;
 
         println!(
             "{:<12} {:<12} {:>5} {:>5} {:>8.0}% {:<7} {:>8}",
             s.id,
             s.date,
             s.total_cmds,
-            s.rtk_cmds,
+            s.rtco_cmds,
             pct,
             bar,
             format_tokens(s.output_tokens),
@@ -327,7 +327,7 @@ mod tests {
             id: "x".to_string(),
             date: "Today".to_string(),
             total_cmds: 0,
-            rtk_cmds: 0,
+            rtco_cmds: 0,
             output_tokens: 0,
         };
         assert_eq!(s.adoption_pct(), 0.0);
@@ -339,7 +339,7 @@ mod tests {
             id: "x".to_string(),
             date: "Today".to_string(),
             total_cmds: 20,
-            rtk_cmds: 15,
+            rtco_cmds: 15,
             output_tokens: 0,
         };
         assert_eq!(s.adoption_pct(), 75.0);

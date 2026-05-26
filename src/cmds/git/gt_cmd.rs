@@ -74,8 +74,8 @@ fn run_gt_filtered(
     } else {
         format!("gt {} {}", subcmd_str, args.join(" "))
     };
-    let rtk_label = format!("rtco {}", label);
-    timer.track(&label, &rtk_label, &raw, &output);
+    let rtco_label = format!("rtco {}", label);
+    timer.track(&label, &rtco_label, &raw, &output);
 
     Ok(cmd_output.exit_code)
 }

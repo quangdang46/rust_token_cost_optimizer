@@ -373,12 +373,12 @@ pub fn run(
         println!("{}", ext_line);
     }
 
-    let rtk_output = format!("{}F {}D + {}", total_files, dirs_count, ext_line);
+    let rtco_output = format!("{}F {}D + {}", total_files, dirs_count, ext_line);
     timer.track(
         &format!("find {} -name '{}'", path, effective_pattern),
         "rtco find",
         &raw_output,
-        &rtk_output,
+        &rtco_output,
     );
 
     Ok(())

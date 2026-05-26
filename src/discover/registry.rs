@@ -179,7 +179,7 @@ pub fn classify_command(cmd: &str) -> Classification {
         };
 
         Classification::Supported {
-            rtk_equivalent: rule.rtk_cmd,
+            rtk_equivalent: rule.rtco_cmd,
             category: rule.category,
             estimated_savings_pct: savings,
             status,
@@ -718,7 +718,7 @@ fn rewrite_segment_inner(
         // #508: warn on stderr so agents learn to stop overusing it
         if env_prefix.contains("RTCO_DISABLED=") {
             eprintln!(
-                "[rtk] RTCO_DISABLED=1 detected — skipping filter for this command. \
+                "[rtco] RTCO_DISABLED=1 detected — skipping filter for this command. \
                  Remove RTCO_DISABLED=1 to restore token savings."
             );
             return None;
@@ -786,8 +786,8 @@ fn rewrite_segment_inner(
         _ => return None,
     };
 
-    // Find the matching rule (rtk_cmd values are unique across all rules)
-    let rule = RULES.iter().find(|r| r.rtk_cmd == rtk_equivalent)?;
+    // Find the matching rule (rtco_cmd values are unique across all rules)
+    let rule = RULES.iter().find(|r| r.rtco_cmd == rtk_equivalent)?;
 
     if let Some(parts) = parse_golangci_run_parts(cmd_part) {
         let rewritten = if parts.global_segment.is_empty() {
@@ -803,7 +803,7 @@ fn rewrite_segment_inner(
 
     // #196: gh with --json/--jq/--template produces structured output that
     // rtk gh would corrupt — skip rewrite so the caller gets raw JSON.
-    if rule.rtk_cmd == "rtco gh" {
+    if rule.rtco_cmd == "rtco gh" {
         let args_lower = cmd_part.to_lowercase();
         if args_lower.contains("--json")
             || args_lower.contains("--jq")
@@ -817,9 +817,9 @@ fn rewrite_segment_inner(
     for &prefix in rule.rewrite_prefixes {
         if let Some(rest) = strip_word_prefix(cmd_part, prefix) {
             let rewritten = if rest.is_empty() {
-                format!("{}{}", rule.rtk_cmd, redirect_suffix)
+                format!("{}{}", rule.rtco_cmd, redirect_suffix)
             } else {
-                format!("{} {}{}", rule.rtk_cmd, rest, redirect_suffix)
+                format!("{} {}{}", rule.rtco_cmd, rest, redirect_suffix)
             };
             return Some(rewritten);
         }
@@ -3268,18 +3268,18 @@ mod tests {
             assert!(
                 !rule.pattern.is_empty(),
                 "Rule '{}' has empty pattern",
-                rule.rtk_cmd
+                rule.rtco_cmd
             );
-            assert!(!rule.rtk_cmd.is_empty(), "Rule with empty rtk_cmd found");
+            assert!(!rule.rtco_cmd.is_empty(), "Rule with empty rtco_cmd found");
             assert!(
-                rule.rtk_cmd.starts_with("rtco "),
-                "rtk_cmd '{}' must start with 'rtk '",
-                rule.rtk_cmd
+                rule.rtco_cmd.starts_with("rtco "),
+                "rtco_cmd '{}' must start with 'rtk '",
+                rule.rtco_cmd
             );
             assert!(
                 !rule.rewrite_prefixes.is_empty(),
                 "Rule '{}' has no rewrite_prefixes",
-                rule.rtk_cmd
+                rule.rtco_cmd
             );
         }
     }
@@ -3384,7 +3384,7 @@ mod tests {
             assert!(
                 Regex::new(rule.pattern).is_ok(),
                 "RULES[{i}] ({}) has invalid pattern '{}'",
-                rule.rtk_cmd,
+                rule.rtco_cmd,
                 rule.pattern
             );
         }
