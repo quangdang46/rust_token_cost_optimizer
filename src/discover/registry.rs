@@ -3324,7 +3324,7 @@ mod tests {
     fn test_exclude_env_prefixed_command() {
         let excluded = vec!["psql".to_string()];
         assert_eq!(
-            rewrite_command_no_prefixes("PGPASSWORD=postgres psql -h localhost", &excluded),
+            rewrite_command_no_prefixes("PGHOST=localhost psql -h localhost", &excluded),
             None
         );
     }
