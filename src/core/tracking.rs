@@ -140,7 +140,7 @@ pub struct CommandRecord {
     /// UTC timestamp when command was executed
     pub timestamp: DateTime<Utc>,
     /// RTK command that was executed (e.g., "rtco ls")
-    pub rtk_cmd: String,
+    pub rtco_cmd: String,
     /// Number of tokens saved (input - output)
     pub saved_tokens: usize,
     /// Savings percentage ((saved / input) * 100)
@@ -304,7 +304,7 @@ impl Tracker {
                 id INTEGER PRIMARY KEY,
                 timestamp TEXT NOT NULL,
                 original_cmd TEXT NOT NULL,
-                rtk_cmd TEXT NOT NULL,
+                rtco_cmd TEXT NOT NULL,
                 input_tokens INTEGER NOT NULL,
                 output_tokens INTEGER NOT NULL,
                 saved_tokens INTEGER NOT NULL,
@@ -312,6 +312,9 @@ impl Tracker {
             )",
             [],
         )?;
+
+        // Migration: rename rtk_cmd column to rtco_cmd (fork rename)
+        let _ = conn.execute("ALTER TABLE commands RENAME COLUMN rtk_cmd TO rtco_cmd", []);
 
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_timestamp ON commands(timestamp)",
@@ -488,7 +491,7 @@ impl Tracker {
                 id INTEGER PRIMARY KEY,
                 timestamp TEXT NOT NULL,
                 original_cmd TEXT NOT NULL,
-                rtk_cmd TEXT NOT NULL,
+                rtco_cmd TEXT NOT NULL,
                 input_tokens INTEGER NOT NULL,
                 output_tokens INTEGER NOT NULL,
                 saved_tokens INTEGER NOT NULL,
@@ -531,7 +534,7 @@ impl Tracker {
     /// # Arguments
     ///
     /// - `original_cmd`: The standard command (e.g., "ls -la")
-    /// - `rtk_cmd`: The RTK command used (e.g., "rtco ls")
+    /// - `rtco_cmd`: The RTK command used (e.g., "rtco ls")
     /// - `input_tokens`: Estimated tokens from standard command output
     /// - `output_tokens`: Actual tokens from RTK output
     /// - `exec_time_ms`: Execution time in milliseconds
@@ -548,7 +551,7 @@ impl Tracker {
     pub fn record(
         &self,
         original_cmd: &str,
-        rtk_cmd: &str,
+        rtco_cmd: &str,
         input_tokens: usize,
         output_tokens: usize,
         exec_time_ms: u64,
@@ -574,12 +577,12 @@ impl Tracker {
         let project_path = canonical_project_path(&raw_project_path, hash_project_paths_enabled());
 
         self.conn.execute(
-            "INSERT INTO commands (timestamp, original_cmd, rtk_cmd, project_path, input_tokens, output_tokens, saved_tokens, savings_pct, exec_time_ms)
+            "INSERT INTO commands (timestamp, original_cmd, rtco_cmd, project_path, input_tokens, output_tokens, saved_tokens, savings_pct, exec_time_ms)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)", // added: project_path
             params![
                 Utc::now().to_rfc3339(),
                 original_cmd_redacted,
-                rtk_cmd,
+                rtco_cmd,
                 project_path, // added
                 input_tokens as i64,
                 output_tokens as i64,
@@ -797,10 +800,10 @@ impl Tracker {
     ) -> Result<Vec<CommandStats>> {
         let (project_exact, project_glob) = project_filter_params(project_path); // added
         let mut stmt = self.conn.prepare(
-            "SELECT rtk_cmd, COUNT(*), SUM(saved_tokens), AVG(savings_pct), AVG(exec_time_ms)
+            "SELECT rtco_cmd, COUNT(*), SUM(saved_tokens), AVG(savings_pct), AVG(exec_time_ms)
              FROM commands
              WHERE (?1 IS NULL OR project_path = ?1 OR project_path GLOB ?2)
-             GROUP BY rtk_cmd
+             GROUP BY rtco_cmd
              ORDER BY SUM(saved_tokens) DESC
              LIMIT 10", // added: project filter in WHERE
         )?;
@@ -1081,7 +1084,7 @@ impl Tracker {
     /// let recent = tracker.get_recent(10)?;
     /// for cmd in recent {
     ///     println!("{}: {} saved {:.1}%",
-    ///         cmd.timestamp, cmd.rtk_cmd, cmd.savings_pct);
+    ///         cmd.timestamp, cmd.rtco_cmd, cmd.savings_pct);
     /// }
     /// # Ok::<(), anyhow::Error>(())
     /// ```
@@ -1098,7 +1101,7 @@ impl Tracker {
     ) -> Result<Vec<CommandRecord>> {
         let (project_exact, project_glob) = project_filter_params(project_path); // added
         let mut stmt = self.conn.prepare(
-            "SELECT timestamp, rtk_cmd, saved_tokens, savings_pct
+            "SELECT timestamp, rtco_cmd, saved_tokens, savings_pct
              FROM commands
              WHERE (?1 IS NULL OR project_path = ?1 OR project_path GLOB ?2)
              ORDER BY timestamp DESC
@@ -1112,7 +1115,7 @@ impl Tracker {
                     timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(0)?)
                         .map(|dt| dt.with_timezone(&Utc))
                         .unwrap_or_else(|_| Utc::now()),
-                    rtk_cmd: row.get(1)?,
+                    rtco_cmd: row.get(1)?,
                     saved_tokens: row.get::<_, i64>(2)? as usize,
                     savings_pct: row.get(3)?,
                 })
@@ -1136,8 +1139,8 @@ impl Tracker {
     /// Get top N commands by frequency (for telemetry).
     pub fn top_commands(&self, limit: usize) -> Result<Vec<String>> {
         let mut stmt = self.conn.prepare(
-            "SELECT rtk_cmd, COUNT(*) as cnt FROM commands
-             GROUP BY rtk_cmd ORDER BY cnt DESC LIMIT ?1",
+            "SELECT rtco_cmd, COUNT(*) as cnt FROM commands
+             GROUP BY rtco_cmd ORDER BY cnt DESC LIMIT ?1",
         )?;
         let rows = stmt.query_map(params![limit as i64], |row| {
             let cmd: String = row.get(0)?;
@@ -1213,9 +1216,9 @@ impl Tracker {
     /// Count commands with low savings (<30%) — filters that need improvement.
     pub fn low_savings_commands(&self, limit: usize) -> Result<Vec<(String, f64)>> {
         let mut stmt = self.conn.prepare(
-            "SELECT rtk_cmd, AVG(savings_pct) as avg_sav FROM commands
+            "SELECT rtco_cmd, AVG(savings_pct) as avg_sav FROM commands
              WHERE input_tokens > 0
-             GROUP BY rtk_cmd
+             GROUP BY rtco_cmd
              HAVING avg_sav < 30.0 AND avg_sav > 0.0
              ORDER BY COUNT(*) DESC LIMIT ?1",
         )?;
@@ -1232,9 +1235,9 @@ impl Tracker {
     pub fn avg_savings_per_command(&self) -> Result<f64> {
         let avg: f64 = self.conn.query_row(
             "SELECT COALESCE(AVG(avg_sav), 0.0) FROM (
-                SELECT rtk_cmd, AVG(savings_pct) as avg_sav
+                SELECT rtco_cmd, AVG(savings_pct) as avg_sav
                 FROM commands WHERE input_tokens > 0
-                GROUP BY rtk_cmd
+                GROUP BY rtco_cmd
             )",
             [],
             |row| row.get(0),
@@ -1242,11 +1245,11 @@ impl Tracker {
         Ok(avg)
     }
 
-    /// Count invocations of a specific meta-command (by rtk_cmd suffix).
+    /// Count invocations of a specific meta-command (by rtco_cmd suffix).
     pub fn count_meta_command(&self, name: &str) -> Result<i64> {
         let pattern = format!("rtco {}", name);
         let count: i64 = self.conn.query_row(
-            "SELECT COUNT(*) FROM commands WHERE rtk_cmd LIKE ?1 || '%'",
+            "SELECT COUNT(*) FROM commands WHERE rtco_cmd LIKE ?1 || '%'",
             params![pattern],
             |row| row.get(0),
         )?;
@@ -1309,9 +1312,9 @@ impl Tracker {
             return Ok(vec![]);
         }
         let mut stmt = self.conn.prepare(
-            "SELECT rtk_cmd, COUNT(*) as cnt FROM commands
+            "SELECT rtco_cmd, COUNT(*) as cnt FROM commands
              WHERE input_tokens > 0 AND timestamp >= datetime('now', '-90 days')
-             GROUP BY rtk_cmd ORDER BY cnt DESC",
+             GROUP BY rtco_cmd ORDER BY cnt DESC",
         )?;
         let mut categories: std::collections::HashMap<String, f64> =
             std::collections::HashMap::new();
@@ -1357,9 +1360,9 @@ impl Tracker {
     }
 }
 
-/// Map an rtk_cmd to an ecosystem category for telemetry.
-fn categorize_command(rtk_cmd: &str) -> String {
-    let parts: Vec<&str> = rtk_cmd.split_whitespace().collect();
+/// Map an rtco_cmd to an ecosystem category for telemetry.
+fn categorize_command(rtco_cmd: &str) -> String {
+    let parts: Vec<&str> = rtco_cmd.split_whitespace().collect();
     let tool = parts.get(1).copied().unwrap_or("other");
     match tool {
         "git" | "gh" | "gt" => "git",
@@ -1500,7 +1503,7 @@ impl TimedExecution {
     /// # Arguments
     ///
     /// - `original_cmd`: Standard command (e.g., "ls -la")
-    /// - `rtk_cmd`: RTK command used (e.g., "rtco ls")
+    /// - `rtco_cmd`: RTK command used (e.g., "rtco ls")
     /// - `input`: Standard command output (for token estimation)
     /// - `output`: RTK command output (for token estimation)
     ///
@@ -1514,7 +1517,7 @@ impl TimedExecution {
     /// let output = "short output";
     /// timer.track("ls -la", "rtco ls", input, output);
     /// ```
-    pub fn track(&self, original_cmd: &str, rtk_cmd: &str, input: &str, output: &str) {
+    pub fn track(&self, original_cmd: &str, rtco_cmd: &str, input: &str, output: &str) {
         let elapsed_ms = self.start.elapsed().as_millis() as u64;
         let input_tokens = estimate_tokens(input);
         let output_tokens = estimate_tokens(output);
@@ -1522,7 +1525,7 @@ impl TimedExecution {
         if let Ok(tracker) = Tracker::new() {
             let _ = tracker.record(
                 original_cmd,
-                rtk_cmd,
+                rtco_cmd,
                 input_tokens,
                 output_tokens,
                 elapsed_ms,
@@ -1539,7 +1542,7 @@ impl TimedExecution {
     /// # Arguments
     ///
     /// - `original_cmd`: Standard command (e.g., "git tag --list")
-    /// - `rtk_cmd`: RTK command used (e.g., "rtco git tag --list")
+    /// - `rtco_cmd`: RTK command used (e.g., "rtco git tag --list")
     ///
     /// # Examples
     ///
@@ -1550,11 +1553,11 @@ impl TimedExecution {
     /// // ... execute streaming command ...
     /// timer.track_passthrough("git tag", "rtco git tag");
     /// ```
-    pub fn track_passthrough(&self, original_cmd: &str, rtk_cmd: &str) {
+    pub fn track_passthrough(&self, original_cmd: &str, rtco_cmd: &str) {
         let elapsed_ms = self.start.elapsed().as_millis() as u64;
         // input_tokens=0, output_tokens=0 won't dilute savings statistics
         if let Ok(tracker) = Tracker::new() {
-            let _ = tracker.record(original_cmd, rtk_cmd, 0, 0, elapsed_ms);
+            let _ = tracker.record(original_cmd, rtco_cmd, 0, 0, elapsed_ms);
         }
     }
 }
@@ -1622,7 +1625,7 @@ mod tests {
         // Find our specific test record
         let test_record = recent
             .iter()
-            .find(|r| r.rtk_cmd == test_cmd)
+            .find(|r| r.rtco_cmd == test_cmd)
             .expect("Test record not found in recent commands");
 
         assert_eq!(test_record.saved_tokens, 80);
@@ -1654,11 +1657,11 @@ mod tests {
 
         let record1 = recent
             .iter()
-            .find(|r| r.rtk_cmd == cmd1)
+            .find(|r| r.rtco_cmd == cmd1)
             .expect("cmd1 record not found");
         let record2 = recent
             .iter()
-            .find(|r| r.rtk_cmd == cmd2)
+            .find(|r| r.rtco_cmd == cmd2)
             .expect("passthrough record not found");
 
         // Verify cmd1 has 80% savings
@@ -1683,7 +1686,7 @@ mod tests {
         // Verify via DB that record exists
         let tracker = Tracker::new().expect("Failed to create tracker");
         let recent = tracker.get_recent(5).expect("Failed to get recent");
-        assert!(recent.iter().any(|r| r.rtk_cmd == "rtco test"));
+        assert!(recent.iter().any(|r| r.rtco_cmd == "rtco test"));
     }
 
     // 6. TimedExecution::track_passthrough records with 0 tokens
@@ -1697,7 +1700,7 @@ mod tests {
 
         let pt = recent
             .iter()
-            .find(|r| r.rtk_cmd.contains("passthrough"))
+            .find(|r| r.rtco_cmd.contains("passthrough"))
             .expect("Passthrough record not found");
 
         // savings_pct should be 0 for passthrough
@@ -2034,7 +2037,7 @@ mod tests {
             .conn
             .execute(
                 "INSERT INTO commands
-                 (timestamp, original_cmd, rtk_cmd, project_path,
+                 (timestamp, original_cmd, rtco_cmd, project_path,
                   input_tokens, output_tokens, saved_tokens, savings_pct, exec_time_ms)
                  VALUES (?1, ?2, 'rtco git push', '/Users/test/proj', 100, 20, 80, 80.0, 5)",
                 params![Utc::now().to_rfc3339(), original],

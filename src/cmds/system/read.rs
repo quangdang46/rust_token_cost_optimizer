@@ -65,17 +65,17 @@ pub fn run(
 
     filtered = apply_line_window(&filtered, max_lines, tail_lines, &lang);
 
-    let rtk_output = if line_numbers {
+    let rtco_output = if line_numbers {
         format_with_line_numbers(&filtered)
     } else {
         filtered.clone()
     };
-    print!("{}", rtk_output);
+    print!("{}", rtco_output);
     timer.track(
         &format!("cat {}", file.display()),
         "rtco read",
         &content,
-        &rtk_output,
+        &rtco_output,
     );
     Ok(())
 }
@@ -129,14 +129,14 @@ pub fn run_stdin(
 
     filtered = apply_line_window(&filtered, max_lines, tail_lines, &lang);
 
-    let rtk_output = if line_numbers {
+    let rtco_output = if line_numbers {
         format_with_line_numbers(&filtered)
     } else {
         filtered.clone()
     };
-    print!("{}", rtk_output);
+    print!("{}", rtco_output);
 
-    timer.track("cat - (stdin)", "rtco read -", &content, &rtk_output);
+    timer.track("cat - (stdin)", "rtco read -", &content, &rtco_output);
     Ok(())
 }
 

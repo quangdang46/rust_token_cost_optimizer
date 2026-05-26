@@ -124,8 +124,8 @@ pub fn run(
         by_file.entry(file).or_default().push((line_num, cleaned));
     }
 
-    let mut rtk_output = String::new();
-    rtk_output.push_str(&format!(
+    let mut rtco_output = String::new();
+    rtco_output.push_str(&format!(
         "{} matches in {} files:\n\n",
         total_matches,
         by_file.len()
@@ -146,21 +146,21 @@ pub fn run(
             if shown >= max_results {
                 break;
             }
-            rtk_output.push_str(&format!("{}:{}:{}\n", file_display, line_num, content));
+            rtco_output.push_str(&format!("{}:{}:{}\n", file_display, line_num, content));
             shown += 1;
         }
     }
 
     if total_matches > shown {
-        rtk_output.push_str(&format!("[+{} more]\n", total_matches - shown));
+        rtco_output.push_str(&format!("[+{} more]\n", total_matches - shown));
     }
 
-    print!("{}", rtk_output);
+    print!("{}", rtco_output);
     timer.track(
         &format!("grep -rn '{}' {}", pattern, path),
         "rtco grep",
         &raw_output,
-        &rtk_output,
+        &rtco_output,
     );
 
     Ok(exit_code)

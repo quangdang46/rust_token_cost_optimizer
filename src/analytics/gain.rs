@@ -246,10 +246,10 @@ pub fn run(
                 println!("──────────────────────────────────────────────────────────");
                 for rec in recent {
                     let time = rec.timestamp.with_timezone(&Local).format("%m-%d %H:%M");
-                    let cmd_short = if rec.rtk_cmd.len() > 25 {
-                        format!("{}...", &rec.rtk_cmd[..22])
+                    let cmd_short = if rec.rtco_cmd.len() > 25 {
+                        format!("{}...", &rec.rtco_cmd[..22])
                     } else {
-                        rec.rtk_cmd.clone()
+                        rec.rtco_cmd.clone()
                     };
                     // added: tier indicators by savings level
                     let sign = if rec.savings_pct >= 70.0 {

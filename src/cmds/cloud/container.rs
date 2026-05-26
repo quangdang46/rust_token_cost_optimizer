@@ -44,7 +44,7 @@ where
         |stdout| match serde_json::from_str::<Value>(stdout) {
             Ok(json) => filter_fn(&json),
             Err(e) => {
-                eprintln!("[rtk] kubectl: JSON parse failed: {}", e);
+                eprintln!("[rtco] kubectl: JSON parse failed: {}", e);
                 stdout.to_string()
             }
         },
@@ -694,8 +694,8 @@ pub fn run_compose_ps(all: bool, verbose: u8) -> Result<i32> {
     let rtk = format_compose_ps(&structured);
     println!("{}", rtk);
     let label = if all { "docker compose ps -a" } else { "docker compose ps" };
-    let rtk_label = if all { "rtco docker compose ps -a" } else { "rtco docker compose ps" };
-    timer.track(label, rtk_label, &raw, &rtk);
+    let rtco_label = if all { "rtco docker compose ps -a" } else { "rtco docker compose ps" };
+    timer.track(label, rtco_label, &raw, &rtk);
     Ok(0)
 }
 
