@@ -80,6 +80,15 @@ pub const RULES: &[RtkRule] = &[
         subcmd_status: &[],
     },
     RtkRule {
+        pattern: r"^fnm\s+(list-remote|use|install|uninstall|list|ls|current|default)(\s|$)",
+        rtco_cmd: "rtco fnm",
+        rewrite_prefixes: &["fnm"],
+        category: "NodeVersionManager",
+        savings_pct: 25.0,
+        subcmd_savings: &[],
+        subcmd_status: &[],
+    },
+    RtkRule {
         pattern: r"^(cat|head|tail)\s+",
         rtco_cmd: "rtco read",
         rewrite_prefixes: &["cat", "head", "tail"],

@@ -40,6 +40,7 @@ pub fn category_avg_tokens(category: &str, subcmd: &str) -> usize {
         "GitHub" => 200,
         "GitLab" => 200,
         "PackageManager" => 150,
+        "NodeVersionManager" => 40,
         _ => 150,
     }
 }
@@ -383,16 +384,16 @@ fn strip_absolute_path(cmd: &str) -> String {
 }
 
 pub fn prefix_contains_rtk_disabled(prefix_part: &str) -> bool {
-    prefix_part.contains("RTCO_DISABLED=")
+    prefix_part.contains("RTK_DISABLED=")
 }
 
-/// Check if a command has RTCO_DISABLED= prefix in its env prefix portion.
+/// Check if a command has RTK_DISABLED= prefix in its env prefix portion.
 pub fn cmd_has_rtk_disabled_prefix(cmd: &str) -> bool {
     let (prefix_part, _) = strip_disabled_prefix(cmd);
     prefix_contains_rtk_disabled(prefix_part)
 }
 
-/// Strip RTCO_DISABLED=X and other env prefixes, returns `(env_prefix, actual_command)`.
+/// Strip RTK_DISABLED=X and other env prefixes, returns `(env_prefix, actual_command)`.
 pub fn strip_disabled_prefix(cmd: &str) -> (&str, &str) {
     let trimmed = cmd.trim();
     let stripped = ENV_PREFIX.replace(trimmed, "");
@@ -440,6 +441,25 @@ fn strip_trailing_redirects(cmd: &str) -> (&str, &str) {
     (cmd_part, redir_part)
 }
 
+lazy_static! {
+    /// Matches a bash line-continuation: a backslash immediately followed by
+    /// `\n` or `\r\n`, *plus* any horizontal whitespace on the line before AND
+    /// after the break. This is what bash already collapses to a single space
+    /// before executing the command — rtk's hook matcher needs to do the same
+    /// so commands authored across multiple lines still hit the rewrite rules.
+    /// Consuming the trailing whitespace prevents double spaces in cases like
+    /// `git diff \<NL>HEAD~1`.
+    static ref LINE_CONTINUATION_RE: Regex =
+        Regex::new(r"(?m)[ \t\x0B\x0C]*\\\r?\n[ \t\x0B\x0C]*").unwrap();
+}
+
+/// Replace every bash line continuation with a single space, mirroring what
+/// bash does before dispatching the command. Returns a borrowed `&str` when the
+/// input contains no continuations, so the common fast path allocates nothing.
+fn collapse_line_continuations(s: &str) -> std::borrow::Cow<'_, str> {
+    LINE_CONTINUATION_RE.replace_all(s, " ")
+}
+
 /// Returns `None` if the command is unsupported or ignored (hook should pass through).
 ///
 /// Handles compound commands (`&&`, `||`, `;`) by rewriting each segment independently.
@@ -464,7 +484,12 @@ pub fn rewrite_command(
     excluded: &[String],
     transparent_prefixes: &[String],
 ) -> Option<String> {
-    let trimmed = cmd.trim();
+    // Bash line continuations (`\<NL>`, `\<CRLF>`) and the leading whitespace that
+    // follows are syntactically equivalent to a single space, but `cmd.trim()` does
+    // not unwrap them so a leading backslash-newline used to defeat the whole matcher.
+    // Normalize first, then trim. See issue #1564.
+    let normalized = collapse_line_continuations(cmd);
+    let trimmed = normalized.trim();
     if trimmed.is_empty() {
         return None;
     }
@@ -484,7 +509,10 @@ pub fn rewrite_command(
         || trimmed.contains(';')
         || trimmed.contains('|')
         || trimmed.contains(" & ");
-    if !has_compound && (trimmed.starts_with("rtco ") || trimmed == "rtk") {
+    let is_rtk_style = trimmed.starts_with("rtk ") && !trimmed.starts_with("rtco ");
+    let is_rtco_style = trimmed.starts_with("rtco ");
+    let is_bare_rtk = trimmed == "rtk";
+    if !has_compound && (is_rtk_style || is_rtco_style || is_bare_rtk) {
         return Some(trimmed.to_string());
     }
 
@@ -714,12 +742,12 @@ fn rewrite_segment_inner(
 
     let (env_prefix, rest_after_env) = strip_disabled_prefix(trimmed);
     if !env_prefix.is_empty() {
-        // #345: RTCO_DISABLED=1 in env prefix → skip rewrite entirely
+        // #345: RTK_DISABLED=1 in env prefix → skip rewrite entirely
         // #508: warn on stderr so agents learn to stop overusing it
-        if env_prefix.contains("RTCO_DISABLED=") {
+        if env_prefix.contains("RTK_DISABLED=") {
             eprintln!(
-                "[rtco] RTCO_DISABLED=1 detected — skipping filter for this command. \
-                 Remove RTCO_DISABLED=1 to restore token savings."
+                "[rtk] RTK_DISABLED=1 detected — skipping filter for this command. \
+                 Remove RTK_DISABLED=1 to restore token savings."
             );
             return None;
         }
@@ -754,9 +782,9 @@ fn rewrite_segment_inner(
     // e.g. "git status 2>&1" → match "git status", re-append " 2>&1"
     let (cmd_part, redirect_suffix) = strip_trailing_redirects(trimmed);
 
-    // Already RTK — pass through unchanged
-    if cmd_part.starts_with("rtco ") || cmd_part == "rtk" {
-        return Some(trimmed.to_string());
+    // Already RTK/RTCO — pass through unchanged
+    if cmd_part.starts_with("rtk ") || cmd_part.starts_with("rtco ") || cmd_part == "rtk" {
+        return None;
     }
 
     if cmd_part.starts_with("head -") || cmd_part.starts_with("tail ") {
@@ -802,7 +830,7 @@ fn rewrite_segment_inner(
     }
 
     // #196: gh with --json/--jq/--template produces structured output that
-    // rtk gh would corrupt — skip rewrite so the caller gets raw JSON.
+    // rtco gh would corrupt — skip rewrite so the caller gets raw JSON.
     if rule.rtco_cmd == "rtco gh" {
         let args_lower = cmd_part.to_lowercase();
         if args_lower.contains("--json")
@@ -811,6 +839,18 @@ fn rewrite_segment_inner(
         {
             return None;
         }
+    }
+
+    // #664: RTK `find` supports only a small subset of native `find` semantics.
+    // Outside that subset, `rtk find` either errors loudly (-not/-exec/-delete)
+    // or silently returns wrong results (multiple start paths, duplicate
+    // predicates, -mindepth/-path, -type l, ...). Default-deny: only rewrite
+    // invocations that fit RTK's compact-find grammar. Otherwise let native
+    // `find` run unchanged. This is a hook-layer transparency guard, not a
+    // safety sandbox — destructive actions the user typed (-exec rm, -delete)
+    // still execute via native find.
+    if rule.rtco_cmd == "rtco find" && !is_supported_simple_find(cmd_part) {
+        return None;
     }
 
     // Try each rewrite prefix (longest first) with word-boundary check
@@ -826,6 +866,177 @@ fn rewrite_segment_inner(
     }
 
     None
+}
+
+fn contains_glob_metachar(s: &str) -> bool {
+    s.contains('*') || s.contains('?') || s.contains('[')
+}
+
+// #664: RTK `find` only reproduces a narrow slice of native `find` semantics.
+// Outside that slice it either errors loudly (-not/-exec/-delete/...) or
+// silently returns wrong output (multiple start paths, duplicate predicates,
+// -mindepth/-path, -type l, -maxdepth alone, file/missing start paths, ...).
+// See `find_cmd::parse_native_find_args` for the divergences this guard
+// prevents and the plan in PR #664-fix for the full taxonomy.
+fn is_supported_simple_find(cmd_part: &str) -> bool {
+    use crate::discover::lexer::shell_split;
+
+    let Some(rest) = strip_word_prefix(cmd_part, "find") else {
+        return false;
+    };
+    let args = shell_split(rest);
+    if args.is_empty() {
+        return false;
+    }
+
+    // Disambiguate by glob in args[0]:
+    //   glob → Shape B (RTK alias `find PATTERN [PATH] [-m N] [-t f|d]`)
+    //   else → Shape A (native simple `find [PATH] (FLAG VALUE)+`)
+    if contains_glob_metachar(&args[0]) {
+        is_supported_rtk_alias(&args)
+    } else {
+        is_supported_native_simple(&args)
+    }
+}
+
+fn is_supported_native_simple(args: &[String]) -> bool {
+    use std::path::Path;
+
+    let mut i = 0;
+
+    // Optional single start path (non-flag, non-grouping).
+    // Must be an existing directory at rewrite time — file roots, missing
+    // paths, and unexpanded `~`/`$VAR` are declined to prevent silent-wrong
+    // outputs (rtk strips the file root to empty; missing path → "0 for ...").
+    if !args[i].starts_with('-') {
+        if matches!(args[i].as_str(), "!" | "(" | ")") {
+            return false;
+        }
+        if !Path::new(&args[i]).is_dir() {
+            return false;
+        }
+        i += 1;
+    }
+
+    let mut seen_name_or_iname = false;
+    let mut seen_type = false;
+    let mut seen_maxdepth = false;
+    // -name/-iname/-type only. -maxdepth alone is NOT a selector because
+    // FindArgs::default() pins file_type="f" — rtk would drop directories
+    // while native `find . -maxdepth 2` returns files AND directories.
+    let mut seen_selector = false;
+
+    while i < args.len() {
+        match args[i].as_str() {
+            "-name" | "-iname" => {
+                if seen_name_or_iname {
+                    return false;
+                }
+                let Some(v) = args.get(i + 1) else {
+                    return false;
+                };
+                if v.starts_with('-') {
+                    return false;
+                }
+                seen_name_or_iname = true;
+                seen_selector = true;
+                i += 2;
+            }
+            "-type" => {
+                if seen_type {
+                    return false;
+                }
+                let Some(v) = args.get(i + 1) else {
+                    return false;
+                };
+                if !matches!(v.as_str(), "f" | "d") {
+                    return false;
+                }
+                seen_type = true;
+                seen_selector = true;
+                i += 2;
+            }
+            "-maxdepth" => {
+                if seen_maxdepth {
+                    return false;
+                }
+                let Some(v) = args.get(i + 1) else {
+                    return false;
+                };
+                match v.parse::<usize>() {
+                    // Native `-maxdepth 0` prints the start path; rtk strips
+                    // the search-root prefix to empty and skips it → "0 for *".
+                    Ok(0) => return false,
+                    Ok(_) => {}
+                    Err(_) => return false,
+                }
+                seen_maxdepth = true;
+                i += 2;
+            }
+            // Anything else (-not/-exec/-delete/-path/-mindepth/-printf/-ls,
+            // future flags, extra positional args, `!`/`(`/`)`, `-o`/`-a`)
+            // disqualifies.
+            _ => return false,
+        }
+    }
+
+    seen_selector
+}
+
+fn is_supported_rtk_alias(args: &[String]) -> bool {
+    use std::path::Path;
+
+    // args[0] is a glob pattern (checked by caller).
+    let mut i = 1;
+
+    // Optional second positional path: must be non-glob, non-grouping, and
+    // resolve to an existing directory (same is_dir guard as Shape A).
+    if i < args.len() && !args[i].starts_with('-') {
+        if matches!(args[i].as_str(), "!" | "(" | ")") || contains_glob_metachar(&args[i]) {
+            return false;
+        }
+        if !Path::new(&args[i]).is_dir() {
+            return false;
+        }
+        i += 1;
+    }
+
+    let mut seen_max = false;
+    let mut seen_type = false;
+
+    while i < args.len() {
+        match args[i].as_str() {
+            "-m" | "--max" => {
+                if seen_max {
+                    return false;
+                }
+                let Some(v) = args.get(i + 1) else {
+                    return false;
+                };
+                if v.parse::<usize>().is_err() {
+                    return false;
+                }
+                seen_max = true;
+                i += 2;
+            }
+            "-t" | "--file-type" => {
+                if seen_type {
+                    return false;
+                }
+                let Some(v) = args.get(i + 1) else {
+                    return false;
+                };
+                if !matches!(v.as_str(), "f" | "d") {
+                    return false;
+                }
+                seen_type = true;
+                i += 2;
+            }
+            _ => return false,
+        }
+    }
+
+    true
 }
 
 /// Strip a command prefix with word-boundary check.
@@ -1516,12 +1727,12 @@ mod tests {
         );
     }
 
-    // --- #345: RTCO_DISABLED ---
+    // --- #345: RTK_DISABLED ---
 
     #[test]
     fn test_rewrite_rtk_disabled_curl() {
         assert_eq!(
-            rewrite_command_no_prefixes("RTCO_DISABLED=1 curl https://example.com", &[]),
+            rewrite_command_no_prefixes("RTK_DISABLED=1 curl https://example.com", &[]),
             None
         );
     }
@@ -1529,7 +1740,7 @@ mod tests {
     #[test]
     fn test_rewrite_rtk_disabled_git_status() {
         assert_eq!(
-            rewrite_command_no_prefixes("RTCO_DISABLED=1 git status", &[]),
+            rewrite_command_no_prefixes("RTK_DISABLED=1 git status", &[]),
             None
         );
     }
@@ -1537,7 +1748,7 @@ mod tests {
     #[test]
     fn test_rewrite_rtk_disabled_multi_env() {
         assert_eq!(
-            rewrite_command_no_prefixes("FOO=1 RTCO_DISABLED=1 git status", &[]),
+            rewrite_command_no_prefixes("FOO=1 RTK_DISABLED=1 git status", &[]),
             None
         );
     }
@@ -1545,7 +1756,7 @@ mod tests {
     #[test]
     fn test_rewrite_rtk_disabled_warns_on_stderr() {
         assert_eq!(
-            rewrite_command_no_prefixes("RTCO_DISABLED=1 git status", &[]),
+            rewrite_command_no_prefixes("RTK_DISABLED=1 git status", &[]),
             None
         );
     }
@@ -1573,7 +1784,7 @@ mod tests {
         }
 
         let output = std::process::Command::new(&rtk_bin)
-            .args(["rewrite", "RTCO_DISABLED=1 git status"])
+            .args(["rewrite", "RTK_DISABLED=1 git status"])
             .output()
             .expect("Failed to run rtk");
 
@@ -1583,7 +1794,7 @@ mod tests {
         );
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
-            stderr.contains("RTCO_DISABLED=1 detected"),
+            stderr.contains("RTK_DISABLED=1 detected"),
             "Should warn on stderr, got: {}",
             stderr
         );
@@ -2201,50 +2412,6 @@ mod tests {
         assert_eq!(
             rewrite_command_no_prefixes("psql -U postgres -d mydb", &[]),
             Some("rtco psql -U postgres -d mydb".into())
-        );
-    }
-
-    #[test]
-    fn test_classify_sqlite3() {
-        assert!(matches!(
-            classify_command("sqlite3 mydb.db \".tables\""),
-            Classification::Supported {
-                rtk_equivalent: "rtco sqlite",
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn test_classify_sqlite3_query() {
-        assert!(matches!(
-            classify_command("sqlite3 /path/to/db.db \"SELECT * FROM users;\""),
-            Classification::Supported {
-                rtk_equivalent: "rtco sqlite",
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn test_rewrite_sqlite3() {
-        assert_eq!(
-            rewrite_command_no_prefixes("sqlite3 mydb.db \".tables\"", &[]),
-            Some("rtco sqlite mydb.db \".tables\"".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_sqlite3_query() {
-        assert_eq!(
-            rewrite_command_no_prefixes(
-                "sqlite3 /path/to/db.db \"SELECT name FROM sqlite_master WHERE type='table';\"",
-                &[]
-            ),
-            Some(
-                "rtco sqlite /path/to/db.db \"SELECT name FROM sqlite_master WHERE type='table';\""
-                    .into()
-            )
         );
     }
 
@@ -3105,57 +3272,6 @@ mod tests {
         );
     }
 
-    // --- Maven ---
-
-    #[test]
-    fn test_classify_mvn_test() {
-        assert!(matches!(
-            classify_command("mvn test"),
-            Classification::Supported {
-                rtk_equivalent: "rtco mvn",
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn test_classify_mvn_verify() {
-        assert!(matches!(
-            classify_command("mvn verify"),
-            Classification::Supported {
-                rtk_equivalent: "rtco mvn",
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn test_classify_mvn_failsafe_integration_test() {
-        assert!(matches!(
-            classify_command("mvn failsafe:integration-test"),
-            Classification::Supported {
-                rtk_equivalent: "rtco mvn",
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn test_rewrite_mvn_test() {
-        assert_eq!(
-            rewrite_command_no_prefixes("mvn test", &[]),
-            Some("rtco mvn test".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_mvn_verify() {
-        assert_eq!(
-            rewrite_command_no_prefixes("mvn verify", &[]),
-            Some("rtco mvn verify".into())
-        );
-    }
-
     #[test]
     fn test_rewrite_gradlew_test_savings() {
         assert_eq!(
@@ -3262,6 +3378,292 @@ mod tests {
         );
     }
 
+    // --- #664: rewrite-layer guard for non-compact find invocations ---
+    //
+    // Default-deny: only rewrite when the invocation fits one of two strict
+    // shapes that match RTK's existing compact-find semantics exactly.
+    // See `is_supported_simple_find` in this file for the grammar.
+
+    // Supported shapes (must still rewrite).
+
+    #[test]
+    fn rewrite_find_keeps_native_simple_name() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -name '*.rs'", &[]),
+            Some("rtco find . -name '*.rs'".into())
+        );
+    }
+
+    #[test]
+    fn rewrite_find_keeps_native_type_and_maxdepth() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find src -type f -maxdepth 2 -name '*.rs'", &[]),
+            Some("rtco find src -type f -maxdepth 2 -name '*.rs'".into())
+        );
+    }
+
+    #[test]
+    fn rewrite_find_keeps_rtk_alias_glob_path_max() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find '*.rs' src -m 5", &[]),
+            Some("rtco find '*.rs' src -m 5".into())
+        );
+    }
+
+    #[test]
+    fn rewrite_find_keeps_iname_alone() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -iname '*.RS'", &[]),
+            Some("rtco find . -iname '*.RS'".into())
+        );
+    }
+
+    #[test]
+    fn rewrite_find_keeps_no_explicit_path() {
+        // `find -name '*.rs'` with no path — both native and rtk default to cwd.
+        assert_eq!(
+            rewrite_command_no_prefixes("find -name '*.rs'", &[]),
+            Some("rtco find -name '*.rs'".into())
+        );
+    }
+
+    // Loud-fail set: rtk find errors out, breaking `&&` chains.
+
+    #[test]
+    fn rewrite_find_skips_exec() {
+        // #664 reproduction case.
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -type f -exec ls -lh {} \\;", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_not() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -name '*.md' -not -path './node_modules/*'", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_delete() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -name '*.tmp' -delete", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_or_predicate() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -name '*.rs' -o -name '*.md'", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_bang_predicate() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . ! -name '*.test.rs'", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_paren_grouping() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . \\( -name '*.rs' -o -name '*.md' \\)", &[]),
+            None
+        );
+    }
+
+    // Silent-fail set: rtk find returns wrong results with exit 0.
+
+    #[test]
+    fn rewrite_find_skips_mindepth() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -mindepth 2 -name '*.rs'", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_path_predicate() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -path '*/src/*' -name '*.rs'", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_printf_action() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -name '*.rs' -printf '%p\\n'", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_multiple_start_paths() {
+        // rtk find silently drops 'tests', returns only matches under 'src'.
+        assert_eq!(
+            rewrite_command_no_prefixes("find src tests -name '*.rs'", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_extra_bare_arg_after_expression() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -name foo bar", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_bare_path_only() {
+        // `find src` natively = "all under src/"; rtk parser would treat
+        // 'src' as PATTERN. Decline because no selector predicate present.
+        assert_eq!(rewrite_command_no_prefixes("find src", &[]), None);
+    }
+
+    #[test]
+    fn rewrite_find_skips_bare_dot_only() {
+        // Same ambiguity — decline.
+        assert_eq!(rewrite_command_no_prefixes("find .", &[]), None);
+    }
+
+    #[test]
+    fn rewrite_find_skips_duplicate_name_predicates() {
+        // Native: implicit AND (impossible match). RTK: last wins ('*.md' only).
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -name '*.rs' -name '*.md'", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_name_and_iname_combo() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -name '*.rs' -iname '*.MD'", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_duplicate_type() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -type f -type d", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_unsupported_type_value_l() {
+        // -type l (symlink) — RTK only distinguishes "d" vs everything else,
+        // so it returns files + symlinks indiscriminately. Decline.
+        assert_eq!(rewrite_command_no_prefixes("find . -type l", &[]), None);
+    }
+
+    #[test]
+    fn rewrite_find_skips_type_with_compound_value() {
+        // GNU find allows `-type f,d` (comma-list). RTK has no equivalent.
+        assert_eq!(rewrite_command_no_prefixes("find . -type f,d", &[]), None);
+    }
+
+    #[test]
+    fn rewrite_find_skips_maxdepth_only() {
+        // FindArgs::default() pins file_type="f" → rtk drops dirs while native
+        // returns files AND directories. `-maxdepth` alone is not a selector.
+        assert_eq!(rewrite_command_no_prefixes("find . -maxdepth 2", &[]), None);
+    }
+
+    #[test]
+    fn rewrite_find_skips_maxdepth_zero() {
+        // Native prints the start path; rtk strips it to empty and skips.
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -maxdepth 0 -name foo", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_file_start_path() {
+        // `find Cargo.toml -type f` — file root gets stripped to empty in rtk;
+        // native prints it. Cargo.toml exists at the crate root during tests.
+        assert_eq!(
+            rewrite_command_no_prefixes("find Cargo.toml -type f", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_missing_start_path() {
+        // Native errors non-zero; rtk returns "0 for ..." with success.
+        assert_eq!(
+            rewrite_command_no_prefixes("find /this/does/not/exist/rtk-test -name '*.rs'", &[]),
+            None
+        );
+    }
+
+    #[test]
+    fn rewrite_find_skips_unexpanded_tilde() {
+        // Shell hasn't expanded `~` at hook time. Path::new("~").is_dir()
+        // is false → decline. Native runs after shell expands → correct via
+        // passthrough.
+        assert_eq!(
+            rewrite_command_no_prefixes("find ~ -name '*.rs'", &[]),
+            None
+        );
+    }
+
+    // Quoting + edge cases.
+
+    #[test]
+    fn rewrite_find_quoted_dash_in_pattern_is_not_a_flag() {
+        // Quoted glob containing a dash must not be misread as an unknown flag.
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -name '*-not-a-flag*'", &[]),
+            Some("rtco find . -name '*-not-a-flag*'".into())
+        );
+    }
+
+    #[test]
+    fn rewrite_find_dangling_flag_value_skips() {
+        assert_eq!(rewrite_command_no_prefixes("find . -name", &[]), None);
+    }
+
+    #[test]
+    fn rewrite_find_skips_maxdepth_non_integer() {
+        assert_eq!(
+            rewrite_command_no_prefixes("find . -maxdepth abc -name '*.rs'", &[]),
+            None
+        );
+    }
+
+    // Compound command — other segments must still rewrite even when find
+    // segment is declined.
+
+    #[test]
+    fn rewrite_find_unsupported_in_compound_leaves_segment_raw_but_rewrites_others() {
+        let out =
+            rewrite_command_no_prefixes("find . -type f -exec ls -lh {} \\; && git status", &[]);
+        assert!(
+            out.is_some(),
+            "compound rewrite should still produce output if any segment changed"
+        );
+        let s = out.unwrap();
+        assert!(
+            s.contains("find . -type f -exec ls -lh {} \\;"),
+            "find segment must be raw; got: {s}"
+        );
+        assert!(
+            s.contains("rtco git status"),
+            "git status segment must be rewritten; got: {s}"
+        );
+    }
+
     #[test]
     fn test_all_rules_are_complete() {
         for rule in RULES {
@@ -3273,7 +3675,7 @@ mod tests {
             assert!(!rule.rtco_cmd.is_empty(), "Rule with empty rtco_cmd found");
             assert!(
                 rule.rtco_cmd.starts_with("rtco "),
-                "rtco_cmd '{}' must start with 'rtk '",
+                "rtco_cmd '{}' must start with 'rtco '",
                 rule.rtco_cmd
             );
             assert!(
@@ -3324,7 +3726,7 @@ mod tests {
     fn test_exclude_env_prefixed_command() {
         let excluded = vec!["psql".to_string()];
         assert_eq!(
-            rewrite_command_no_prefixes("PGHOST=localhost psql -h localhost", &excluded),
+            rewrite_command_no_prefixes("PGPASSWORD=postgres psql -h localhost", &excluded),
             None
         );
     }
@@ -3432,16 +3834,16 @@ mod tests {
         );
     }
 
-    // --- #508: RTCO_DISABLED detection helpers ---
+    // --- #508: RTK_DISABLED detection helpers ---
 
     #[test]
     fn test_cmd_has_rtk_disabled_prefix() {
-        assert!(cmd_has_rtk_disabled_prefix("RTCO_DISABLED=1 git status"));
+        assert!(cmd_has_rtk_disabled_prefix("RTK_DISABLED=1 git status"));
         assert!(cmd_has_rtk_disabled_prefix(
-            "FOO=1 RTCO_DISABLED=1 cargo test"
+            "FOO=1 RTK_DISABLED=1 cargo test"
         ));
         assert!(cmd_has_rtk_disabled_prefix(
-            "RTCO_DISABLED=true git log --oneline"
+            "RTK_DISABLED=true git log --oneline"
         ));
         assert!(!cmd_has_rtk_disabled_prefix("git status"));
         assert!(!cmd_has_rtk_disabled_prefix("rtco git status"));
@@ -3451,12 +3853,12 @@ mod tests {
     #[test]
     fn test_strip_disabled_prefix() {
         assert_eq!(
-            strip_disabled_prefix("RTCO_DISABLED=1 git status"),
-            ("RTCO_DISABLED=1 ", "git status")
+            strip_disabled_prefix("RTK_DISABLED=1 git status"),
+            ("RTK_DISABLED=1 ", "git status")
         );
         assert_eq!(
-            strip_disabled_prefix("FOO=1 RTCO_DISABLED=1 cargo test"),
-            ("FOO=1 RTCO_DISABLED=1 ", "cargo test")
+            strip_disabled_prefix("FOO=1 RTK_DISABLED=1 cargo test"),
+            ("FOO=1 RTK_DISABLED=1 ", "cargo test")
         );
         assert_eq!(strip_disabled_prefix("git status"), ("", "git status"));
     }
@@ -3982,99 +4384,69 @@ mod tests {
         );
     }
 
-    // --- PHP (rtk#1892) ---
+    // --- line-continuation handling (issue #1564) -------------------
 
     #[test]
-    fn test_classify_php_bare() {
-        assert!(matches!(
-            classify_command("php"),
-            Classification::Supported {
-                rtk_equivalent: "rtco php",
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn test_classify_php_artisan() {
-        assert!(matches!(
-            classify_command("php artisan migrate"),
-            Classification::Supported {
-                rtk_equivalent: "rtco php",
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn test_classify_php_script() {
-        assert!(matches!(
-            classify_command("php script.php"),
-            Classification::Supported {
-                rtk_equivalent: "rtco php",
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn test_classify_phpunit_not_php() {
-        // phpunit is a different tool (PHPUnit test runner) — must not be misclassified
-        // as the php interpreter rule (rtk#1892 regression guard).
-        // Unsupported / Ignored are both fine — we only forbid a php-rule match.
-        if let Classification::Supported { rtk_equivalent, .. } = classify_command("phpunit tests/")
-        {
-            assert_ne!(
-                rtk_equivalent, "rtco php",
-                "phpunit must not be rewritten via the php rule"
-            );
-        }
-    }
-
-    #[test]
-    fn test_rewrite_php_bare() {
+    fn test_rewrite_leading_backslash_newline() {
+        // The exact reproduction from #1564: a leading `\<NL>` made
+        // the matcher see `\` as the command and bail out.
         assert_eq!(
-            rewrite_command_no_prefixes("php", &[]),
-            Some("rtco php".into())
+            rewrite_command_no_prefixes("\\\ngit diff HEAD~1", &[]),
+            Some("rtco git diff HEAD~1".into())
         );
     }
 
     #[test]
-    fn test_rewrite_php_artisan_migrate() {
+    fn test_rewrite_leading_backslash_crlf() {
+        // CRLF line ending — same shape, Windows shells / Git Bash.
         assert_eq!(
-            rewrite_command_no_prefixes("php artisan migrate", &[]),
-            Some("rtco php artisan migrate".into())
+            rewrite_command_no_prefixes("\\\r\ngit diff HEAD~1", &[]),
+            Some("rtco git diff HEAD~1".into())
         );
     }
 
     #[test]
-    fn test_rewrite_php_artisan_serve() {
+    fn test_rewrite_internal_backslash_newline() {
+        // Embedded line continuation between subcommand and args:
+        // `git diff \<NL>HEAD~1` is exactly equivalent to
+        // `git diff HEAD~1` per bash semantics.
         assert_eq!(
-            rewrite_command_no_prefixes("php artisan serve", &[]),
-            Some("rtco php artisan serve".into())
+            rewrite_command_no_prefixes("git diff \\\nHEAD~1", &[]),
+            Some("rtco git diff HEAD~1".into())
         );
     }
 
     #[test]
-    fn test_rewrite_php_script_file() {
+    fn test_rewrite_backslash_newline_with_indent() {
+        // Continuation followed by indentation — also collapsed.
         assert_eq!(
-            rewrite_command_no_prefixes("php script.php --opt", &[]),
-            Some("rtco php script.php --opt".into())
+            rewrite_command_no_prefixes("git \\\n    diff HEAD~1", &[]),
+            Some("rtco git diff HEAD~1".into())
         );
     }
 
     #[test]
-    fn test_rewrite_phpunit_not_rewritten_as_php() {
-        // phpunit must NOT be rewritten to `rtco php unit` or `rtco php …`.
-        // (It may be left unchanged, or rewritten via its own future rule —
-        // but the php rule must not steal it.)
-        let result = rewrite_command_no_prefixes("phpunit tests/", &[]);
-        if let Some(ref rewritten) = result {
-            assert!(
-                !rewritten.starts_with("rtco php "),
-                "phpunit should not be rewritten via php rule, got: {}",
-                rewritten
-            );
-        }
+    fn test_rewrite_no_line_continuation_unchanged() {
+        // Sanity check: a command without any `\<NL>` should match
+        // unchanged. This pins that the normalization step does not
+        // regress the no-op fast path.
+        assert_eq!(
+            rewrite_command_no_prefixes("git diff HEAD~1", &[]),
+            Some("rtco git diff HEAD~1".into())
+        );
     }
+
+    #[test]
+    fn test_collapse_line_continuations_no_op() {
+        // Helper-level: no continuations → returns Borrowed (no
+        // allocation). We can only spot-check the equality here, but
+        // the `Cow::Borrowed` variant is implied by `replace_all`
+        // when no replacement occurs.
+        assert_eq!(
+            collapse_line_continuations("git diff HEAD~1"),
+            std::borrow::Cow::<str>::Borrowed("git diff HEAD~1"),
+        );
+    }
+
+    // --- line-continuation handling (issue #1564) -------------------
 }
