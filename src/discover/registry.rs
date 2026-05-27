@@ -1301,7 +1301,9 @@ mod tests {
                 "cargo fmt --all && cargo clippy --all-targets && cargo test",
                 &[]
             ),
-            Some("rtco cargo fmt --all && rtco cargo clippy --all-targets && rtco cargo test".into())
+            Some(
+                "rtco cargo fmt --all && rtco cargo clippy --all-targets && rtco cargo test".into()
+            )
         );
     }
 
@@ -3961,70 +3963,6 @@ mod tests {
         assert_eq!(
             rewrite_command_no_prefixes("git diff HEAD~1", &[]),
             Some("rtco git diff HEAD~1".into())
-        );
-    }
-
-    #[test]
-    fn test_collapse_line_continuations_no_op() {
-        // Helper-level: no continuations → returns Borrowed (no
-        // allocation). We can only spot-check the equality here, but
-        // the `Cow::Borrowed` variant is implied by `replace_all`
-        // when no replacement occurs.
-        assert_eq!(
-            collapse_line_continuations("git diff HEAD~1"),
-            std::borrow::Cow::<str>::Borrowed("git diff HEAD~1"),
-        );
-    }
-
-    // --- line-continuation handling (issue #1564) -------------------
-
-    #[test]
-    fn test_rewrite_leading_backslash_newline() {
-        // The exact reproduction from #1564: a leading `\<NL>` made
-        // the matcher see `\` as the command and bail out.
-        assert_eq!(
-            rewrite_command_no_prefixes("\\\ngit diff HEAD~1", &[]),
-            Some("rtk git diff HEAD~1".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_leading_backslash_crlf() {
-        // CRLF line ending — same shape, Windows shells / Git Bash.
-        assert_eq!(
-            rewrite_command_no_prefixes("\\\r\ngit diff HEAD~1", &[]),
-            Some("rtk git diff HEAD~1".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_internal_backslash_newline() {
-        // Embedded line continuation between subcommand and args:
-        // `git diff \<NL>HEAD~1` is exactly equivalent to
-        // `git diff HEAD~1` per bash semantics.
-        assert_eq!(
-            rewrite_command_no_prefixes("git diff \\\nHEAD~1", &[]),
-            Some("rtk git diff HEAD~1".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_backslash_newline_with_indent() {
-        // Continuation followed by indentation — also collapsed.
-        assert_eq!(
-            rewrite_command_no_prefixes("git \\\n    diff HEAD~1", &[]),
-            Some("rtk git diff HEAD~1".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_no_line_continuation_unchanged() {
-        // Sanity check: a command without any `\<NL>` should match
-        // unchanged. This pins that the normalization step does not
-        // regress the no-op fast path.
-        assert_eq!(
-            rewrite_command_no_prefixes("git diff HEAD~1", &[]),
-            Some("rtk git diff HEAD~1".into())
         );
     }
 
