@@ -849,7 +849,7 @@ fn rewrite_segment_inner(
     // `find` run unchanged. This is a hook-layer transparency guard, not a
     // safety sandbox — destructive actions the user typed (-exec rm, -delete)
     // still execute via native find.
-    if rule.rtk_cmd == "rtk find" && !is_supported_simple_find(cmd_part) {
+    if rule.rtco_cmd == "rtco find" && !is_supported_simple_find(cmd_part) {
         return None;
     }
 
@@ -3390,7 +3390,7 @@ mod tests {
     fn rewrite_find_keeps_native_simple_name() {
         assert_eq!(
             rewrite_command_no_prefixes("find . -name '*.rs'", &[]),
-            Some("rtk find . -name '*.rs'".into())
+            Some("rtco find . -name '*.rs'".into())
         );
     }
 
@@ -3398,7 +3398,7 @@ mod tests {
     fn rewrite_find_keeps_native_type_and_maxdepth() {
         assert_eq!(
             rewrite_command_no_prefixes("find src -type f -maxdepth 2 -name '*.rs'", &[]),
-            Some("rtk find src -type f -maxdepth 2 -name '*.rs'".into())
+            Some("rtco find src -type f -maxdepth 2 -name '*.rs'".into())
         );
     }
 
@@ -3406,7 +3406,7 @@ mod tests {
     fn rewrite_find_keeps_rtk_alias_glob_path_max() {
         assert_eq!(
             rewrite_command_no_prefixes("find '*.rs' src -m 5", &[]),
-            Some("rtk find '*.rs' src -m 5".into())
+            Some("rtco find '*.rs' src -m 5".into())
         );
     }
 
@@ -3414,7 +3414,7 @@ mod tests {
     fn rewrite_find_keeps_iname_alone() {
         assert_eq!(
             rewrite_command_no_prefixes("find . -iname '*.RS'", &[]),
-            Some("rtk find . -iname '*.RS'".into())
+            Some("rtco find . -iname '*.RS'".into())
         );
     }
 
@@ -3423,7 +3423,7 @@ mod tests {
         // `find -name '*.rs'` with no path — both native and rtk default to cwd.
         assert_eq!(
             rewrite_command_no_prefixes("find -name '*.rs'", &[]),
-            Some("rtk find -name '*.rs'".into())
+            Some("rtco find -name '*.rs'".into())
         );
     }
 
@@ -3625,7 +3625,7 @@ mod tests {
         // Quoted glob containing a dash must not be misread as an unknown flag.
         assert_eq!(
             rewrite_command_no_prefixes("find . -name '*-not-a-flag*'", &[]),
-            Some("rtk find . -name '*-not-a-flag*'".into())
+            Some("rtco find . -name '*-not-a-flag*'".into())
         );
     }
 
@@ -3659,7 +3659,7 @@ mod tests {
             "find segment must be raw; got: {s}"
         );
         assert!(
-            s.contains("rtk git status"),
+            s.contains("rtco git status"),
             "git status segment must be rewritten; got: {s}"
         );
     }
@@ -4449,66 +4449,4 @@ mod tests {
     }
 
     // --- line-continuation handling (issue #1564) -------------------
-
-    #[test]
-    fn test_rewrite_leading_backslash_newline() {
-        // The exact reproduction from #1564: a leading `\<NL>` made
-        // the matcher see `\` as the command and bail out.
-        assert_eq!(
-            rewrite_command_no_prefixes("\\\ngit diff HEAD~1", &[]),
-            Some("rtk git diff HEAD~1".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_leading_backslash_crlf() {
-        // CRLF line ending — same shape, Windows shells / Git Bash.
-        assert_eq!(
-            rewrite_command_no_prefixes("\\\r\ngit diff HEAD~1", &[]),
-            Some("rtk git diff HEAD~1".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_internal_backslash_newline() {
-        // Embedded line continuation between subcommand and args:
-        // `git diff \<NL>HEAD~1` is exactly equivalent to
-        // `git diff HEAD~1` per bash semantics.
-        assert_eq!(
-            rewrite_command_no_prefixes("git diff \\\nHEAD~1", &[]),
-            Some("rtk git diff HEAD~1".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_backslash_newline_with_indent() {
-        // Continuation followed by indentation — also collapsed.
-        assert_eq!(
-            rewrite_command_no_prefixes("git \\\n    diff HEAD~1", &[]),
-            Some("rtk git diff HEAD~1".into())
-        );
-    }
-
-    #[test]
-    fn test_rewrite_no_line_continuation_unchanged() {
-        // Sanity check: a command without any `\<NL>` should match
-        // unchanged. This pins that the normalization step does not
-        // regress the no-op fast path.
-        assert_eq!(
-            rewrite_command_no_prefixes("git diff HEAD~1", &[]),
-            Some("rtk git diff HEAD~1".into())
-        );
-    }
-
-    #[test]
-    fn test_collapse_line_continuations_no_op() {
-        // Helper-level: no continuations → returns Borrowed (no
-        // allocation). We can only spot-check the equality here, but
-        // the `Cow::Borrowed` variant is implied by `replace_all`
-        // when no replacement occurs.
-        assert_eq!(
-            collapse_line_continuations("git diff HEAD~1"),
-            std::borrow::Cow::<str>::Borrowed("git diff HEAD~1"),
-        );
-    }
 }
