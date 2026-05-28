@@ -1,13 +1,13 @@
 //! Controls which project-local TOML filters are allowed to run.
 //!
-//! `.rtk/filters.toml` is loaded from CWD with highest priority. An attacker
+//! `.rtco/filters.toml` is loaded from CWD with highest priority. An attacker
 //! can commit this file to a public repo to control what an LLM sees — hiding
 //! malicious code, suppressing security scanner output, or rewriting command
 //! output entirely via `replace` and `match_output` primitives.
 //!
 //! This module implements a trust-before-load model:
 //! - Untrusted filters are **skipped** (not "loaded with warning")
-//! - `rtk trust` stores the SHA-256 hash after user review
+//! - `rtco trust` stores the SHA-256 hash after user review
 //! - Content changes invalidate trust (re-review required)
 //! - `RTCO_TRUST_PROJECT_FILTERS=1` overrides for CI pipelines
 
@@ -106,7 +106,7 @@ pub fn check_trust(filter_path: &Path) -> Result<TrustStatus> {
             return Ok(TrustStatus::EnvOverride);
         }
         eprintln!(
-            "[rtk] WARNING: RTCO_TRUST_PROJECT_FILTERS=1 ignored (CI environment not detected)"
+            "[rtco] WARNING: RTCO_TRUST_PROJECT_FILTERS=1 ignored (CI environment not detected)"
         );
     }
 
@@ -115,7 +115,7 @@ pub fn check_trust(filter_path: &Path) -> Result<TrustStatus> {
         Ok(s) => s,
         Err(e) => {
             eprintln!(
-                "[rtk] WARNING: trust store unreadable ({}), treating all filters as untrusted",
+                "[rtco] WARNING: trust store unreadable ({}), treating all filters as untrusted",
                 e
             );
             TrustStore::default()
@@ -177,7 +177,7 @@ pub fn list_trusted() -> Result<HashMap<String, TrustEntry>> {
 // CLI commands
 // ---------------------------------------------------------------------------
 
-/// Run `rtk trust` — review and trust project-local filters.
+/// Run `rtco trust` — review and trust project-local filters.
 pub fn run_trust(list: bool) -> Result<()> {
     if list {
         let trusted = list_trusted()?;
@@ -195,16 +195,13 @@ pub fn run_trust(list: bool) -> Result<()> {
         return Ok(());
     }
 
-    let filter_path = Path::new(".rtk/filters.toml");
+    let filter_path = Path::new(".rtco/filters.toml");
     if !filter_path.exists() {
-        anyhow::bail!("No .rtk/filters.toml found in current directory");
+        anyhow::bail!("No .rtco/filters.toml found in current directory");
     }
-
-    // Read ONCE to prevent TOCTOU: display + hash from same buffer
-    let content_bytes = std::fs::read(filter_path).context("Failed to read .rtk/filters.toml")?;
+    let content_bytes = std::fs::read(filter_path).context("Failed to read .rtco/filters.toml")?;
     let content = String::from_utf8_lossy(&content_bytes);
-
-    println!("=== .rtk/filters.toml ===");
+    println!("=== .rtco/filters.toml ===");
     println!("{}", content);
     println!("=========================");
     println!();
@@ -224,7 +221,7 @@ pub fn run_trust(list: bool) -> Result<()> {
     trust_filter_with_hash(filter_path, &hash)?;
     println!();
     println!(
-        "Trusted .rtk/filters.toml (sha256:{})",
+        "Trusted .rtco/filters.toml (sha256:{})",
         hash.get(..16).unwrap_or(&hash)
     );
     println!("Project-local filters will now be applied.");
@@ -232,14 +229,14 @@ pub fn run_trust(list: bool) -> Result<()> {
     Ok(())
 }
 
-/// Run `rtk untrust` — revoke trust for project-local filters.
+/// Run `rtco untrust` — revoke trust for project-local filters.
 pub fn run_untrust() -> Result<()> {
-    let filter_path = Path::new(".rtk/filters.toml");
+    let filter_path = Path::new(".rtco/filters.toml");
     // If file doesn't exist, untrust by canonical path lookup won't work.
     // Try anyway (file may have been deleted after trust), fallback gracefully.
     let removed = untrust_filter(filter_path).unwrap_or(false);
     if removed {
-        println!("Trust revoked for .rtk/filters.toml");
+        println!("Trust revoked for .rtco/filters.toml");
         println!("Project-local filters will no longer be applied.");
     } else {
         println!("No trust entry found for current directory.");

@@ -1763,14 +1763,14 @@ mod tests {
 
     #[test]
     fn test_rewrite_rtk_disabled_subprocess_warns() {
-        let rtk_bin = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        let rtco_bin = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("target")
             .join("debug")
-            .join("rtk");
-        if !rtk_bin.exists() {
+            .join("rtco");
+        if !rtco_bin.exists() {
             return;
         }
-        let rtk_mtime = std::fs::metadata(&rtk_bin)
+        let rtk_mtime = std::fs::metadata(&rtco_bin)
             .ok()
             .and_then(|m| m.modified().ok());
         let test_mtime = std::env::current_exe()
@@ -1783,7 +1783,7 @@ mod tests {
             }
         }
 
-        let output = std::process::Command::new(&rtk_bin)
+        let output = std::process::Command::new(&rtco_bin)
             .args(["rewrite", "RTK_DISABLED=1 git status"])
             .output()
             .expect("Failed to run rtk");

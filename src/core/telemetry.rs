@@ -382,9 +382,9 @@ fn detect_hook_type() -> String {
 fn count_custom_toml_filters() -> usize {
     let mut count = 0;
 
-    // Project-local: .rtk/filters/*.toml
+    // Project-local: .rtco/filters/*.toml
     if let Ok(cwd) = std::env::current_dir() {
-        if let Ok(entries) = std::fs::read_dir(cwd.join(".rtk/filters")) {
+        if let Ok(entries) = std::fs::read_dir(cwd.join(".rtco/filters")) {
             count += entries
                 .filter_map(|e| e.ok())
                 .filter(|e| e.path().extension().is_some_and(|ext| ext == "toml"))

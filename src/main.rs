@@ -335,7 +335,7 @@ enum Commands {
         extra_args: Vec<String>,
     },
 
-    /// Initialize rtk instructions for assistant CLI usage
+    /// Initialize rtco instructions for assistant CLI usage
     Init {
         /// Add to global assistant config directory instead of local project file
         #[arg(short, long)]
@@ -451,7 +451,7 @@ enum Commands {
         yes: bool,
     },
 
-    /// Claude Code economics: spending (ccusage) vs savings (rtk) analysis
+    /// Claude Code economics: spending (ccusage) vs savings (rtco) analysis
     CcEconomics {
         /// Show detailed daily breakdown
         #[arg(short, long)]
@@ -766,10 +766,10 @@ enum Commands {
     /// Exits 1 with no output if the command has no RTK equivalent.
     ///
     /// Used by Claude Code, Gemini CLI, and other LLM hooks:
-    ///   REWRITTEN=$(rtk rewrite "$CMD") || exit 0
+    ///   REWRITTEN=$(rtco rewrite "$CMD") || exit 0
     Rewrite {
         /// Raw command to rewrite (e.g. "git status", "cargo test && git push")
-        /// Accepts multiple args: `rtk rewrite ls -al` is equivalent to `rtk rewrite "ls -al"`
+        /// Accepts multiple args: `rtco rewrite ls -al` is equivalent to `rtco rewrite "ls -al"`
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
@@ -1163,13 +1163,13 @@ const RTK_META_COMMANDS: &[&str] = &[
 fn run_fallback(parse_error: clap::Error) -> Result<i32> {
     let args: Vec<String> = std::env::args().skip(1).collect();
 
-    // No args → show Clap's error (user ran just "rtk" with bad syntax)
+    // No args → show Clap's error (user ran just "rtco" with bad syntax)
     if args.is_empty() {
         parse_error.exit();
     }
 
     // RTK meta-commands should never fall back to raw execution.
-    // e.g. `rtk gain --badtypo` should show Clap's error, not try to run `gain` from $PATH.
+    // e.g. `rtco gain --badtypo` should show Clap's error, not try to run `gain` from $PATH.
     if RTK_META_COMMANDS.contains(&args[0].as_str()) {
         parse_error.exit();
     }
@@ -1256,7 +1256,7 @@ fn run_fallback(parse_error: clap::Error) -> Result<i32> {
             Err(e) => {
                 // Command not found — same behaviour as no-TOML path
                 core::tracking::record_parse_failure_silent(&raw_command, &error_message, false);
-                eprintln!("[rtk: {}]", e);
+                eprintln!("[rtco: {}]", e);
                 Ok(127)
             }
         }
@@ -1280,7 +1280,7 @@ fn run_fallback(parse_error: clap::Error) -> Result<i32> {
             Err(e) => {
                 core::tracking::record_parse_failure_silent(&raw_command, &error_message, false);
                 // Command not found or other OS error — single message, no duplicate Clap error
-                eprintln!("[rtk: {}]", e);
+                eprintln!("[rtco: {}]", e);
                 Ok(127)
             }
         }
@@ -1353,14 +1353,14 @@ fn validate_pnpm_filters(filters: &[String], command: &PnpmCommands) -> Option<S
     // Check if this is a Build or Typecheck command with filters
     match command {
         PnpmCommands::Typecheck { .. } => {
-            // FIXME: if filters are present, we should find out which workspaces are selected before running rtk dedicated commands
+            // FIXME: if filters are present, we should find out which workspaces are selected before running rtco dedicated commands
             if !filters.is_empty() {
                 let cmd_name = match command {
                     PnpmCommands::Typecheck { .. } => "tsc",
                     _ => unreachable!(),
                 };
                 let msg = format!(
-                    "[rtk] warning: --filter is not yet supported for pnpm {}, filters preceding the subcommand will be ignored",
+                    "[rtco] warning: --filter is not yet supported for pnpm {}, filters preceding the subcommand will be ignored",
                     cmd_name
                 );
                 return Some(msg);
@@ -1378,13 +1378,6 @@ fn migrate_data_dir_once() {
     if let Some(data_dir) = dirs::data_local_dir() {
         let old = data_dir.join("rtk");
         let new = data_dir.join("rtco");
-        if old.exists() && !new.exists() {
-            let _ = std::fs::rename(&old, &new);
-        }
-    }
-    if let Some(config_dir) = dirs::config_dir() {
-        let old = config_dir.join("rtk");
-        let new = config_dir.join("rtco");
         if old.exists() && !new.exists() {
             let _ = std::fs::rename(&old, &new);
         }
@@ -1458,7 +1451,7 @@ fn run_cli() -> Result<i32> {
 
         Commands::Tree { args } => tree::run(&args, cli.verbose)?,
 
-        // ISSUE #989: support multiple files (cat file1 file2 → rtk read file1 file2)
+        // ISSUE #989: support multiple files (cat file1 file2 → rtco read file1 file2)
         Commands::Read {
             files,
             level,
@@ -2296,7 +2289,7 @@ fn run_cli() -> Result<i32> {
 
             if args.is_empty() {
                 anyhow::bail!(
-                    "proxy requires a command to execute\nUsage: rtk proxy <command> [args...]"
+                    "proxy requires a command to execute\nUsage: rtco proxy <command> [args...]"
                 );
             }
 
@@ -3001,7 +2994,7 @@ mod tests {
 
     #[test]
     fn test_rewrite_clap_multi_args() {
-        // This is the bug KuSh reported: `rtk rewrite ls -al` failed because
+        // This is the bug KuSh reported: `rtco rewrite ls -al` failed because
         // Clap rejected `-al` as an unknown flag. With trailing_var_arg + allow_hyphen_values,
         // multiple args are accepted and joined into a single command string.
         let cases = vec![
@@ -3032,7 +3025,7 @@ mod tests {
 
     #[test]
     fn test_rewrite_clap_quoted_single_arg() {
-        // Quoted form: `rtk rewrite "git status"` — single arg containing spaces
+        // Quoted form: `rtco rewrite "git status"` — single arg containing spaces
         let result = Cli::try_parse_from(["rtco", "rewrite", "git status"]);
         assert!(result.is_ok());
         if let Ok(cli) = result {
@@ -3194,7 +3187,7 @@ mod tests {
                 let warning = validate_pnpm_filters(&filter, &command).unwrap();
 
                 assert_eq!(filter, vec!["@app1", "@app2"]);
-                assert_eq!(warning, "[rtk] warning: --filter is not yet supported for pnpm tsc, filters preceding the subcommand will be ignored")
+                assert_eq!(warning, "[rtco] warning: --filter is not yet supported for pnpm tsc, filters preceding the subcommand will be ignored")
             }
             _ => panic!("Expected Pnpm Build command"),
         }
@@ -3211,7 +3204,7 @@ mod tests {
 
     #[test]
     fn test_npx_unknown_tool_passthrough() {
-        // The bug (rtk-ai/rtk#815) was that unknown tools under `rtk npx`
+        // The bug (rtco-ai/rtco#815) was that unknown tools under `rtco npx`
         // were dispatched to `npm` instead of `npx`. At the parse level, the
         // Npx variant must carry all args through unchanged so the dispatch
         // arm can forward them to npx.
