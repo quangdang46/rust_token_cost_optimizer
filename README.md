@@ -597,26 +597,7 @@ rtco telemetry forget    # Withdraw consent + delete all local data + request se
 export RTCO_TELEMETRY_DISABLED=1   # Blocks telemetry regardless of consent
 ```
 
-## Star History
-
-<a href="https://www.star-history.com/?repos=rtco-ai%2Frtco&type=date&legend=top-left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=rtco-ai%2Frtco&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=rtco-ai%2Frtco&type=date&theme=light&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=rtco-ai%2Frtco&type=date&legend=top-left" />
-  </picture>
-</a>
-
-## Core team
-
-- **Patrick Szymkowiak** — Founder
-  [GitHub](https://github.com/pszymkowiak) · [LinkedIn](https://www.linkedin.com/in/patrick-szymkowiak/)
-- **Florian Bruniaux** — Core contributor
-  [GitHub](https://github.com/FlorianBruniaux) · [LinkedIn](https://www.linkedin.com/in/florian-bruniaux-43408b83/)
-- **Adrien Eppling** — Core contributor
-  [GitHub](https://github.com/aeppling) · [LinkedIn](https://www.linkedin.com/in/adrien-eppling/)
-
-## About Contributions
+## License
 
 Please don't take this the wrong way, but I do not accept outside contributions for any of my projects. I simply don't have the mental bandwidth to review anything, and it's my name on the thing, so I'm responsible for any problems it causes; thus, the risk-reward is highly asymmetric from my perspective. I'd also have to worry about other "stakeholders," which seems unwise for tools I mostly make for myself for free. Feel free to submit issues, and even PRs if you want to illustrate a proposed fix, but know I won't merge them directly. Instead, I'll have Claude or Codex review submissions via `gh` and independently decide whether and how to address them. Bug reports in particular are welcome. Sorry if this offends, but I want to avoid wasted time and hurt feelings. I understand this isn't in sync with the prevailing open-source ethos that seeks community contributions, but it's the only way I can move at this velocity and keep my sanity.
 
