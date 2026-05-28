@@ -48,7 +48,7 @@ schema_version = 1
 
 /// Template for user-global filters (~/.config/rtk/filters.toml).
 const FILTERS_GLOBAL_TEMPLATE: &str = r#"# User-global RTK filters — apply to all your projects.
-# Project-local .rtk/filters.toml takes precedence over these.
+# Project-local .rtco/filters.toml takes precedence over these.
 # Docs: https://github.com/rtk-ai/rtk#custom-filters
 schema_version = 1
 
@@ -1336,7 +1336,7 @@ fn remove_legacy_hook_entries_from_json(root: &mut serde_json::Value) -> bool {
     pre_tool_use_array.len() < original_len
 }
 
-/// Generate .rtk/filters.toml template in the current directory if not present.
+/// Generate .rtco/filters.toml template in the current directory if not present.
 fn generate_project_filters_template(ctx: InitContext) -> Result<()> {
     let InitContext { verbose, dry_run } = ctx;
     let rtk_dir = std::path::Path::new(".rtk");
@@ -1344,14 +1344,14 @@ fn generate_project_filters_template(ctx: InitContext) -> Result<()> {
 
     if path.exists() {
         if verbose > 0 {
-            eprintln!(".rtk/filters.toml already exists, skipping template");
+            eprintln!(".rtco/filters.toml already exists, skipping template");
         }
         return Ok(());
     }
 
     if dry_run {
         println!(
-            "[dry-run] would create .rtk/filters.toml template: {}",
+            "[dry-run] would create .rtco/filters.toml template: {}",
             path.display()
         );
         return Ok(());

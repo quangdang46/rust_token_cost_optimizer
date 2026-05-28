@@ -227,17 +227,17 @@ fn main() {{
         assert!(output.contains("more lines"));
     }
 
-    fn rtk_bin() -> std::path::PathBuf {
+    fn rtco_bin() -> std::path::PathBuf {
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("target")
             .join("debug")
-            .join("rtk")
+            .join("rtco")
     }
 
     #[test]
     #[ignore]
     fn test_read_two_valid_files_concatenated() {
-        let bin = rtk_bin();
+        let bin = rtco_bin();
         assert!(bin.exists(), "Run `cargo build` first");
 
         let mut f1 = NamedTempFile::with_suffix(".txt").unwrap();
@@ -259,7 +259,7 @@ fn main() {{
     #[test]
     #[ignore]
     fn test_read_valid_and_nonexistent() {
-        let bin = rtk_bin();
+        let bin = rtco_bin();
         assert!(bin.exists(), "Run `cargo build` first");
 
         let mut f1 = NamedTempFile::with_suffix(".txt").unwrap();
@@ -280,7 +280,7 @@ fn main() {{
     #[test]
     #[ignore]
     fn test_read_stdin_dedup_warning() {
-        let bin = rtk_bin();
+        let bin = rtco_bin();
         assert!(bin.exists(), "Run `cargo build` first");
 
         let output = std::process::Command::new(&bin)

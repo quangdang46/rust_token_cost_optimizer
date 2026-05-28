@@ -2,12 +2,12 @@
 ///
 /// Provides a declarative pipeline of 8 stages that can be configured
 /// via TOML files. Lookup priority (first match wins):
-///   1. `.rtk/filters.toml`              — project-local, committable with the repo
-///   2. `~/.config/rtk/filters.toml`     — user-global, applies to all projects
+///   1. `.rtco/filters.toml`              — project-local, committable with the repo
+///   2. `~/.config/rtco/filters.toml`     — user-global, applies to all projects
 ///   3. Built-in TOML                     — `src/filters/*.toml`, concatenated by build.rs and embedded at compile time
 ///   4. Passthrough                       — no match, handled by caller
 ///
-/// `rtk init` generates a commented template for both levels (project or global).
+/// `rtco init` generates a commented template for both levels (project or global).
 ///
 /// Environment variables:
 ///   - `RTCO_NO_TOML=1`     — bypass TOML engine entirely
@@ -189,8 +189,8 @@ impl TomlFilterRegistry {
     fn load() -> Self {
         let mut filters = Vec::new();
 
-        // Priority 1: project-local .rtk/filters.toml (trust-gated)
-        let project_filter_path = std::path::Path::new(".rtk/filters.toml");
+        // Priority 1: project-local .rtco/filters.toml (trust-gated)
+        let project_filter_path = std::path::Path::new(".rtco/filters.toml");
         if project_filter_path.exists() {
             let trust_status = crate::hooks::trust::check_trust(project_filter_path)
                 .unwrap_or(crate::hooks::trust::TrustStatus::Untrusted);
@@ -201,22 +201,22 @@ impl TomlFilterRegistry {
                     if let Ok(content) = std::fs::read_to_string(project_filter_path) {
                         match Self::parse_and_compile(&content, "project") {
                             Ok(f) => filters.extend(f),
-                            Err(e) => eprintln!("[rtco] warning: .rtk/filters.toml: {}", e),
+                            Err(e) => eprintln!("[rtco] warning: .rtco/filters.toml: {}", e),
                         }
                     }
                 }
                 crate::hooks::trust::TrustStatus::Untrusted => {
-                    eprintln!("[rtco] WARNING: untrusted project filters (.rtk/filters.toml)");
+                    eprintln!("[rtco] WARNING: untrusted project filters (.rtco/filters.toml)");
                     eprintln!("[rtco] Filters NOT applied. Run `rtco trust` to review and enable.");
                 }
                 crate::hooks::trust::TrustStatus::ContentChanged { .. } => {
-                    eprintln!("[rtco] WARNING: .rtk/filters.toml changed since trusted.");
+                    eprintln!("[rtco] WARNING: .rtco/filters.toml changed since trusted.");
                     eprintln!("[rtco] Filters NOT applied. Run `rtco trust` to re-review.");
                 }
             }
         }
 
-        // Priority 2: user-global ~/.config/rtk/filters.toml
+        // Priority 2: user-global ~/.config/rtco/filters.toml
         if let Some(config_dir) = dirs::config_dir() {
             let global_path = config_dir.join(RTK_DATA_DIR).join(FILTERS_TOML);
             if let Ok(content) = std::fs::read_to_string(&global_path) {
@@ -558,7 +558,7 @@ pub fn run_filter_tests(filter_name_opt: Option<&str>) -> VerifyResults {
     );
 
     // Trust-gated: only verify project-local filters if trusted (SA-2025-RTK-002)
-    let project_path = std::path::Path::new(".rtk/filters.toml");
+    let project_path = std::path::Path::new(".rtco/filters.toml");
     if project_path.exists() {
         let trust_status = crate::hooks::trust::check_trust(project_path)
             .unwrap_or(crate::hooks::trust::TrustStatus::Untrusted);
@@ -669,7 +669,7 @@ fn collect_test_outcomes(
 pub fn find_matching_filter(command: &str) -> Option<&'static CompiledFilter> {
     if std::env::var("RTCO_TOML_DEBUG").is_ok() {
         eprintln!(
-            "[rtk:toml] looking up filter for: {:?} ({} filters loaded)",
+            "[rtco:toml] looking up filter for: {:?} ({} filters loaded)",
             command,
             REGISTRY.filters.len()
         );
@@ -677,8 +677,8 @@ pub fn find_matching_filter(command: &str) -> Option<&'static CompiledFilter> {
     let result = find_filter_in(command, &REGISTRY.filters);
     if std::env::var("RTCO_TOML_DEBUG").is_ok() {
         match result {
-            Some(f) => eprintln!("[rtk:toml] matched filter: '{}'", f.name),
-            None => eprintln!("[rtk:toml] no filter matched — passthrough"),
+            Some(f) => eprintln!("[rtco:toml] matched filter: '{}'", f.name),
+            None => eprintln!("[rtco:toml] no filter matched — passthrough"),
         }
     }
     result

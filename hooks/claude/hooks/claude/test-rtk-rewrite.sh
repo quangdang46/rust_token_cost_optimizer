@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Test suite for rtk-rewrite.sh
+# Test suite for rtco-rewrite.sh
 # Feeds mock JSON through the hook and verifies the rewritten commands.
 #
-# Usage: bash ~/.claude/hooks/test-rtk-rewrite.sh
+# Usage: bash ~/.claude/hooks/test-rtco-rewrite.sh
 
-HOOK="${HOOK:-$HOME/.claude/hooks/rtk-rewrite.sh}"
+HOOK="${HOOK:-$HOME/.claude/hooks/rtco-rewrite.sh}"
 PASS=0
 FAIL=0
 TOTAL=0
@@ -55,7 +55,7 @@ test_rewrite() {
 }
 
 echo "============================================"
-echo "  RTK Rewrite Hook Test Suite"
+echo "  RTCO Rewrite Hook Test Suite"
 echo "============================================"
 echo ""
 
@@ -63,63 +63,63 @@ echo ""
 echo "--- Existing patterns (regression) ---"
 test_rewrite "git status" \
   "git status" \
-  "rtk git status"
+  "rtco git status"
 
 test_rewrite "git log --oneline -10" \
   "git log --oneline -10" \
-  "rtk git log --oneline -10"
+  "rtco git log --oneline -10"
 
 test_rewrite "git diff HEAD" \
   "git diff HEAD" \
-  "rtk git diff HEAD"
+  "rtco git diff HEAD"
 
 test_rewrite "git show abc123" \
   "git show abc123" \
-  "rtk git show abc123"
+  "rtco git show abc123"
 
 test_rewrite "git add ." \
   "git add ." \
-  "rtk git add ."
+  "rtco git add ."
 
 test_rewrite "gh pr list" \
   "gh pr list" \
-  "rtk gh pr list"
+  "rtco gh pr list"
 
 test_rewrite "npx playwright test" \
   "npx playwright test" \
-  "rtk playwright test"
+  "rtco playwright test"
 
 test_rewrite "ls -la" \
   "ls -la" \
-  "rtk ls -la"
+  "rtco ls -la"
 
 test_rewrite "curl -s https://example.com" \
   "curl -s https://example.com" \
-  "rtk curl -s https://example.com"
+  "rtco curl -s https://example.com"
 
 test_rewrite "cat package.json" \
   "cat package.json" \
-  "rtk read package.json"
+  "rtco read package.json"
 
 test_rewrite "grep -rn pattern src/" \
   "grep -rn pattern src/" \
-  "rtk grep -rn pattern src/"
+  "rtco grep -rn pattern src/"
 
 test_rewrite "rg pattern src/" \
   "rg pattern src/" \
-  "rtk grep pattern src/"
+  "rtco grep pattern src/"
 
 test_rewrite "cargo test" \
   "cargo test" \
-  "rtk cargo test"
+  "rtco cargo test"
 
 test_rewrite "npx prisma migrate" \
   "npx prisma migrate" \
-  "rtk prisma migrate"
+  "rtco prisma migrate"
 
-test_rewrite "rtk git status" \
-  "rtk git status" \
-  "rtk git status"
+test_rewrite "rtco git status" \
+  "rtco git status" \
+  "rtco git status"
 
 echo ""
 
@@ -127,27 +127,27 @@ echo ""
 echo "--- Env var prefix handling (new) ---"
 test_rewrite "env + playwright" \
   "TEST_SESSION_ID=2 npx playwright test --config=foo" \
-  "TEST_SESSION_ID=2 rtk playwright test --config=foo"
+  "TEST_SESSION_ID=2 rtco playwright test --config=foo"
 
 test_rewrite "env + git status" \
   "GIT_PAGER=cat git status" \
-  "GIT_PAGER=cat rtk git status"
+  "GIT_PAGER=cat rtco git status"
 
 test_rewrite "env + git log" \
   "GIT_PAGER=cat git log --oneline -10" \
-  "GIT_PAGER=cat rtk git log --oneline -10"
+  "GIT_PAGER=cat rtco git log --oneline -10"
 
 test_rewrite "multi env + vitest" \
   "NODE_ENV=test CI=1 npx vitest" \
-  "NODE_ENV=test CI=1 rtk vitest"
+  "NODE_ENV=test CI=1 rtco vitest"
 
 test_rewrite "env + ls" \
   "LANG=C ls -la" \
-  "LANG=C rtk ls -la"
+  "LANG=C rtco ls -la"
 
 test_rewrite "env + npm run" \
   "NODE_ENV=test npm run test:e2e" \
-  "NODE_ENV=test rtk npm run test:e2e"
+  "NODE_ENV=test rtco npm run test:e2e"
 
 test_rewrite "env + docker compose (unsupported subcommand, NOT rewritten)" \
   "COMPOSE_PROJECT_NAME=test docker compose up -d" \
@@ -155,7 +155,7 @@ test_rewrite "env + docker compose (unsupported subcommand, NOT rewritten)" \
 
 test_rewrite "env + docker compose logs (supported, rewritten)" \
   "COMPOSE_PROJECT_NAME=test docker compose logs web" \
-  "COMPOSE_PROJECT_NAME=test rtk docker compose logs web"
+  "COMPOSE_PROJECT_NAME=test rtco docker compose logs web"
 
 echo ""
 
@@ -163,33 +163,33 @@ echo ""
 echo "--- New patterns ---"
 test_rewrite "npm run test:e2e" \
   "npm run test:e2e" \
-  "rtk npm run test:e2e"
+  "rtco npm run test:e2e"
 
 test_rewrite "npm run build" \
   "npm run build" \
-  "rtk npm run build"
+  "rtco npm run build"
 
 test_rewrite "npm jest run" \
   "npm jest run" \
-  "rtk jest"
+  "rtco jest"
 
-test_rewrite "docker compose up -d (NOT rewritten — unsupported by rtk)" \
+test_rewrite "docker compose up -d (NOT rewritten — unsupported by rtco)" \
   "docker compose up -d" \
   ""
 
 test_rewrite "docker compose logs postgrest" \
   "docker compose logs postgrest" \
-  "rtk docker compose logs postgrest"
+  "rtco docker compose logs postgrest"
 
 test_rewrite "docker compose ps" \
   "docker compose ps" \
-  "rtk docker compose ps"
+  "rtco docker compose ps"
 
 test_rewrite "docker compose build" \
   "docker compose build" \
-  "rtk docker compose build"
+  "rtco docker compose build"
 
-test_rewrite "docker compose down (NOT rewritten — unsupported by rtk)" \
+test_rewrite "docker compose down (NOT rewritten — unsupported by rtco)" \
   "docker compose down" \
   ""
 
@@ -199,39 +199,39 @@ test_rewrite "docker compose -f file.yml up (NOT rewritten — flag before subco
 
 test_rewrite "docker run --rm postgres" \
   "docker run --rm postgres" \
-  "rtk docker run --rm postgres"
+  "rtco docker run --rm postgres"
 
 test_rewrite "docker exec -it db psql" \
   "docker exec -it db psql" \
-  "rtk docker exec -it db psql"
+  "rtco docker exec -it db psql"
 
 test_rewrite "find . -name '*.ts'" \
   "find . -name '*.ts'" \
-  "rtk find . -name '*.ts'"
+  "rtco find . -name '*.ts'"
 
 test_rewrite "tree src/" \
   "tree src/" \
-  "rtk tree src/"
+  "rtco tree src/"
 
 test_rewrite "wget https://example.com/file" \
   "wget https://example.com/file" \
-  "rtk wget https://example.com/file"
+  "rtco wget https://example.com/file"
 
 test_rewrite "gh api repos/owner/repo" \
   "gh api repos/owner/repo" \
-  "rtk gh api repos/owner/repo"
+  "rtco gh api repos/owner/repo"
 
 test_rewrite "gh release list" \
   "gh release list" \
-  "rtk gh release list"
+  "rtco gh release list"
 
 test_rewrite "kubectl describe pod foo" \
   "kubectl describe pod foo" \
-  "rtk kubectl describe pod foo"
+  "rtco kubectl describe pod foo"
 
 test_rewrite "kubectl apply -f deploy.yaml" \
   "kubectl apply -f deploy.yaml" \
-  "rtk kubectl apply -f deploy.yaml"
+  "rtco kubectl apply -f deploy.yaml"
 
 echo ""
 
@@ -253,23 +253,23 @@ echo ""
 echo "--- Redirect operators (#346) ---"
 test_rewrite "cargo test 2>&1 | head" \
   "cargo test 2>&1 | head" \
-  "rtk cargo test 2>&1 | head"
+  "rtco cargo test 2>&1 | head"
 
 test_rewrite "cargo test 2>&1" \
   "cargo test 2>&1" \
-  "rtk cargo test 2>&1"
+  "rtco cargo test 2>&1"
 
 test_rewrite "cargo test &>/dev/null" \
   "cargo test &>/dev/null" \
-  "rtk cargo test &>/dev/null"
+  "rtco cargo test &>/dev/null"
 
 # Note: the bash hook rewrites only the first command segment (sed-based);
-# full compound rewriting (both sides of &) is handled by `rtk rewrite` (Rust).
+# full compound rewriting (both sides of &) is handled by `rtco rewrite` (Rust).
 # The critical behavior tested here: `&` after `cargo test` is NOT mistaken for
 # a redirect — the hook still rewrites cargo test, no crash.
 test_rewrite "cargo test & git status (bash hook rewrites first segment only)" \
   "cargo test & git status" \
-  "rtk cargo test & git status"
+  "rtco cargo test & git status"
 
 echo ""
 
@@ -277,23 +277,23 @@ echo ""
 echo "--- Vitest run dedup ---"
 test_rewrite "vitest (no args)" \
   "vitest" \
-  "rtk vitest"
+  "rtco vitest"
 
 test_rewrite "vitest run (no run)" \
   "vitest run" \
-  "rtk vitest"
+  "rtco vitest"
 
 test_rewrite "vitest --reporter" \
   "vitest --reporter=verbose" \
-  "rtk vitest --reporter=verbose"
+  "rtco vitest --reporter=verbose"
 
 test_rewrite "npx vitest" \
   "npx vitest" \
-  "rtk vitest"
+  "rtco vitest"
 
 test_rewrite "pnpm vitest --coverage" \
   "pnpm vitest --coverage" \
-  "rtk vitest --coverage"
+  "rtco vitest --coverage"
 
 echo ""
 
@@ -373,9 +373,9 @@ test_audit_log "audit: rewrite git status" \
   "git status" \
   "rewrite"
 
-test_audit_log "audit: skip already_rtk" \
-  "rtk git status" \
-  "skip:already_rtk"
+test_audit_log "audit: skip already_rtco" \
+  "rtco git status" \
+  "skip:already_rtco"
 
 test_audit_log "audit: skip heredoc" \
   "cat <<'EOF'
