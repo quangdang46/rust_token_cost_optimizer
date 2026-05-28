@@ -1,10 +1,6 @@
 # rtco — Rust Token Killer
 
 <p align="center">
-  <img src="https://avatars.githubusercontent.com/u/258253854?v=4" alt="rtco" width="400">
-</p>
-
-<p align="center">
   <strong>High-performance CLI proxy that reduces LLM token consumption by 60–90%</strong>
 </p>
 
