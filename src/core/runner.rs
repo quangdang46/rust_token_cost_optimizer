@@ -86,8 +86,16 @@ impl<'a> RunOptions<'a> {
     }
 }
 
+/// Type alias for an exit-code-aware capture filter.
+pub type ExitAwareCaptureFilter<'a> = Box<dyn Fn(&str, i32) -> String + 'a>;
+
 pub enum RunMode<'a> {
     Filtered(Box<dyn Fn(&str) -> String + 'a>),
+    /// Like `Filtered` but the filter also receives the child's exit code.
+    /// Used by `go build` to detect failures even when no error lines appear
+    /// in stdout/stderr (e.g. a linker failure that only prints to the
+    /// terminal).
+    FilteredWithExit(ExitAwareCaptureFilter<'a>),
     Streamed(Box<dyn StreamFilter + 'a>),
     Passthrough,
 }
@@ -133,6 +141,62 @@ pub fn run(
                 raw
             };
             let filtered = filter_fn(text_to_filter);
+
+            if let Some(label) = opts.tee_label {
+                if opts.tee_sensitive {
+                    print_with_hint_sensitive(&filtered, raw, label, exit_code);
+                } else {
+                    print_with_hint(&filtered, raw, label, exit_code);
+                }
+            } else if opts.no_trailing_newline {
+                print!("{}", filtered);
+            } else {
+                println!("{}", filtered);
+            }
+
+            let raw_for_tracking = if opts.filter_stdout_only {
+                raw_stdout
+            } else {
+                raw
+            };
+            timer.track(
+                &cmd_label,
+                &format!("rtco {}", cmd_label),
+                raw_for_tracking,
+                &filtered,
+            );
+            Ok(exit_code)
+        }
+        RunMode::FilteredWithExit(filter_fn) => {
+            let stdin_mode = if opts.inherit_stdin {
+                StdinMode::Inherit
+            } else {
+                StdinMode::Null
+            };
+            let result = stream::run_streaming(&mut cmd, stdin_mode, FilterMode::CaptureOnly)
+                .with_context(|| format!("Failed to run {}", tool_name))?;
+
+            let exit_code = result.exit_code;
+            let raw = &result.raw;
+            let raw_stdout = &result.raw_stdout;
+
+            if opts.skip_filter_on_failure && exit_code != 0 {
+                if !result.raw_stdout.trim().is_empty() {
+                    print!("{}", result.raw_stdout);
+                }
+                if !result.raw_stderr.trim().is_empty() {
+                    eprint!("{}", result.raw_stderr);
+                }
+                timer.track(&cmd_label, &format!("rtco {}", cmd_label), raw, raw);
+                return Ok(exit_code);
+            }
+
+            let text_to_filter = if opts.filter_stdout_only {
+                raw_stdout
+            } else {
+                raw
+            };
+            let filtered = filter_fn(text_to_filter, exit_code);
 
             if let Some(label) = opts.tee_label {
                 if opts.tee_sensitive {
@@ -209,6 +273,29 @@ where
         tool_name,
         args_display,
         RunMode::Filtered(Box::new(filter_fn)),
+        opts,
+    )
+}
+
+/// Like [`run_filtered`] but the filter also receives the child process exit
+/// code.  Use this when the filter needs to distinguish success from failure
+/// even when the raw output contains no error lines (e.g. `go build` linker
+/// failures that only print to the terminal).
+pub fn run_filtered_with_exit<F>(
+    cmd: Command,
+    tool_name: &str,
+    args_display: &str,
+    filter_fn: F,
+    opts: RunOptions<'_>,
+) -> Result<i32>
+where
+    F: Fn(&str, i32) -> String,
+{
+    run(
+        cmd,
+        tool_name,
+        args_display,
+        RunMode::FilteredWithExit(Box::new(filter_fn)),
         opts,
     )
 }

@@ -31,10 +31,20 @@ fn read_stdin_limited() -> Result<String> {
 enum HookFormat {
     /// VS Code Copilot Chat / Claude Code: `tool_name` + `tool_input.command`, supports `updatedInput`.
     VsCode { command: String },
-    /// GitHub Copilot CLI: camelCase `toolName` + `toolArgs` (JSON string), deny-with-suggestion only.
-    CopilotCli { command: String },
+    /// GitHub Copilot CLI: camelCase `toolName` + `toolArgs` (JSON string), supports `modifiedArgs` for transparent rewrite.
+    /// Carries the full parsed `toolArgs` object so we can rewrite `command` while preserving
+    /// host-supplied metadata (description, initial_wait, mode, …) the tool requires.
+    CopilotCli { command: String, args: Value },
     /// Non-bash tool, already uses rtk, or unknown format — pass through silently.
     PassThrough,
+}
+
+/// Decision tree for hook actions.
+enum HookDecision {
+    AllowRewrite(String),
+    AskRewrite(String),
+    Defer,
+    Deny,
 }
 
 /// Run the Copilot preToolUse hook.
@@ -42,7 +52,9 @@ enum HookFormat {
 pub fn run_copilot() -> Result<()> {
     let input = read_stdin_limited()?;
 
-    let input = input.trim();
+    // Strip leading BOM(s) before trimming: some Windows hosts prepend UTF-8
+    // BOMs to hook stdin (confirmed for Cursor), which serde_json rejects.
+    let input = strip_leading_bom(&input).trim();
     if input.is_empty() {
         return Ok(());
     }
@@ -57,7 +69,7 @@ pub fn run_copilot() -> Result<()> {
 
     match detect_format(&v) {
         HookFormat::VsCode { command } => handle_vscode(&command),
-        HookFormat::CopilotCli { command } => handle_copilot_cli(&command),
+        HookFormat::CopilotCli { command, args } => handle_copilot_cli(&command, &args),
         HookFormat::PassThrough => Ok(()),
     }
 }
@@ -91,6 +103,7 @@ fn detect_format(v: &Value) -> HookFormat {
                     {
                         return HookFormat::CopilotCli {
                             command: cmd.to_string(),
+                            args: tool_args,
                         };
                     }
                 }
@@ -120,23 +133,33 @@ fn get_rewritten(cmd: &str) -> Option<String> {
     Some(rewritten)
 }
 
-fn handle_vscode(cmd: &str) -> Result<()> {
-    let verdict = permissions::check_command(cmd);
+fn decide_from_verdict(cmd: &str, verdict: PermissionVerdict) -> HookDecision {
     if verdict == PermissionVerdict::Deny {
-        audit_log("deny", cmd, "");
-        return Ok(());
+        return HookDecision::Deny;
     }
+    if crate::discover::lexer::contains_unattestable_construct(cmd) {
+        return HookDecision::Defer;
+    }
+    match get_rewritten(cmd) {
+        Some(r) if verdict == PermissionVerdict::Allow => HookDecision::AllowRewrite(r),
+        Some(r) => HookDecision::AskRewrite(r),
+        None => HookDecision::Defer,
+    }
+}
 
-    let rewritten = match get_rewritten(cmd) {
-        Some(r) => r,
-        None => return Ok(()),
-    };
+fn decide_hook_action(cmd: &str, host: permissions::Host) -> HookDecision {
+    decide_from_verdict(cmd, permissions::check_command_for(cmd, host))
+}
 
-    // Allow (explicit rule matched): auto-allow the rewritten command.
-    // Ask/Default (no allow rule matched): rewrite but let the host tool prompt.
-    let decision = match verdict {
-        PermissionVerdict::Allow => "allow",
-        _ => "ask",
+fn handle_vscode(cmd: &str) -> Result<()> {
+    let (decision, rewritten) = match decide_hook_action(cmd, permissions::Host::Claude) {
+        HookDecision::Deny => {
+            audit_log("deny", cmd, "");
+            return Ok(());
+        }
+        HookDecision::Defer => return Ok(()),
+        HookDecision::AllowRewrite(r) => ("allow", r),
+        HookDecision::AskRewrite(r) => ("ask", r),
     };
 
     audit_log("rewrite", cmd, &rewritten);
@@ -153,28 +176,51 @@ fn handle_vscode(cmd: &str) -> Result<()> {
     Ok(())
 }
 
-fn handle_copilot_cli(cmd: &str) -> Result<()> {
-    if permissions::check_command(cmd) == PermissionVerdict::Deny {
-        audit_log("deny", cmd, "");
-        return Ok(());
+fn handle_copilot_cli(cmd: &str, args: &Value) -> Result<()> {
+    if let Some(response) = copilot_cli_response(cmd, args) {
+        let _ = writeln!(io::stdout(), "{response}");
     }
+    Ok(())
+}
 
-    let rewritten = match get_rewritten(cmd) {
-        Some(r) => r,
-        None => return Ok(()),
+fn copilot_cli_response(cmd: &str, args: &Value) -> Option<Value> {
+    copilot_cli_response_from_decision(
+        args,
+        decide_hook_action(cmd, permissions::Host::Claude),
+        cmd,
+    )
+}
+
+fn copilot_cli_response_from_decision(
+    args: &Value,
+    decision: HookDecision,
+    cmd: &str,
+) -> Option<Value> {
+    let (rewritten, allow) = match decision {
+        HookDecision::Deny => {
+            audit_log("deny", cmd, "");
+            return None;
+        }
+        HookDecision::Defer => return None,
+        HookDecision::AllowRewrite(r) => (r, true),
+        HookDecision::AskRewrite(r) => (r, false),
     };
 
     audit_log("rewrite", cmd, &rewritten);
 
-    let output = json!({
-        "permissionDecision": "deny",
-        "permissionDecisionReason": format!(
-            "Token savings: use `{}` instead (rtk saves 60-90% tokens)",
-            rewritten
-        )
+    let mut modified = args.clone();
+    if let Some(obj) = modified.as_object_mut() {
+        obj.insert("command".into(), Value::String(rewritten));
+    }
+
+    let mut response = json!({
+        "permissionDecisionReason": "RTK auto-rewrite",
+        "modifiedArgs": modified,
     });
-    let _ = writeln!(io::stdout(), "{output}");
-    Ok(())
+    if allow {
+        response["permissionDecision"] = json!("allow");
+    }
+    Some(response)
 }
 
 // ── Gemini hook ───────────────────────────────────────────────
@@ -218,7 +264,7 @@ pub fn run_gemini() -> Result<()> {
     match rewrite_command(cmd, &excluded, &transparent_prefixes) {
         Some(ref rewritten) => {
             audit_log("rewrite", cmd, rewritten);
-            print_rewrite(rewritten);
+            print_gemini("allow", Some(rewritten));
         }
         None => print_allow(),
     }
@@ -230,6 +276,7 @@ fn print_allow() {
     let _ = writeln!(io::stdout(), r#"{{"decision":"allow"}}"#);
 }
 
+#[allow(dead_code)]
 fn print_rewrite(cmd: &str) {
     let output = serde_json::json!({
         "decision": "allow",
@@ -239,6 +286,16 @@ fn print_rewrite(cmd: &str) {
             }
         }
     });
+    let _ = writeln!(io::stdout(), "{}", output);
+}
+
+fn print_gemini(decision: &str, rewritten: Option<&str>) {
+    let mut output = json!({ "decision": decision });
+    if let Some(cmd) = rewritten {
+        output["hookSpecificOutput"] = json!({
+            "tool_input": { "command": cmd }
+        });
+    }
     let _ = writeln!(io::stdout(), "{}", output);
 }
 
