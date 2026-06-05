@@ -1,6 +1,6 @@
-use super::constants::{CLAUDE_DIR, SETTINGS_JSON, SETTINGS_LOCAL_JSON};
+use super::constants::{CLAUDE_DIR, CURSOR_DIR, GEMINI_DIR, SETTINGS_JSON, SETTINGS_LOCAL_JSON};
 use crate::core::stream::exec_capture;
-use crate::discover::lexer::split_on_operators;
+use crate::discover::lexer::split_for_permissions;
 use serde_json::Value;
 use std::path::PathBuf;
 
@@ -23,7 +23,25 @@ pub enum PermissionVerdict {
 /// Returns `Default` when no rules match — callers should treat this as ask
 /// to match Claude Code's least-privilege default.
 pub fn check_command(cmd: &str) -> PermissionVerdict {
-    let (deny_rules, ask_rules, allow_rules) = load_permission_rules();
+    check_command_for(cmd, Host::Claude)
+}
+
+/// The agent host whose own permission settings should be consulted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Host {
+    Claude,
+    #[allow(dead_code)]
+    Cursor,
+    #[allow(dead_code)]
+    Gemini,
+}
+
+pub fn check_command_for(cmd: &str, host: Host) -> PermissionVerdict {
+    let (deny_rules, ask_rules, allow_rules) = match host {
+        Host::Claude => load_permission_rules(),
+        Host::Cursor => load_cursor_rules(),
+        Host::Gemini => load_gemini_rules(),
+    };
     check_command_with_rules(cmd, &deny_rules, &ask_rules, &allow_rules)
 }
 
@@ -35,6 +53,22 @@ pub(crate) fn check_command_with_rules(
     allow_rules: &[String],
 ) -> PermissionVerdict {
     let segments = split_compound_command(cmd);
+
+    // Deny takes highest priority and pre-empts every other construct.
+    for segment in &segments {
+        let segment = segment.trim();
+        for pattern in deny_rules {
+            if command_matches_pattern(segment, pattern) {
+                return PermissionVerdict::Deny;
+            }
+        }
+    }
+
+    // Can't decompose substitution / file-target redirects — never auto-allow.
+    if crate::discover::lexer::contains_unattestable_construct(cmd) {
+        return PermissionVerdict::Ask;
+    }
+
     let mut any_ask = false;
     // Every non-empty segment must independently match an allow rule for the
     // compound command to receive Allow. See issue #1213: previously a single
@@ -48,13 +82,6 @@ pub(crate) fn check_command_with_rules(
             continue;
         }
         saw_segment = true;
-
-        // Deny takes highest priority — any segment matching Deny blocks the whole chain.
-        for pattern in deny_rules {
-            if command_matches_pattern(segment, pattern) {
-                return PermissionVerdict::Deny;
-            }
-        }
 
         // Ask — if any segment matches an ask rule, the final verdict is Ask.
         if !any_ask {
@@ -156,6 +183,94 @@ fn get_settings_paths() -> Vec<PathBuf> {
     }
 
     paths
+}
+
+fn read_json(path: &std::path::Path) -> Option<Value> {
+    let content = std::fs::read_to_string(path).ok()?;
+    match serde_json::from_str::<Value>(&content) {
+        Ok(v) => Some(v),
+        Err(_) => {
+            eprintln!(
+                "[rtco] warning: failed to parse permissions from {}",
+                path.display()
+            );
+            None
+        }
+    }
+}
+
+fn append_wrapped_rules(rules_value: Option<&Value>, prefixes: &[&str], target: &mut Vec<String>) {
+    let Some(arr) = rules_value.and_then(|v| v.as_array()) else {
+        return;
+    };
+    for rule in arr.iter().filter_map(|r| r.as_str()) {
+        for pre in prefixes {
+            let bare = &pre[..pre.len() - 1];
+            if rule == bare {
+                target.push("*".to_string());
+                break;
+            }
+            if let Some(inner) = rule.strip_prefix(pre).and_then(|s| s.strip_suffix(')')) {
+                target.push(inner.to_string());
+                break;
+            }
+        }
+    }
+}
+
+// Global config only. RTK auto-allows only the globally-trusted subset; anything
+// else defers to the host, which applies its own project config and folder-trust.
+// This keeps RTK's allow set a subset of the host's — never more permissive.
+fn global_config(dir: &str, file: &str) -> Option<Value> {
+    read_json(&dirs::home_dir()?.join(dir).join(file))
+}
+
+fn load_cursor_rules() -> (Vec<String>, Vec<String>, Vec<String>) {
+    let mut deny = Vec::new();
+    let mut allow = Vec::new();
+    if let Some(perms) = global_config(CURSOR_DIR, "cli-config.json")
+        .as_ref()
+        .and_then(|j| j.get("permissions"))
+    {
+        append_wrapped_rules(perms.get("deny"), &["Shell("], &mut deny);
+        append_wrapped_rules(perms.get("allow"), &["Shell("], &mut allow);
+    }
+    (deny, Vec::new(), allow)
+}
+
+// Gemini honors project `.gemini/settings.json` when the folder is trusted.
+// folderTrust is off by default (folder trusted); when on, a folder is trusted
+// only via GEMINI_CLI_TRUST_WORKSPACE here (dialog-only trust is treated as
+// untrusted → global, which is safe: never more permissive than the host).
+fn gemini_settings() -> Option<Value> {
+    let global = global_config(GEMINI_DIR, SETTINGS_JSON);
+    let trusted = std::env::var("GEMINI_CLI_TRUST_WORKSPACE").as_deref() == Ok("true")
+        || !global
+            .as_ref()
+            .and_then(|j| {
+                j.pointer("/security/folderTrust/enabled")
+                    .and_then(Value::as_bool)
+            })
+            .unwrap_or(false);
+    if trusted {
+        if let Some(root) = find_project_root() {
+            if let Some(v) = read_json(&root.join(GEMINI_DIR).join(SETTINGS_JSON)) {
+                return Some(v);
+            }
+        }
+    }
+    global
+}
+
+fn load_gemini_rules() -> (Vec<String>, Vec<String>, Vec<String>) {
+    let mut ask = Vec::new();
+    let mut allow = Vec::new();
+    let shells = ["run_shell_command(", "ShellTool("];
+    if let Some(tools) = gemini_settings().as_ref().and_then(|j| j.get("tools")) {
+        append_wrapped_rules(tools.get("allowed"), &shells, &mut allow);
+        append_wrapped_rules(tools.get("confirmationRequired"), &shells, &mut ask);
+    }
+    (Vec::new(), ask, allow)
 }
 
 /// Locate the project root by walking up from CWD looking for `.claude/`.
@@ -288,7 +403,7 @@ fn glob_matches(cmd: &str, pattern: &str) -> bool {
 }
 
 fn split_compound_command(cmd: &str) -> Vec<&str> {
-    split_on_operators(cmd, false)
+    split_for_permissions(cmd)
 }
 
 #[cfg(test)]
@@ -702,6 +817,77 @@ mod tests {
         assert_eq!(
             check_command_with_rules("git status && git push origin main", &[], &ask, &allow),
             PermissionVerdict::Ask
+        );
+    }
+
+    // --- Permission-gate bypass hardening -----------------------------------
+
+    #[test]
+    fn test_newline_hidden_command_denied() {
+        let deny = vec!["rm:*".to_string()];
+        let allow = vec!["git *".to_string()];
+        assert_eq!(
+            check_command_with_rules("git status\nrm -rf ~", &deny, &[], &allow),
+            PermissionVerdict::Deny
+        );
+    }
+
+    #[test]
+    fn test_newline_hidden_command_not_auto_allowed() {
+        let allow = vec!["git *".to_string()];
+        assert_eq!(
+            check_command_with_rules("git status\nrm -rf ~", &[], &[], &allow),
+            PermissionVerdict::Default,
+            "newline-hidden unallowed segment must demote the chain"
+        );
+    }
+
+    #[test]
+    fn test_substitution_injection_not_auto_allowed() {
+        let allow = vec!["git *".to_string()];
+        // $(rm -rf /) is a substitution — must never be auto-allowed
+        assert_eq!(
+            check_command_with_rules("git status $(rm -rf /)", &[], &[], &allow),
+            PermissionVerdict::Ask
+        );
+    }
+
+    #[test]
+    fn test_backtick_injection_not_auto_allowed() {
+        let allow = vec!["git *".to_string()];
+        assert_eq!(
+            check_command_with_rules("git status `rm -rf /`", &[], &[], &allow),
+            PermissionVerdict::Ask
+        );
+    }
+
+    #[test]
+    fn test_file_redirect_not_auto_allowed() {
+        let allow = vec!["git *".to_string()];
+        // > /tmp/out is a file redirect — must not be auto-allowed
+        assert_eq!(
+            check_command_with_rules("git log > /tmp/out.txt", &[], &[], &allow),
+            PermissionVerdict::Ask
+        );
+    }
+
+    #[test]
+    fn test_fd_dup_redirect_still_allows() {
+        let allow = vec!["git *".to_string()];
+        // 2>&1 is fd-dup, not a file redirect — should still allow
+        assert_eq!(
+            check_command_with_rules("git status 2>&1", &[], &[], &allow),
+            PermissionVerdict::Allow
+        );
+    }
+
+    #[test]
+    fn test_dev_null_redirect_still_allows() {
+        let allow = vec!["git *".to_string()];
+        // > /dev/null is explicitly exempted
+        assert_eq!(
+            check_command_with_rules("git status > /dev/null", &[], &[], &allow),
+            PermissionVerdict::Allow
         );
     }
 }

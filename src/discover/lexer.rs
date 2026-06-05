@@ -15,6 +15,10 @@ pub struct ParsedToken {
 }
 
 pub fn tokenize(input: &str) -> Vec<ParsedToken> {
+    tokenize_inner(input, false)
+}
+
+fn tokenize_inner(input: &str, emit_newline: bool) -> Vec<ParsedToken> {
     let mut tokens = Vec::new();
     let mut current = String::new();
     let mut current_start: usize = 0;
@@ -226,6 +230,16 @@ pub fn tokenize(input: &str) -> Vec<ParsedToken> {
                 });
                 current_start = byte_pos;
             }
+            '\n' | '\r' if emit_newline => {
+                flush_arg(&mut tokens, &mut current, current_start);
+                tokens.push(ParsedToken {
+                    kind: TokenKind::Operator,
+                    value: "\n".into(),
+                    offset: byte_pos,
+                });
+                byte_pos += char_len;
+                current_start = byte_pos;
+            }
             c if c.is_whitespace() => {
                 flush_arg(&mut tokens, &mut current, current_start);
                 byte_pos += c.len_utf8();
@@ -256,6 +270,117 @@ fn flush_arg(tokens: &mut Vec<ParsedToken>, current: &mut String, offset: usize)
             offset,
         });
     }
+}
+
+/// True for constructs the permission gate can't decompose, so they must never
+/// be auto-allowed: command/process substitution, or a real file-target redirect
+/// (fd-dup like `2>&1` and `/dev/null` are exempt). Separators and subshells are
+/// handled by [`split_for_permissions`], not flagged here.
+pub fn contains_unattestable_construct(cmd: &str) -> bool {
+    if contains_substitution(cmd) {
+        return true;
+    }
+    let tokens = tokenize(cmd);
+    tokens
+        .iter()
+        .enumerate()
+        .any(|(i, tok)| tok.kind == TokenKind::Redirect && redirect_has_file_target(&tokens, i))
+}
+
+/// Quote-aware: bash runs backtick/`$(...)` unquoted and inside double quotes,
+/// but treats single-quoted text literally; `<(`/`>(` is unquoted-only.
+fn contains_substitution(cmd: &str) -> bool {
+    let bytes = cmd.as_bytes();
+    let mut in_single = false;
+    let mut in_double = false;
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\\' if !in_single => {
+                i += 2;
+                continue;
+            }
+            b'\'' if !in_double => in_single = !in_single,
+            b'"' if !in_single => in_double = !in_double,
+            b'`' if !in_single => return true,
+            b'$' if !in_single && bytes.get(i + 1) == Some(&b'(') => return true,
+            b'<' | b'>' if !in_single && !in_double && bytes.get(i + 1) == Some(&b'(') => {
+                return true;
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    false
+}
+
+// `>&N`/`>&-` (and `N>&M`) is fd-dup/close; bare `>&` before a word is
+// `>word 2>&1` — a file target.
+fn redirect_has_file_target(tokens: &[ParsedToken], i: usize) -> bool {
+    let value = &tokens[i].value;
+    if let Some(pos) = value.find(">&") {
+        let tail = &value[pos + 2..];
+        if !tail.is_empty() && tail.chars().all(|c| c.is_ascii_digit() || c == '-') {
+            return false;
+        }
+    }
+    match tokens.get(i + 1) {
+        Some(next) if next.kind == TokenKind::Arg => next.value != "/dev/null",
+        _ => true,
+    }
+}
+
+/// Like [`split_on_operators`] but also breaks on newline, background `&`, and
+/// subshell `( ... )`, and truncates each segment at its first redirect.
+/// Callers must still gate on [`contains_unattestable_construct`] first.
+pub fn split_for_permissions(cmd: &str) -> Vec<&str> {
+    let trimmed = cmd.trim();
+    if trimmed.is_empty() {
+        return vec![];
+    }
+
+    let tokens = tokenize_inner(trimmed, true);
+    let mut results = Vec::new();
+    let mut seg_start: usize = 0;
+
+    for tok in &tokens {
+        match tok.kind {
+            TokenKind::Operator | TokenKind::Pipe => {
+                let segment = trimmed[seg_start..tok.offset].trim();
+                if !segment.is_empty() {
+                    results.push(truncate_at_redirect(segment));
+                }
+                seg_start = tok.offset + tok.value.len();
+            }
+            TokenKind::Shellism if tok.value == "&" => {
+                let segment = trimmed[seg_start..tok.offset].trim();
+                if !segment.is_empty() {
+                    results.push(truncate_at_redirect(segment));
+                }
+                seg_start = tok.offset + tok.value.len();
+            }
+            _ => {}
+        }
+    }
+
+    let tail = trimmed[seg_start..].trim();
+    if !tail.is_empty() {
+        results.push(truncate_at_redirect(tail));
+    }
+
+    results
+}
+
+/// Truncate a command segment at its first redirect token.
+/// `git log > file` → `git log`
+fn truncate_at_redirect(segment: &str) -> &str {
+    let tokens = tokenize(segment);
+    for tok in &tokens {
+        if tok.kind == TokenKind::Redirect {
+            return segment[..tok.offset].trim_end();
+        }
+    }
+    segment
 }
 
 /// Split a shell command on operators (`&&`, `||`, `;`) and optionally pipes (`|`),

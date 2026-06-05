@@ -92,11 +92,11 @@ pub fn run_build(args: &[String], verbose: u8) -> Result<i32> {
         eprintln!("Running: go build {}", args.join(" "));
     }
 
-    runner::run_filtered(
+    runner::run_filtered_with_exit(
         cmd,
         "go build",
         &args.join(" "),
-        filter_go_build,
+        filter_go_build_with_exit,
         crate::core::runner::RunOptions::with_tee("go_build"),
     )
 }
@@ -700,6 +700,17 @@ pub(crate) fn filter_go_build(output: &str) -> String {
     }
 
     result.trim().to_string()
+}
+
+/// Like `filter_go_build` but also receives the child exit code.
+/// When the exit code is non-zero and no error lines were found, reports
+/// "Go build: failed (exit N)" instead of "Success".
+pub(crate) fn filter_go_build_with_exit(output: &str, exit_code: i32) -> String {
+    let filtered = filter_go_build(output);
+    if exit_code != 0 && filtered == "Go build: Success" {
+        return format!("Go build: failed (exit {})", exit_code);
+    }
+    filtered
 }
 
 fn is_go_build_error_line(line: &str) -> bool {
