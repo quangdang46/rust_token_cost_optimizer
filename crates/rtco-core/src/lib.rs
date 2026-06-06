@@ -1,23 +1,29 @@
 //! Building blocks shared across all RTK modules.
 
 pub mod adaptive_sizer;
+pub mod anchor;
 pub mod args_utils;
+pub mod cache_aligner;
+pub mod ccr;
+pub mod compressors;
 pub mod config;
 pub mod constants;
 pub mod content_detector;
-#[allow(dead_code)]
 pub mod dedup;
 pub mod display_helpers;
 pub mod filter;
 pub mod keyword_detector;
 pub mod line_scorer;
+pub mod pipeline;
 pub mod redact;
 pub mod runner;
+pub mod signals;
 pub mod stack_trace;
 pub mod stream;
 pub mod tee;
 pub mod telemetry;
 pub mod text_stats;
+pub mod tokenizer;
 pub mod tracking;
 pub mod truncate;
 pub mod utils;

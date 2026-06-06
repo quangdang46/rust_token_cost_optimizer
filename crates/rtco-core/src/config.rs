@@ -21,34 +21,22 @@ pub struct Config {
     pub hooks: HooksConfig,
     #[serde(default)]
     pub limits: LimitsConfig,
+    #[serde(default)]
+    pub tokenizer: TokenEstimatorConfig,
+    #[serde(default)]
+    pub ccr: CcrConfig,
+
+    #[serde(default)]
+    pub pipeline: crate::pipeline::PipelineConfig,
+
+    #[serde(default)]
+    pub compressors: CompressorsConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HooksConfig {
-    /// Commands to exclude from auto-rewrite (e.g. ["curl", "playwright"]).
-    /// Survives `rtk init -g` re-runs since config.toml is user-owned.
     #[serde(default)]
     pub exclude_commands: Vec<String>,
-
-    /// Wrapper prefixes that should be transparently stripped before routing
-    /// to a filter, then re-prepended on the rewrite. For example, with
-    /// `transparent_prefixes = ["docker exec mycontainer"]`, the command
-    /// `docker exec mycontainer git status` rewrites to
-    /// `docker exec mycontainer rtk git status` instead of passing through
-    /// unrewritten.
-    ///
-    /// Useful for any per-project env wrapper that sits in front of every
-    /// command — e.g. `docker exec mycontainer`, `direnv exec .`, `poetry run`,
-    /// or `bundle exec`.
-    ///
-    /// Matching is literal, not pattern-based. Configure the exact concrete
-    /// prefix you actually use, such as `docker exec mycontainer`.
-    ///
-    /// Extends the built-in `SHELL_PREFIX_BUILTINS` list (`noglob`, `command`,
-    /// `builtin`, `exec`, `nocorrect`) with user- or organization-specific
-    /// wrappers. Matching is strict: a configured prefix `"foo bar"` matches
-    /// a command that starts with `"foo bar "` (or strictly equals `"foo bar"`),
-    /// not anything else.
     #[serde(default)]
     pub transparent_prefixes: Vec<String>,
 }
@@ -130,17 +118,85 @@ pub struct TelemetryConfig {
     pub consent_date: Option<String>,
 }
 
+/// Configuration for token estimation.
 #[derive(Debug, Serialize, Deserialize)]
+pub struct TokenEstimatorConfig {
+    /// Tokenizer backend to use: "approximate" (default), "tiktoken", or "huggingface".
+    #[serde(default = "default_tokenizer_backend")]
+    pub backend: String,
+    /// Whether token estimation is enabled. When disabled, the old
+    /// whitespace-based count is used.
+    #[serde(default = "default_tokenizer_enabled")]
+    pub enabled: bool,
+}
+
+fn default_tokenizer_backend() -> String {
+    "approximate".to_string()
+}
+
+fn default_tokenizer_enabled() -> bool {
+    true
+}
+
+impl Default for TokenEstimatorConfig {
+    fn default() -> Self {
+        Self {
+            backend: default_tokenizer_backend(),
+            enabled: true,
+        }
+    }
+}
+
+/// Configuration for the Compression Context Registry (CCR).
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CcrConfig {
+    /// Whether CCR is enabled. When disabled, no content is stored.
+    pub enabled: bool,
+    /// Default TTL in days for stored entries. 0 means no expiry.
+    pub default_ttl_days: u64,
+    /// Minimum line length in chars to trigger offload storage.
+    pub offload_threshold_chars: usize,
+}
+
+impl Default for CcrConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            default_ttl_days: 7,
+            offload_threshold_chars: 100,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+
+pub struct CompressorsConfig {
+    pub enabled: bool,
+    pub diff_max_context_lines: usize,
+    pub search_max_files: usize,
+    pub log_collapse_repeated: bool,
+    pub smart_crusher_min_array: usize,
+}
+
+impl Default for CompressorsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            diff_max_context_lines: 3,
+            search_max_files: 20,
+            log_collapse_repeated: false,
+            smart_crusher_min_array: 5,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LimitsConfig {
-    /// Max total grep results to show (default: 200)
     pub grep_max_results: usize,
-    /// Max matches per file in grep output (default: 25)
     pub grep_max_per_file: usize,
-    /// Max staged/modified files shown in git status (default: 15)
     pub status_max_files: usize,
-    /// Max untracked files shown in git status (default: 10)
     pub status_max_untracked: usize,
-    /// Max chars for parser passthrough fallback (default: 2000)
     pub passthrough_max_chars: usize,
 }
 

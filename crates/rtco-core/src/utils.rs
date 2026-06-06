@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 use regex::Regex;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::Mutex;
 
 /// Truncates a string to `max_len` characters, appending `...` if needed.
 ///
@@ -256,6 +257,47 @@ pub fn ruby_exec(tool: &str) -> Command {
 /// for filtering and compression.
 pub fn count_tokens(text: &str) -> usize {
     text.split_whitespace().count()
+}
+
+/// Global tokenizer registry, lazily initialized from config.
+static GLOBAL_TOKENIZER: Mutex<Option<super::tokenizer::TokenizerRegistry>> = Mutex::new(None);
+
+/// Initialize the global tokenizer from the application config.
+///
+/// Should be called once at startup. Safe to call multiple times.
+pub fn init_tokenizer(config: &super::config::Config) {
+    if config.tokenizer.enabled {
+        let kind = super::tokenizer::TokenizerKind::from_config(&config.tokenizer.backend);
+        let mut guard = GLOBAL_TOKENIZER
+            .lock()
+            .expect("global tokenizer mutex poisoned");
+        if guard.is_none() {
+            *guard = Some(super::tokenizer::TokenizerRegistry::new(kind));
+        }
+    }
+}
+
+/// Count tokens using the configured tokenizer backend, falling back to
+/// whitespace-based counting if no tokenizer is initialized.
+///
+/// This is the preferred counting function for new code. The simpler
+/// [`count_tokens`] is preserved for backward compatibility.
+pub fn count_tokens_with_tokenizer(text: &str) -> usize {
+    let guard = GLOBAL_TOKENIZER
+        .lock()
+        .expect("global tokenizer mutex poisoned");
+    guard
+        .as_ref()
+        .map(|reg| reg.estimate(text))
+        .unwrap_or_else(|| count_tokens(text))
+}
+
+#[cfg(test)]
+pub fn reset_tokenizer() {
+    let mut guard = GLOBAL_TOKENIZER
+        .lock()
+        .expect("global tokenizer mutex poisoned");
+    *guard = None;
 }
 
 /// Detect the package manager used in the current directory.

@@ -1619,10 +1619,8 @@ mod tests {
     /// tests don't interfere with each other's records.
     fn test_tracker() -> Tracker {
         let n = TEST_DB_COUNTER.fetch_add(1, Ordering::SeqCst);
-        let path = std::env::temp_dir().join(format!(
-            "rtco_test_{pid}_{n}.db",
-            pid = std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("rtco_test_{pid}_{n}.db", pid = std::process::id()));
         Tracker::with_db_path(path).expect("Failed to create test tracker")
     }
 
