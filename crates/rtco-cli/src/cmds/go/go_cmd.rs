@@ -1,0 +1,1413 @@
+//! Filters Go command output — test results, build errors, vet warnings.
+
+use rtco_core::runner;
+use rtco_core::tracking;
+use rtco_core::truncate::CAP_ERRORS;
+use rtco_core::utils::{exit_code_from_output, resolved_command, truncate};
+use crate::golangci_cmd;
+use anyhow::{Context, Result};
+use serde::Deserialize;
+use std::collections::HashMap;
+use std::ffi::OsString;
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct GoTestEvent {
+    #[serde(rename = "Time")]
+    time: Option<String>,
+    #[serde(rename = "Action")]
+    action: String,
+    #[serde(rename = "Package")]
+    package: Option<String>,
+    #[serde(rename = "Test")]
+    test: Option<String>,
+    #[serde(rename = "Output")]
+    output: Option<String>,
+    #[serde(rename = "Elapsed")]
+    elapsed: Option<f64>,
+    #[serde(rename = "ImportPath")]
+    import_path: Option<String>,
+    #[serde(rename = "FailedBuild")]
+    failed_build: Option<String>,
+}
+
+#[derive(Debug, Default)]
+struct PackageResult {
+    pass: usize,
+    fail: usize,
+    skip: usize,
+    build_failed: bool,
+    build_errors: Vec<String>,
+    failed_tests: Vec<(String, Vec<String>)>, // (test_name, output_lines)
+    package_failed: bool,                     // package-level failure (timeout, signal, etc.)
+    package_fail_output: Vec<String>,         // output lines collected before the package fail
+}
+
+pub fn run_test(args: &[String], verbose: u8) -> Result<i32> {
+    let mut cmd = resolved_command("go");
+    cmd.arg("test");
+
+    let skip_json = args.iter().any(|a| a == "-json" || a.starts_with("-bench"));
+
+    if !skip_json {
+        cmd.arg("-json");
+    }
+
+    for arg in args {
+        cmd.arg(arg);
+    }
+
+    if verbose > 0 {
+        eprintln!(
+            "Running: go test {}{}",
+            if !skip_json { "-json " } else { "" },
+            args.join(" ")
+        );
+    }
+
+    let filter: fn(&str) -> String = if skip_json {
+        |s: &str| s.to_string()
+    } else {
+        filter_go_test_json
+    };
+
+    runner::run_filtered(
+        cmd,
+        "go test",
+        &args.join(" "),
+        filter,
+        rtco_core::runner::RunOptions::stdout_only().tee("go_test"),
+    )
+}
+
+pub fn run_build(args: &[String], verbose: u8) -> Result<i32> {
+    let mut cmd = resolved_command("go");
+    cmd.arg("build");
+
+    for arg in args {
+        cmd.arg(arg);
+    }
+
+    if verbose > 0 {
+        eprintln!("Running: go build {}", args.join(" "));
+    }
+
+    runner::run_filtered_with_exit(
+        cmd,
+        "go build",
+        &args.join(" "),
+        filter_go_build_with_exit,
+        rtco_core::runner::RunOptions::with_tee("go_build"),
+    )
+}
+
+pub fn run_vet(args: &[String], verbose: u8) -> Result<i32> {
+    let mut cmd = resolved_command("go");
+    cmd.arg("vet");
+
+    for arg in args {
+        cmd.arg(arg);
+    }
+
+    if verbose > 0 {
+        eprintln!("Running: go vet {}", args.join(" "));
+    }
+
+    runner::run_filtered(
+        cmd,
+        "go vet",
+        &args.join(" "),
+        filter_go_vet,
+        rtco_core::runner::RunOptions::with_tee("go_vet"),
+    )
+}
+
+pub fn run_other(args: &[OsString], verbose: u8) -> Result<i32> {
+    if args.is_empty() {
+        anyhow::bail!("go: no subcommand specified");
+    }
+
+    // Intercept: `go tool <known>` invocations for filtered output
+    if let Some((tool, tool_args)) = match_go_tool(args) {
+        match tool {
+            GoTool::GolangciLint => return run_go_tool_golangci_lint(tool_args, verbose),
+        }
+    }
+
+    let timer = tracking::TimedExecution::start();
+
+    let subcommand = args[0].to_string_lossy();
+    let mut cmd = resolved_command("go");
+    cmd.arg(&*subcommand);
+
+    for arg in &args[1..] {
+        cmd.arg(arg);
+    }
+
+    if verbose > 0 {
+        eprintln!("Running: go {} ...", subcommand);
+    }
+
+    let output = cmd
+        .output()
+        .with_context(|| format!("Failed to run go {}", subcommand))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let raw = format!("{}\n{}", stdout, stderr);
+
+    print!("{}", stdout);
+    eprint!("{}", stderr);
+
+    timer.track(
+        &format!("go {}", subcommand),
+        &format!("rtco go {}", subcommand),
+        &raw,
+        &raw, // No filtering for unsupported commands
+    );
+
+    Ok(exit_code_from_output(&output, "go"))
+}
+
+/// Detect golangci-lint major version when invoked via `go tool`.
+/// Returns 1 on any failure (safe fallback — v1 behaviour).
+fn detect_go_tool_golangci_version() -> u32 {
+    let output = resolved_command("go")
+        .arg("tool")
+        .arg("golangci-lint")
+        .arg("--version")
+        .output();
+
+    match output {
+        Ok(o) => {
+            let stdout = String::from_utf8_lossy(&o.stdout);
+            let stderr = String::from_utf8_lossy(&o.stderr);
+            let version_text = if stdout.trim().is_empty() {
+                &*stderr
+            } else {
+                &*stdout
+            };
+            golangci_cmd::parse_major_version(version_text)
+        }
+        Err(_) => 1,
+    }
+}
+
+fn has_golangci_format_flag(args: &[OsString]) -> bool {
+    args.iter().any(|a| {
+        let s = a.to_string_lossy();
+        s == "--out-format"
+            || s.starts_with("--out-format=")
+            || s == "--output.json.path"
+            || s.starts_with("--output.json.path=")
+    })
+}
+
+/// Known `go tool` subcommands that RTK provides filtered output for.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum GoTool {
+    GolangciLint,
+}
+
+impl GoTool {
+    fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "golangci-lint" => Some(Self::GolangciLint),
+            _ => None,
+        }
+    }
+}
+
+/// If the first arg is `tool` identify if it is a tool we already handle.
+fn match_go_tool(args: &[OsString]) -> Option<(GoTool, &[OsString])> {
+    if args.first().map(|a| a == "tool").unwrap_or(false) {
+        if let Some(tool_arg) = args.get(1) {
+            if let Some(tool) = GoTool::from_name(&tool_arg.to_string_lossy()) {
+                return Some((tool, &args[2..]));
+            }
+        }
+    }
+    None
+}
+
+/// Run `go tool golangci-lint` and filter its output via the golangci JSON filter.
+/// Reusing parts of golangci_cmd.
+fn run_go_tool_golangci_lint(args: &[OsString], verbose: u8) -> Result<i32> {
+    let timer = tracking::TimedExecution::start();
+
+    let version = detect_go_tool_golangci_version();
+
+    let mut cmd = resolved_command("go");
+    cmd.arg("tool").arg("golangci-lint");
+
+    let has_format = has_golangci_format_flag(args);
+
+    if !has_format {
+        if version >= 2 {
+            cmd.arg("run").arg("--output.json.path").arg("stdout");
+        } else {
+            cmd.arg("run").arg("--out-format=json");
+        }
+    } else {
+        cmd.arg("run");
+    }
+
+    for arg in args {
+        cmd.arg(arg);
+    }
+
+    if verbose > 0 {
+        if version >= 2 {
+            eprintln!("Running: go tool golangci-lint run --output.json.path stdout");
+        } else {
+            eprintln!("Running: go tool golangci-lint run --out-format=json");
+        }
+    }
+
+    let output = cmd
+        .output()
+        .context("Failed to run go tool golangci-lint")?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let raw = format!("{}\n{}", stdout, stderr);
+
+    // v2 outputs JSON on first line + trailing text; v1 outputs just JSON
+    let json_output = if version >= 2 {
+        stdout.lines().next().unwrap_or("")
+    } else {
+        &*stdout
+    };
+
+    let filtered = golangci_cmd::filter_golangci_json(json_output, version);
+    println!("{}", filtered);
+
+    if !stderr.trim().is_empty() && verbose > 0 {
+        eprintln!("{}", stderr.trim());
+    }
+
+    timer.track(
+        "go tool golangci-lint",
+        "rtco go tool golangci-lint",
+        &raw,
+        &filtered,
+    );
+
+    let exit_code = exit_code_from_output(&output, "go tool golangci-lint");
+    // golangci-lint: exit 0 = clean, exit 1 = lint issues found (not an error),
+    // exit 2+ = config/build error, None = killed by signal (OOM, SIGKILL)
+    Ok(if exit_code == 1 { 0 } else { exit_code })
+}
+
+/// Parse go test -json output (NDJSON format)
+pub(crate) fn filter_go_test_json(output: &str) -> String {
+    let mut packages: HashMap<String, PackageResult> = HashMap::new();
+    let mut current_test_output: HashMap<(String, String), Vec<String>> = HashMap::new(); // (package, test) -> outputs
+    let mut build_output: HashMap<String, Vec<String>> = HashMap::new(); // import_path -> error lines
+
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let event: GoTestEvent = match serde_json::from_str(trimmed) {
+            Ok(e) => e,
+            Err(_) => continue, // Skip non-JSON lines
+        };
+
+        // Handle build-output/build-fail events (use ImportPath, no Package)
+        match event.action.as_str() {
+            "build-output" => {
+                if let (Some(import_path), Some(output_text)) = (&event.import_path, &event.output)
+                {
+                    let text = output_text.trim_end().to_string();
+                    if !text.is_empty() {
+                        build_output
+                            .entry(import_path.clone())
+                            .or_default()
+                            .push(text);
+                    }
+                }
+                continue;
+            }
+            "build-fail" => {
+                // build-fail has ImportPath — we'll handle it when the package-level fail arrives
+                continue;
+            }
+            _ => {}
+        }
+
+        let package = event.package.unwrap_or_else(|| "unknown".to_string());
+        let pkg_result = packages.entry(package.clone()).or_default();
+
+        match event.action.as_str() {
+            "pass" if event.test.is_some() => {
+                pkg_result.pass += 1;
+            }
+            "fail" => {
+                if let Some(test) = &event.test {
+                    // Individual test failure
+                    pkg_result.fail += 1;
+
+                    // Collect output for failed test
+                    let key = (package.clone(), test.clone());
+                    let outputs = current_test_output.remove(&key).unwrap_or_default();
+                    pkg_result.failed_tests.push((test.clone(), outputs));
+                } else if event.failed_build.is_some() {
+                    // Package-level build failure
+                    pkg_result.build_failed = true;
+                    // Collect build errors from the import path
+                    if let Some(import_path) = &event.failed_build {
+                        if let Some(errors) = build_output.remove(import_path) {
+                            pkg_result.build_errors = errors;
+                        }
+                    }
+                } else {
+                    // Package-level failure without a specific test or build error
+                    // (timeout, signal kill, panic before test execution, etc.)
+                    pkg_result.package_failed = true;
+                }
+            }
+            "skip" if event.test.is_some() => {
+                pkg_result.skip += 1;
+            }
+            "output" => {
+                if let Some(output_text) = &event.output {
+                    if let Some(test) = &event.test {
+                        // Collect output for current test
+                        let key = (package.clone(), test.clone());
+                        current_test_output
+                            .entry(key)
+                            .or_default()
+                            .push(output_text.trim_end().to_string());
+                    } else {
+                        // Package-level output (timeout messages, signal info, etc.)
+                        let trimmed = output_text.trim();
+                        if !trimmed.is_empty() {
+                            pkg_result.package_fail_output.push(trimmed.to_string());
+                        }
+                    }
+                }
+            }
+            _ => {} // run, pause, cont, etc.
+        }
+    }
+
+    // Build summary
+    let total_packages = packages.len();
+    let total_pass: usize = packages.values().map(|p| p.pass).sum();
+    let total_fail: usize = packages.values().map(|p| p.fail).sum();
+    let total_skip: usize = packages.values().map(|p| p.skip).sum();
+    let total_build_fail: usize = packages.values().filter(|p| p.build_failed).count();
+    // Only count package-level fails for packages with no individual test or build failures.
+    // go test -json emits a trailing package-level {"action":"fail"} after any test failure
+    // too, but that event is just a cascade — the individual test failures are already counted.
+    let total_pkg_fail: usize = packages
+        .values()
+        .filter(|p| p.package_failed && p.fail == 0 && !p.build_failed)
+        .count();
+
+    let has_failures = total_fail > 0 || total_build_fail > 0 || total_pkg_fail > 0;
+
+    if !has_failures && total_pass == 0 {
+        return "Go test: No tests found".to_string();
+    }
+
+    if !has_failures {
+        return format!(
+            "Go test: {} passed in {} packages",
+            total_pass, total_packages
+        );
+    }
+
+    let mut result = String::new();
+    result.push_str(&format!(
+        "Go test: {} passed, {} failed",
+        total_pass,
+        total_fail + total_build_fail + total_pkg_fail
+    ));
+    if total_skip > 0 {
+        result.push_str(&format!(", {} skipped", total_skip));
+    }
+    result.push_str(&format!(" in {} packages\n", total_packages));
+    result.push_str("═══════════════════════════════════════\n");
+
+    // Show package-level failures first (timeouts, signals, panics).
+    // Skip packages that already have individual test-level failures — those are displayed
+    // in the per-package section below and the package-level event is just a cascade.
+    for (package, pkg_result) in packages.iter() {
+        if !pkg_result.package_failed || pkg_result.fail > 0 || pkg_result.build_failed {
+            continue;
+        }
+
+        result.push_str(&format!("\n{} [FAIL]\n", compact_package_name(package)));
+
+        for line in &pkg_result.package_fail_output {
+            let trimmed = line.trim();
+            if !trimmed.is_empty() {
+                result.push_str(&format!("  {}\n", truncate(trimmed, 120)));
+            }
+        }
+    }
+
+    // Show build failures
+    for (package, pkg_result) in packages.iter() {
+        if !pkg_result.build_failed {
+            continue;
+        }
+
+        result.push_str(&format!(
+            "\n{} [build failed]\n",
+            compact_package_name(package)
+        ));
+
+        for line in &pkg_result.build_errors {
+            let trimmed = line.trim();
+            // Skip the "# package" header line
+            if !trimmed.starts_with('#') && !trimmed.is_empty() {
+                result.push_str(&format!("  {}\n", truncate(trimmed, 120)));
+            }
+        }
+    }
+
+    // Show failed tests grouped by package
+    for (package, pkg_result) in packages.iter() {
+        if pkg_result.fail == 0 {
+            continue;
+        }
+
+        result.push_str(&format!(
+            "\n{} ({} passed, {} failed)\n",
+            compact_package_name(package),
+            pkg_result.pass,
+            pkg_result.fail
+        ));
+
+        for (test, outputs) in &pkg_result.failed_tests {
+            result.push_str(&format!("  [FAIL] {}\n", test));
+
+            // Trace-mode (panic/fatal) needs wider lines for full stack frame
+            // paths -- truncating to 100 chars would chop the file the user
+            // actually wrote. Assertion-mode keeps the original 100-char cap.
+            let trace_mode = outputs.iter().any(|line| is_go_trace_marker(line.trim()));
+            let line_cap = if trace_mode { 160 } else { 100 };
+
+            for line in select_go_test_failure_lines(outputs) {
+                result.push_str(&format!("     {}\n", truncate(&line, line_cap)));
+            }
+        }
+    }
+
+    result.trim().to_string()
+}
+
+/// Maximum lines of trace context to keep per failed test in panic/fatal mode.
+/// Big enough to show the user-code frames of a Go stack trace, small enough
+/// that the tee file remains the authoritative recovery point.
+const GO_TEST_TRACE_MAX_LINES: usize = 50;
+
+/// Maximum lines kept for plain assertion failures (no panic/fatal/goroutine).
+const GO_TEST_ASSERT_MAX_LINES: usize = 8;
+
+fn is_go_trace_marker(line: &str) -> bool {
+    let lower = line.to_lowercase();
+    lower.starts_with("panic:")
+        || lower.starts_with("fatal error:")
+        || lower.starts_with("goroutine ")
+        || (lower.starts_with("--- fail:")) // explicit subtest failure header
+}
+
+fn is_go_test_skippable_header(line: &str) -> bool {
+    line.starts_with("=== RUN")
+        || line.starts_with("=== PAUSE")
+        || line.starts_with("=== CONT")
+        || line.starts_with("=== NAME")
+        || line.starts_with("--- PASS")
+}
+
+fn select_go_test_failure_lines(outputs: &[String]) -> Vec<String> {
+    // Step 1: detect whether any output line is a panic / fatal / goroutine
+    // header. If so we switch into "trace mode" and preserve the contiguous
+    // block verbatim — losing user-code stack frames defeats the point of
+    // having any diagnostic at all (see issue #1882).
+    let trace_mode = outputs.iter().any(|line| is_go_trace_marker(line.trim()));
+
+    if trace_mode {
+        return collect_trace_lines(outputs);
+    }
+
+    collect_assertion_lines(outputs)
+}
+
+/// Trace mode: keep contiguous diagnostic lines (panic message + goroutine +
+/// stack frames) up to GO_TEST_TRACE_MAX_LINES. Skips only purely cosmetic
+/// `=== RUN` / `--- PASS` headers and blank lines, so file:line frames and
+/// function-name lines are all preserved together.
+fn collect_trace_lines(outputs: &[String]) -> Vec<String> {
+    let mut relevant: Vec<String> = Vec::new();
+    let mut started = false;
+    let mut truncated = false;
+
+    for line in outputs {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if is_go_test_skippable_header(trimmed) {
+            continue;
+        }
+
+        // Don't start emitting until we see a meaningful line (skip any pre-`--- FAIL:` noise).
+        if !started {
+            started = true;
+        }
+
+        if relevant.len() >= GO_TEST_TRACE_MAX_LINES {
+            truncated = true;
+            break;
+        }
+        relevant.push(trimmed.to_string());
+    }
+
+    if truncated {
+        let remaining = outputs
+            .iter()
+            .filter(|l| {
+                let t = l.trim();
+                !t.is_empty() && !is_go_test_skippable_header(t)
+            })
+            .count()
+            .saturating_sub(relevant.len());
+        if remaining > 0 {
+            relevant.push(format!("… +{} more trace lines (see tee file)", remaining));
+        }
+    }
+
+    relevant
+}
+
+/// Assertion mode (no panic/fatal): keep file:line locations, their follow-up
+/// context lines, and any obvious error / mismatch lines, up to a small cap.
+fn collect_assertion_lines(outputs: &[String]) -> Vec<String> {
+    let mut relevant = Vec::new();
+    let mut keep_next_context_line = false;
+
+    for line in outputs {
+        let trimmed = line.trim();
+
+        if trimmed.is_empty()
+            || trimmed.starts_with("=== RUN")
+            || trimmed.starts_with("--- FAIL")
+            || trimmed.starts_with("--- PASS")
+        {
+            keep_next_context_line = false;
+            continue;
+        }
+
+        let is_location = is_go_test_location_line(trimmed);
+        let is_failure = is_go_test_failure_line(trimmed);
+
+        if is_location || is_failure || keep_next_context_line {
+            relevant.push(trimmed.to_string());
+            keep_next_context_line = is_location;
+        } else {
+            keep_next_context_line = false;
+        }
+
+        if relevant.len() >= GO_TEST_ASSERT_MAX_LINES {
+            break;
+        }
+    }
+
+    if relevant.is_empty() {
+        if let Some(line) = outputs.iter().map(|line| line.trim()).find(|line| {
+            !line.is_empty()
+                && !line.starts_with("=== RUN")
+                && !line.starts_with("--- FAIL")
+                && !line.starts_with("--- PASS")
+        }) {
+            relevant.push(line.to_string());
+        }
+    }
+
+    relevant
+}
+
+fn is_go_test_location_line(line: &str) -> bool {
+    if let Some((_, rest)) = line.split_once(".go:") {
+        rest.chars()
+            .next()
+            .map(|c| c.is_ascii_digit())
+            .unwrap_or(false)
+    } else {
+        false
+    }
+}
+
+fn is_go_test_failure_line(line: &str) -> bool {
+    let lower = line.to_lowercase();
+
+    lower.starts_with("panic:")
+        || lower.starts_with("error:")
+        || lower.contains(" error:")
+        || lower.contains("expected")
+        || lower.contains("got")
+        || lower.contains("want")
+        || lower.contains("actual")
+        || lower.contains("assert")
+        || lower.contains("mismatch")
+        || lower.contains("unexpected")
+        || lower.contains("fatal")
+        || line.starts_with("at ")
+}
+
+/// Filter go build output - show only errors
+pub(crate) fn filter_go_build(output: &str) -> String {
+    let mut errors: Vec<String> = Vec::new();
+
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if is_go_build_error_line(trimmed) {
+            errors.push(trimmed.to_string());
+        }
+    }
+
+    if errors.is_empty() {
+        return "Go build: Success".to_string();
+    }
+
+    let mut result = String::new();
+    result.push_str(&format!("Go build: {} errors\n", errors.len()));
+    result.push_str("═══════════════════════════════════════\n");
+
+    const MAX_GO_BUILD_ERRORS: usize = CAP_ERRORS;
+    for (i, error) in errors.iter().take(MAX_GO_BUILD_ERRORS).enumerate() {
+        result.push_str(&format!("{}. {}\n", i + 1, truncate(error, 120)));
+    }
+
+    if errors.len() > MAX_GO_BUILD_ERRORS {
+        result.push_str(&format!(
+            "\n… +{} more errors\n",
+            errors.len() - MAX_GO_BUILD_ERRORS
+        ));
+        let all_errors = errors.join("\n");
+        if let Some(hint) =
+            rtco_core::tee::force_tee_tail_hint(&all_errors, "go-build", MAX_GO_BUILD_ERRORS + 1)
+        {
+            result.push_str(&format!("  {}\n", hint));
+        }
+    }
+
+    result.trim().to_string()
+}
+
+/// Like `filter_go_build` but also receives the child exit code.
+/// When the exit code is non-zero and no error lines were found, reports
+/// "Go build: failed (exit N)" instead of "Success".
+pub(crate) fn filter_go_build_with_exit(output: &str, exit_code: i32) -> String {
+    let filtered = filter_go_build(output);
+    if exit_code != 0 && filtered == "Go build: Success" {
+        return format!("Go build: failed (exit {})", exit_code);
+    }
+    filtered
+}
+
+fn is_go_build_error_line(line: &str) -> bool {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    let lower = trimmed.to_lowercase();
+
+    // Go download/progress lines often contain package names like pkg/errors,
+    // xerrors, or multierror. These are not compilation failures.
+    if lower.starts_with("go: downloading ")
+        || lower.starts_with("go: finding ")
+        || lower.starts_with("go: extracting ")
+    {
+        return false;
+    }
+
+    // Package headers are context, not errors by themselves.
+    if trimmed.starts_with('#') {
+        return false;
+    }
+
+    // Canonical compiler/config error locations: file:line:col: ...
+    let is_go_config_location = !lower.starts_with("go: ")
+        && (lower.contains("go.mod:") || lower.contains("go.work:") || lower.contains("go.sum:"));
+    if trimmed.contains(".go:") || is_go_config_location {
+        return true;
+    }
+
+    // Some compiler/module failures do not include a file.go:line:col location.
+    let non_file_error_prefixes = [
+        "undefined: ",
+        "cannot use ",
+        "cannot find package ",
+        "no required module provides package ",
+        "missing go.sum entry for module providing package ",
+        "found packages ",
+        "go: go.mod file not found in current directory or any parent directory",
+        "go: cannot load module ",
+        "go: build failed",
+        "go: error ",
+        "error: ",
+        "go: updates to go.mod needed",
+        "go: inconsistent vendoring",
+        "no go files in ",
+    ];
+
+    non_file_error_prefixes
+        .iter()
+        .any(|prefix| lower.starts_with(prefix))
+        || lower.contains("import cycle not allowed")
+        || lower.contains("build constraints exclude all go files")
+        || lower.contains("function main is undeclared in the main package")
+}
+
+/// Filter go vet output - show issues
+fn filter_go_vet(output: &str) -> String {
+    let mut issues: Vec<String> = Vec::new();
+
+    for line in output.lines() {
+        let trimmed = line.trim();
+
+        // Collect issue lines (vet reports issues with file:line:col format)
+        if !trimmed.is_empty() && !trimmed.starts_with('#') && trimmed.contains(".go:") {
+            issues.push(trimmed.to_string());
+        }
+    }
+
+    if issues.is_empty() {
+        return "Go vet: No issues found".to_string();
+    }
+
+    let mut result = String::new();
+    result.push_str(&format!("Go vet: {} issues\n", issues.len()));
+    result.push_str("═══════════════════════════════════════\n");
+
+    const MAX_GO_VET_ISSUES: usize = CAP_ERRORS;
+    for (i, issue) in issues.iter().take(MAX_GO_VET_ISSUES).enumerate() {
+        result.push_str(&format!("{}. {}\n", i + 1, truncate(issue, 120)));
+    }
+
+    if issues.len() > MAX_GO_VET_ISSUES {
+        result.push_str(&format!(
+            "\n… +{} more issues\n",
+            issues.len() - MAX_GO_VET_ISSUES
+        ));
+        let all_issues = issues.join("\n");
+        if let Some(hint) =
+            rtco_core::tee::force_tee_tail_hint(&all_issues, "go-vet", MAX_GO_VET_ISSUES + 1)
+        {
+            result.push_str(&format!("  {}\n", hint));
+        }
+    }
+
+    result.trim().to_string()
+}
+
+/// Compact package name (remove long paths)
+fn compact_package_name(package: &str) -> String {
+    // Remove common module prefixes like github.com/user/repo/
+    if let Some(pos) = package.rfind('/') {
+        package[pos + 1..].to_string()
+    } else {
+        package.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    // ---- Local helper-level tests (kept in addition to upstream's fixture-based
+    // integration tests below). These give a fast, focused signal on the trace-mode
+    // selector logic without spinning up the full filter_go_test_json path.
+
+    #[test]
+    fn test_is_go_trace_marker_detects_signals() {
+        // panic / fatal / goroutine / explicit subtest fail header all flip the
+        // selector into trace mode.
+        assert!(is_go_trace_marker(
+            "panic: runtime error: index out of range"
+        ));
+        assert!(is_go_trace_marker("fatal error: concurrent map writes"));
+        assert!(is_go_trace_marker("goroutine 1 [running]:"));
+        assert!(is_go_trace_marker("--- FAIL: TestThing (0.01s)"));
+
+        // A bare assertion line must NOT flip into trace mode.
+        assert!(!is_go_trace_marker("foo_test.go:42:"));
+        assert!(!is_go_trace_marker("expected 5, got 3"));
+    }
+
+    #[test]
+    fn test_collect_assertion_lines_cap_bumped_to_eight() {
+        // Build an assertion-style failure with more than 5 location/follow-up lines.
+        // The new cap of 8 should let an extra location+context pair through that the
+        // old cap of 5 would have dropped.
+        let outputs: Vec<String> = vec![
+            "    foo_test.go:10:\n".to_string(),
+            "        unexpected nil\n".to_string(),
+            "    foo_test.go:20:\n".to_string(),
+            "        expected 1, got 2\n".to_string(),
+            "    foo_test.go:30:\n".to_string(),
+            "        mismatch in field bar\n".to_string(),
+            "    foo_test.go:40:\n".to_string(),
+            "        actual differs from want\n".to_string(),
+        ];
+        let kept = select_go_test_failure_lines(&outputs);
+        assert_eq!(
+            kept.len(),
+            GO_TEST_ASSERT_MAX_LINES,
+            "assertion cap should be {}, got {kept:?}",
+            GO_TEST_ASSERT_MAX_LINES
+        );
+        assert!(kept.iter().any(|l| l.contains("foo_test.go:40")));
+        assert!(kept.iter().any(|l| l.contains("actual differs from want")));
+    }
+
+    #[test]
+    fn test_collect_trace_lines_inline_unit() {
+        // Helper-level check that trace mode preserves the panic header, the
+        // user-code frame, and the runtime frame all in the same block.
+        let outputs: Vec<String> = vec![
+            "=== RUN   TestPanic\n".to_string(),
+            "panic: runtime error: index out of range [3] with length 2\n".to_string(),
+            "goroutine 6 [running]:\n".to_string(),
+            "testing.tRunner.func1.2({0x4a78a0, 0x4f0f60})\n".to_string(),
+            "\t/usr/local/go/src/testing/testing.go:1545 +0x238\n".to_string(),
+            "example.com/foo.TestPanic(0xc00009a000)\n".to_string(),
+            "\t/tmp/foo_test.go:42 +0x32\n".to_string(),
+            "--- FAIL: TestPanic (0.00s)\n".to_string(),
+        ];
+
+        let kept = select_go_test_failure_lines(&outputs);
+        assert!(
+            kept.len() > 5,
+            "trace mode must keep more than 5 lines, got {} (kept: {:?})",
+            kept.len(),
+            kept
+        );
+        let joined = kept.join("\n");
+        assert!(joined.contains("panic: runtime error: index out of range"));
+        assert!(joined.contains("example.com/foo.TestPanic"));
+        assert!(joined.contains("/tmp/foo_test.go:42"));
+        // Cosmetic test-runner headers still stripped.
+        assert!(
+            !kept.iter().any(|l| l.starts_with("=== RUN")),
+            "=== RUN scaffolding should be dropped, got: {kept:?}"
+        );
+    }
+
+    // ---- Upstream PR #1984 fixture-based regression tests.
+
+    #[test]
+    fn test_filter_go_test_all_pass() {
+        let output = r#"{"Time":"2024-01-01T10:00:00Z","Action":"run","Package":"example.com/foo","Test":"TestBar"}
+{"Time":"2024-01-01T10:00:01Z","Action":"output","Package":"example.com/foo","Test":"TestBar","Output":"=== RUN   TestBar\n"}
+{"Time":"2024-01-01T10:00:02Z","Action":"pass","Package":"example.com/foo","Test":"TestBar","Elapsed":0.5}
+{"Time":"2024-01-01T10:00:02Z","Action":"pass","Package":"example.com/foo","Elapsed":0.5}"#;
+
+        let result = filter_go_test_json(output);
+        assert!(result.contains("Go test"));
+        assert!(result.contains("1 passed"));
+        assert!(result.contains("1 packages"));
+    }
+
+    #[test]
+    fn test_filter_go_test_with_failures() {
+        let output = r#"{"Time":"2024-01-01T10:00:00Z","Action":"run","Package":"example.com/foo","Test":"TestFail"}
+{"Time":"2024-01-01T10:00:01Z","Action":"output","Package":"example.com/foo","Test":"TestFail","Output":"=== RUN   TestFail\n"}
+{"Time":"2024-01-01T10:00:02Z","Action":"output","Package":"example.com/foo","Test":"TestFail","Output":"    Error: expected 5, got 3\n"}
+{"Time":"2024-01-01T10:00:03Z","Action":"fail","Package":"example.com/foo","Test":"TestFail","Elapsed":0.5}
+{"Time":"2024-01-01T10:00:03Z","Action":"fail","Package":"example.com/foo","Elapsed":0.5}"#;
+
+        let result = filter_go_test_json(output);
+        assert!(result.contains("1 failed"));
+        assert!(result.contains("TestFail"));
+        assert!(result.contains("expected 5, got 3"));
+    }
+
+    #[test]
+    fn test_filter_go_test_preserves_file_location_and_followup_context() {
+        let output = r#"{"Time":"2024-01-01T10:00:00Z","Action":"run","Package":"example.com/foo","Test":"TestFail"}
+{"Time":"2024-01-01T10:00:01Z","Action":"output","Package":"example.com/foo","Test":"TestFail","Output":"=== RUN   TestFail\n"}
+{"Time":"2024-01-01T10:00:02Z","Action":"output","Package":"example.com/foo","Test":"TestFail","Output":"    foo_test.go:42:\n"}
+{"Time":"2024-01-01T10:00:03Z","Action":"output","Package":"example.com/foo","Test":"TestFail","Output":"        values differ after normalization\n"}
+{"Time":"2024-01-01T10:00:04Z","Action":"fail","Package":"example.com/foo","Test":"TestFail","Elapsed":0.5}
+{"Time":"2024-01-01T10:00:04Z","Action":"fail","Package":"example.com/foo","Elapsed":0.5}"#;
+
+        let result = filter_go_test_json(output);
+        assert!(result.contains("foo_test.go:42:"));
+        assert!(result.contains("values differ after normalization"));
+    }
+
+    #[test]
+    fn test_filter_go_test_timeout_package_fail() {
+        // When go test times out, the JSON stream has a package-level "fail"
+        // with no Test field and no FailedBuild field. This should be reported
+        // as a failure, not "No tests found".
+        let output = r#"{"Time":"2024-01-01T10:00:00Z","Action":"start","Package":"example.com/foo"}
+{"Time":"2024-01-01T10:01:03Z","Action":"output","Package":"example.com/foo","Output":"*** Test killed with quit: ran too long (1m3s).\n"}
+{"Time":"2024-01-01T10:01:03Z","Action":"output","Package":"example.com/foo","Output":"FAIL\texample.com/foo\t63.001s\n"}
+{"Time":"2024-01-01T10:01:03Z","Action":"fail","Package":"example.com/foo","Elapsed":63.003}"#;
+
+        let result = filter_go_test_json(output);
+        assert!(
+            result.contains("1 failed"),
+            "Expected '1 failed' in output, got: {}",
+            result
+        );
+        assert!(
+            !result.contains("No tests found"),
+            "Should not say 'No tests found' on timeout, got: {}",
+            result
+        );
+        assert!(
+            result.contains("FAIL"),
+            "Expected failure output in summary, got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_filter_go_test_no_double_count_on_test_failure() {
+        // go test -json always emits a package-level {"action":"fail"} after each
+        // test-level failure. The package-level event is a cascade, not an additional
+        // failure. The summary header must show "1 failed", not "2 failed".
+        let output = r#"{"Time":"2024-01-01T10:00:00Z","Action":"run","Package":"example.com/foo","Test":"TestFail"}
+{"Time":"2024-01-01T10:00:01Z","Action":"output","Package":"example.com/foo","Test":"TestFail","Output":"=== RUN   TestFail\n"}
+{"Time":"2024-01-01T10:00:02Z","Action":"output","Package":"example.com/foo","Test":"TestFail","Output":"    Error: expected 5, got 3\n"}
+{"Time":"2024-01-01T10:00:03Z","Action":"fail","Package":"example.com/foo","Test":"TestFail","Elapsed":0.5}
+{"Time":"2024-01-01T10:00:03Z","Action":"fail","Package":"example.com/foo","Elapsed":0.5}"#;
+
+        let result = filter_go_test_json(output);
+        // The summary header must say "1 failed", not "2 failed" (no double-counting).
+        assert!(
+            result.starts_with("Go test: 0 passed, 1 failed"),
+            "Expected header 'Go test: 0 passed, 1 failed', got: {}",
+            result
+        );
+        assert!(result.contains("TestFail"));
+        assert!(result.contains("expected 5, got 3"));
+        // The package must NOT appear twice (once as "[FAIL]" and once with test details).
+        assert_eq!(
+            result.matches("foo").count(),
+            1,
+            "Package name should appear exactly once, got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_filter_go_test_timeout_with_signal_quit_output() {
+        // Exact reproduction of the scenario from issue #958: the signal: quit line
+        // appears as a separate JSON output event.
+        let output = r#"{"Action":"start","Package":"example.com/pkg"}
+{"Action":"output","Package":"example.com/pkg","Output":"*** Test killed with quit: ran too long (1m30s).\n"}
+{"Action":"output","Package":"example.com/pkg","Output":"signal: quit\n"}
+{"Action":"output","Package":"example.com/pkg","Output":"FAIL\texample.com/pkg\t90.000s\n"}
+{"Action":"fail","Package":"example.com/pkg","Elapsed":90.001}"#;
+
+        let result = filter_go_test_json(output);
+        assert!(
+            result.starts_with("Go test: 0 passed, 1 failed"),
+            "Expected 'Go test: 0 passed, 1 failed', got: {}",
+            result
+        );
+        assert!(
+            !result.contains("No tests found"),
+            "Must not say 'No tests found' on timeout, got: {}",
+            result
+        );
+        assert!(
+            result.contains("Test killed with quit"),
+            "Should show the timeout message, got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_filter_go_test_timeout_with_passing_tests_before_kill() {
+        // Some tests pass before the package times out.
+        // Summary should show both pass and fail counts.
+        let output = r#"{"Action":"run","Package":"example.com/foo","Test":"TestFast"}
+{"Action":"pass","Package":"example.com/foo","Test":"TestFast","Elapsed":0.001}
+{"Action":"run","Package":"example.com/foo","Test":"TestHang"}
+{"Action":"output","Package":"example.com/foo","Output":"*** Test killed with quit: ran too long (30s).\n"}
+{"Action":"fail","Package":"example.com/foo","Elapsed":30.001}"#;
+
+        let result = filter_go_test_json(output);
+        assert!(
+            result.starts_with("Go test: 1 passed, 1 failed"),
+            "Expected 'Go test: 1 passed, 1 failed', got: {}",
+            result
+        );
+        assert!(
+            !result.contains("No tests found"),
+            "Must not say 'No tests found', got: {}",
+            result
+        );
+        assert!(
+            result.contains("Test killed with quit"),
+            "Should show timeout message, got: {}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_filter_go_test_panic_preserves_full_trace() {
+        // Regression test for issue #1882: a panic in a Go test should surface
+        // its message and user-code stack frames inline, not just a one-line summary.
+        let input = include_str!("../../../../../tests/fixtures/go_test_panic_json.txt");
+        let result = filter_go_test_json(input);
+
+        // Panic message must appear verbatim.
+        assert!(
+            result.contains("panic: runtime error: index out of range [3] with length 2"),
+            "panic message must be inline, got:\n{}",
+            result
+        );
+
+        // User code frame (the actual bug site) must be preserved.
+        assert!(
+            result.contains("classifier_test.go:58"),
+            "user-code stack frame must be preserved, got:\n{}",
+            result
+        );
+        assert!(
+            result.contains("model.go:142"),
+            "panic origin frame must be preserved, got:\n{}",
+            result
+        );
+
+        // At least one goroutine header should appear so the LLM sees this is a panic trace.
+        assert!(
+            result.contains("goroutine 17 [running]:"),
+            "goroutine header must be preserved, got:\n{}",
+            result
+        );
+
+        // Summary must still be accurate.
+        assert!(
+            result.starts_with("Go test: 3 passed, 1 failed, 1 skipped in 2 packages"),
+            "Expected summary header, got:\n{}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_filter_go_test_panic_caps_stack_trace_size() {
+        // Even on a panic, we must not unconditionally dump everything --
+        // each failure's trace is capped (~50 lines) so it stays diagnostic
+        // without blowing past tee territory.
+        let input = include_str!("../../../../../tests/fixtures/go_test_panic_json.txt");
+        let result = filter_go_test_json(input);
+        let body_lines = result.lines().count();
+        assert!(
+            body_lines <= 80,
+            "Filtered output should be capped (≤80 lines), got {} lines:\n{}",
+            body_lines,
+            result
+        );
+    }
+
+    #[test]
+    fn test_filter_go_test_panic_still_saves_meaningful_bytes() {
+        // Failures legitimately inflate output but RTK should still strip the
+        // verbose NDJSON envelope. Bytes are the right metric here because the
+        // raw stream packs long JSON keys (e.g. `"Package":"github.com/..."`)
+        // into single whitespace tokens, which deflates a token-based ratio.
+        let input = include_str!("../../../../../tests/fixtures/go_test_panic_json.txt");
+        let result = filter_go_test_json(input);
+        let raw_bytes = input.len();
+        let filtered_bytes = result.len();
+        let savings = 100.0 - (filtered_bytes as f64 / raw_bytes as f64 * 100.0);
+        assert!(
+            savings >= 60.0,
+            "Expected ≥60% byte savings on failing fixture, got {:.1}% ({}->{} bytes)",
+            savings,
+            raw_bytes,
+            filtered_bytes
+        );
+    }
+
+    #[test]
+    fn test_filter_go_test_all_pass_remains_compact() {
+        // Passing-only output must stay tiny (≥60% token savings, the RTK promise).
+        let input = include_str!("../../../../../tests/fixtures/go_test_pass_json.txt");
+        let result = filter_go_test_json(input);
+
+        // Must summarize, not dump per-test lines.
+        assert!(
+            result.starts_with("Go test: 336 passed in 2 packages"),
+            "Passing summary mismatch, got: {}",
+            result
+        );
+
+        let raw_tokens = count_tokens(input);
+        let filtered_tokens = count_tokens(&result);
+        let savings = 100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        assert!(
+            savings >= 60.0,
+            "Expected ≥60% savings on passing fixture, got {:.1}% ({}->{} tokens)",
+            savings,
+            raw_tokens,
+            filtered_tokens
+        );
+    }
+
+    #[test]
+    fn test_filter_go_test_panic_shape() {
+        // Output shape check: header line + classifier block, with the panic
+        // body sandwiched between the test header and a fallback tee hint.
+        let input = include_str!("../../../../../tests/fixtures/go_test_panic_json.txt");
+        let result = filter_go_test_json(input);
+
+        // The classifier block must contain the failing test name.
+        assert!(
+            result.contains("[FAIL] TestClassify"),
+            "Failing test name must appear, got:\n{}",
+            result
+        );
+
+        // The panic trace must include at least one /usr/local/go/ stack frame
+        // (the runtime context the LLM needs to recognize this is a Go panic).
+        assert!(
+            result.contains("/usr/local/go/"),
+            "Runtime stack frame must be preserved, got:\n{}",
+            result
+        );
+
+        // Skipped tests should still be counted.
+        assert!(
+            result.contains("1 skipped"),
+            "Skipped count must remain, got:\n{}",
+            result
+        );
+
+        // Passing-only package must NOT have per-test details printed.
+        assert!(
+            !result.contains("TestDecode"),
+            "Passing-only package must not list tests, got:\n{}",
+            result
+        );
+    }
+
+    #[test]
+    fn test_filter_go_build_success() {
+        let output = "";
+        let result = filter_go_build(output);
+        assert!(result.contains("Go build"));
+        assert!(result.contains("Success"));
+    }
+
+    #[test]
+    fn test_filter_go_build_errors() {
+        let output = r#"# example.com/foo
+main.go:10:5: undefined: missingFunc
+main.go:15:2: cannot use x (type int) as type string"#;
+
+        let result = filter_go_build(output);
+        assert!(result.contains("2 errors"));
+        assert!(result.contains("undefined: missingFunc"));
+        assert!(result.contains("cannot use x"));
+    }
+
+    #[test]
+    fn test_filter_go_build_ignores_download_lines_with_error_in_package_names() {
+        let output = r#"go: downloading github.com/go-errors/errors v1.5.1
+go: finding module for package example.com/foo
+go: extracting github.com/pkg/errors v0.9.1
+go: downloading github.com/pkg/errors v0.9.1
+go: downloading github.com/hashicorp/go-multierror v1.1.1
+go: downloading golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2"#;
+
+        let result = filter_go_build(output);
+        assert_eq!(result, "Go build: Success");
+    }
+
+    #[test]
+    fn test_is_go_build_error_line_recognizes_real_compiler_errors() {
+        assert!(is_go_build_error_line("undefined: missingFunc"));
+        assert!(is_go_build_error_line("cannot find package \"foo/bar\""));
+        assert!(is_go_build_error_line(
+            "found packages a (a.go) and b (b.go) in /tmp/rtk-go-build-probe-mix"
+        ));
+        assert!(is_go_build_error_line(
+            "imports example.com/cycle/a: import cycle not allowed"
+        ));
+        assert!(is_go_build_error_line(
+            "package example.com/buildtag: build constraints exclude all Go files in /tmp/rtk-go-build-probe-buildtag"
+        ));
+        assert!(is_go_build_error_line(
+            "go.mod:3: invalid go version 'not-a-version': must match format 1.23.0"
+        ));
+        assert!(is_go_build_error_line(
+            "go.work:1: invalid go version 'not-a-version': must match format 1.23.0"
+        ));
+        assert!(is_go_build_error_line(
+            "go: go.mod file not found in current directory or any parent directory; see 'go help modules'"
+        ));
+        assert!(is_go_build_error_line("no Go files in /tmp/example"));
+        assert!(is_go_build_error_line(
+            "go: cannot load module missing listed in go.work file: open missing/go.mod: no such file or directory"
+        ));
+        assert!(is_go_build_error_line(
+            "runtime.main_main·f: function main is undeclared in the main package"
+        ));
+        assert!(is_go_build_error_line(
+            "main.go:10:5: undefined: missingFunc"
+        ));
+        assert!(is_go_build_error_line("error: failed to load module"));
+        assert!(!is_go_build_error_line(
+            "go: downloading github.com/pkg/errors v0.9.1"
+        ));
+        assert!(!is_go_build_error_line(
+            "go: finding module for package example.com/foo"
+        ));
+        assert!(!is_go_build_error_line(
+            "go: extracting github.com/pkg/errors v0.9.1"
+        ));
+        assert!(!is_go_build_error_line("# example.com/foo"));
+    }
+
+    #[test]
+    fn test_filter_go_build_preserves_non_file_error_shapes() {
+        let output = r#"undefined: missingFunc
+cannot find package "foo/bar"
+found packages a (a.go) and b (b.go) in /tmp/rtk-go-build-probe-mix
+imports example.com/cycle/a: import cycle not allowed
+package example.com/buildtag: build constraints exclude all Go files in /tmp/rtk-go-build-probe-buildtag
+runtime.main_main·f: function main is undeclared in the main package"#;
+
+        let result = filter_go_build(output);
+        assert!(result.contains("6 errors"));
+        assert!(result.contains("undefined: missingFunc"));
+        assert!(result.contains("cannot find package \"foo/bar\""));
+        assert!(result.contains("found packages a (a.go) and b (b.go)"));
+        assert!(result.contains("import cycle not allowed"));
+        assert!(result.contains("build constraints exclude all Go files"));
+        assert!(result.contains("function main is undeclared in the main package"));
+    }
+
+    #[test]
+    fn test_filter_go_build_preserves_go_config_parse_errors() {
+        let output = r#"go: errors parsing go.mod:
+go.mod:3: invalid go version 'not-a-version': must match format 1.23.0
+go: errors parsing go.work:
+go.work:1: invalid go version 'not-a-version': must match format 1.23.0"#;
+
+        let result = filter_go_build(output);
+        assert!(result.contains("2 errors"));
+        assert!(result.contains("go.mod:3: invalid go version"));
+        assert!(result.contains("go.work:1: invalid go version"));
+        assert!(!result.contains("go: errors parsing go.mod:"));
+        assert!(!result.contains("go: errors parsing go.work:"));
+    }
+
+    #[test]
+    fn test_filter_go_build_preserves_module_root_and_workspace_errors() {
+        let output = r#"go: go.mod file not found in current directory or any parent directory; see 'go help modules'
+no Go files in /tmp/example
+go: cannot load module missing listed in go.work file: open missing/go.mod: no such file or directory"#;
+
+        let result = filter_go_build(output);
+        assert!(result.contains("3 errors"));
+        assert!(
+            result.contains("go.mod file not found in current directory or any parent directory")
+        );
+        assert!(result.contains("no Go files in /tmp/example"));
+        assert!(result.contains("go: cannot load module missing listed in go.work file"));
+    }
+
+    #[test]
+    fn test_filter_go_vet_no_issues() {
+        let output = "";
+        let result = filter_go_vet(output);
+        assert!(result.contains("Go vet"));
+        assert!(result.contains("No issues found"));
+    }
+
+    #[test]
+    fn test_filter_go_vet_with_issues() {
+        let output = r#"main.go:42:2: Printf format %d has arg x of wrong type string
+utils.go:15:5: unreachable code"#;
+
+        let result = filter_go_vet(output);
+        assert!(result.contains("2 issues"));
+        assert!(result.contains("Printf format"));
+        assert!(result.contains("unreachable code"));
+    }
+
+    #[test]
+    fn test_compact_package_name() {
+        assert_eq!(compact_package_name("github.com/user/repo/pkg"), "pkg");
+        assert_eq!(compact_package_name("example.com/foo"), "foo");
+        assert_eq!(compact_package_name("simple"), "simple");
+    }
+
+    fn os(args: &[&str]) -> Vec<OsString> {
+        args.iter().map(OsString::from).collect()
+    }
+
+    #[test]
+    fn test_match_go_tool_golangci_lint() {
+        let args = os(&["tool", "golangci-lint", "run", "./..."]);
+        let (tool, rest) = match_go_tool(&args).expect("should match");
+        assert_eq!(tool, GoTool::GolangciLint);
+        assert_eq!(rest.len(), 2); // ["run", "./..."]
+    }
+
+    #[test]
+    fn test_match_go_tool_bare() {
+        let args = os(&["tool", "golangci-lint"]);
+        let (tool, rest) = match_go_tool(&args).expect("should match");
+        assert_eq!(tool, GoTool::GolangciLint);
+        assert!(rest.is_empty());
+    }
+
+    #[test]
+    fn test_match_go_tool_rejects_unknown() {
+        assert!(match_go_tool(&os(&["tool", "pprof"])).is_none());
+        assert!(match_go_tool(&os(&["tool"])).is_none());
+        assert!(match_go_tool(&os(&["test", "./..."])).is_none());
+        assert!(match_go_tool(&os(&[])).is_none());
+    }
+
+    #[test]
+    fn test_has_golangci_format_flag_v1() {
+        assert!(has_golangci_format_flag(&os(&["--out-format=json"])));
+        assert!(has_golangci_format_flag(&os(&[
+            "./...",
+            "--out-format",
+            "json"
+        ])));
+    }
+
+    #[test]
+    fn test_has_golangci_format_flag_v2() {
+        assert!(has_golangci_format_flag(&os(&[
+            "--output.json.path",
+            "stdout"
+        ])));
+        assert!(has_golangci_format_flag(&os(&[
+            "--output.json.path=stdout"
+        ])));
+    }
+
+    #[test]
+    fn test_has_golangci_format_flag_absent() {
+        assert!(!has_golangci_format_flag(&os(&["run", "./..."])));
+        assert!(!has_golangci_format_flag(&os(&[])));
+        assert!(!has_golangci_format_flag(&os(&["--fix"])));
+    }
+}
