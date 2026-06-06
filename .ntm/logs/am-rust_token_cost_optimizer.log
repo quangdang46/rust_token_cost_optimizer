@@ -162,3 +162,103 @@ error:
 2026-06-05T17:25:02.645036Z  INFO integrity guard: periodic full integrity check passed
 [supervisor] daemon exited with error: signal: terminated
 [supervisor] max restarts (5) exceeded, not restarting
+[info] --no-auth: Bearer token authentication disabled for this run
+[info] Stale Agent Mail process(es) holding /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 — killing PIDs [3775]
+2026-06-05T18:20:46.909874Z  INFO Active database database=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 storage_root=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo
+2026-06-05T18:20:46.920523Z  INFO [startup-search] initialized search v3 bridge at /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/search_index
+2026-06-05T18:20:46.923207Z  INFO [startup-search] delaying backfill to prioritize startup responsiveness delay_secs=8
+2026-06-05T18:20:46.927552Z  INFO integrity guard worker started quick_interval_secs=300 full_interval_secs=3600
+2026-06-05T18:20:46.927582Z  INFO archive maintenance worker started interval_secs=1800 startup_delay_secs=15
+2026-06-05T18:20:46.927612Z  INFO HTTP server supervisor started host=127.0.0.1 port=54436 workers=4
+2026-06-05T18:20:46.927554Z  INFO disk monitor worker started interval_secs=60
+2026-06-05T18:20:46.927664Z  INFO HTTP runtime reactor selected reactor="default" workers=4
+2026-06-05T18:20:46.936711Z  INFO Startup readiness self-probe passed — server is accepting requests host=127.0.0.1 port=54436
+2026-06-05T18:20:46.951027Z  INFO created proactive database backup primary=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 backup=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3.bak replaced_existing=true
+2026-06-05T18:20:46.951445Z  INFO integrity guard: periodic full integrity check passed
+2026-06-05T18:20:54.934632Z  INFO backfill: message watermark unchanged, skipping message_seq=0 message_max_id=0
+2026-06-05T18:21:01.985842Z  WARN archive maintenance: could not locate archive .git directory; will retry next cycle
+[supervisor] daemon exited with error: signal: terminated
+[supervisor] restarting in 1s (attempt 1/5)
+[info] --no-auth: Bearer token authentication disabled for this run
+[info] Stale Agent Mail process(es) holding /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 — killing PIDs [74392]
+2026-06-05T18:58:25.719786Z  INFO Active database database=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 storage_root=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo
+2026-06-05T18:58:25.730482Z  INFO [startup-search] initialized search v3 bridge at /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/search_index
+2026-06-05T18:58:25.730536Z  INFO [startup-search] delaying backfill to prioritize startup responsiveness delay_secs=8
+2026-06-05T18:58:25.732597Z  INFO archive maintenance worker started interval_secs=1800 startup_delay_secs=15
+2026-06-05T18:58:25.734367Z  INFO integrity guard worker started quick_interval_secs=300 full_interval_secs=3600
+2026-06-05T18:58:25.734383Z  INFO disk monitor worker started interval_secs=60
+2026-06-05T18:58:25.734518Z  INFO HTTP server supervisor started host=127.0.0.1 port=55260 workers=4
+2026-06-05T18:58:25.734527Z  INFO HTTP runtime reactor selected reactor="default" workers=4
+2026-06-05T18:58:25.740156Z  INFO Startup readiness self-probe passed — server is accepting requests host=127.0.0.1 port=55260
+2026-06-05T18:58:25.744047Z  INFO integrity guard: periodic full integrity check passed
+2026-06-05T18:58:33.742569Z  INFO backfill: message watermark unchanged, skipping message_seq=0 message_max_id=0
+2026-06-05T18:58:40.776741Z  WARN archive maintenance: could not locate archive .git directory; will retry next cycle
+[supervisor] daemon exited with error: signal: terminated
+[supervisor] restarting in 2s (attempt 2/5)
+[info] --no-auth: Bearer token authentication disabled for this run
+[info] Stale Agent Mail process(es) holding /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 — killing PIDs [75757]
+2026-06-05T18:59:28.561299Z  INFO Active database database=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 storage_root=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo
+2026-06-05T18:59:28.566495Z  INFO [startup-search] initialized search v3 bridge at /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/search_index
+2026-06-05T18:59:28.569655Z  INFO [startup-search] delaying backfill to prioritize startup responsiveness delay_secs=8
+2026-06-05T18:59:28.570023Z  INFO archive maintenance worker started interval_secs=1800 startup_delay_secs=15
+2026-06-05T18:59:28.570052Z  INFO HTTP server supervisor started host=127.0.0.1 port=55294 workers=4
+2026-06-05T18:59:28.570077Z  INFO disk monitor worker started interval_secs=60
+2026-06-05T18:59:28.570142Z  INFO integrity guard worker started quick_interval_secs=300 full_interval_secs=3600
+2026-06-05T18:59:28.570230Z  INFO HTTP runtime reactor selected reactor="default" workers=4
+2026-06-05T18:59:28.571550Z  INFO Startup readiness self-probe passed — server is accepting requests host=127.0.0.1 port=55294
+2026-06-05T18:59:28.579284Z  INFO integrity guard: periodic full integrity check passed
+2026-06-05T18:59:36.576955Z  INFO backfill: message watermark unchanged, skipping message_seq=0 message_max_id=0
+2026-06-05T18:59:43.619325Z  WARN archive maintenance: could not locate archive .git directory; will retry next cycle
+2026-06-05T19:51:42.283933Z  INFO created proactive database backup primary=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 backup=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3.bak replaced_existing=true
+2026-06-05T21:35:46.429698Z  INFO created proactive database backup primary=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 backup=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3.bak replaced_existing=true
+2026-06-05T23:04:36.376890Z  INFO created proactive database backup primary=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 backup=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3.bak replaced_existing=true
+2026-06-06T00:39:39.290304Z  INFO created proactive database backup primary=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 backup=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3.bak replaced_existing=true
+2026-06-06T02:09:12.847508Z  INFO created proactive database backup primary=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 backup=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3.bak replaced_existing=true
+[supervisor] daemon exited with error: signal: terminated
+[supervisor] restarting in 4s (attempt 3/5)
+[info] --no-auth: Bearer token authentication disabled for this run
+[info] Stale Agent Mail process(es) holding /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 — killing PIDs [79658]
+2026-06-06T02:44:20.835447Z  INFO Active database database=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 storage_root=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo
+2026-06-06T02:44:20.840108Z  INFO [startup-search] initialized search v3 bridge at /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/search_index
+2026-06-06T02:44:20.843000Z  INFO [startup-search] delaying backfill to prioritize startup responsiveness delay_secs=8
+2026-06-06T02:44:20.843288Z  INFO archive maintenance worker started interval_secs=1800 startup_delay_secs=15
+2026-06-06T02:44:20.843317Z  INFO disk monitor worker started interval_secs=60
+2026-06-06T02:44:20.843322Z  INFO HTTP server supervisor started host=127.0.0.1 port=56213 workers=4
+2026-06-06T02:44:20.843391Z  INFO integrity guard worker started quick_interval_secs=300 full_interval_secs=3600
+2026-06-06T02:44:20.843481Z  INFO HTTP runtime reactor selected reactor="default" workers=4
+2026-06-06T02:44:20.844625Z  INFO Startup readiness self-probe passed — server is accepting requests host=127.0.0.1 port=56213
+2026-06-06T02:44:20.853729Z  INFO integrity guard: periodic full integrity check passed
+2026-06-06T02:44:28.850976Z  INFO backfill: message watermark unchanged, skipping message_seq=0 message_max_id=0
+2026-06-06T02:44:35.895179Z  WARN archive maintenance: could not locate archive .git directory; will retry next cycle
+[supervisor] daemon exited with error: signal: terminated
+[supervisor] restarting in 8s (attempt 4/5)
+[info] --no-auth: Bearer token authentication disabled for this run
+[info] Stale Agent Mail process(es) holding /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 — killing PIDs [79930]
+2026-06-06T02:44:45.230548Z  INFO Active database database=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 storage_root=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo
+2026-06-06T02:44:45.235629Z  INFO [startup-search] initialized search v3 bridge at /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/search_index
+2026-06-06T02:44:45.235671Z  INFO [startup-search] delaying backfill to prioritize startup responsiveness delay_secs=8
+2026-06-06T02:44:45.235873Z  INFO archive maintenance worker started interval_secs=1800 startup_delay_secs=15
+2026-06-06T02:44:45.235894Z  INFO disk monitor worker started interval_secs=60
+2026-06-06T02:44:45.235907Z  INFO HTTP server supervisor started host=127.0.0.1 port=56245 workers=4
+2026-06-06T02:44:45.238969Z  INFO HTTP runtime reactor selected reactor="default" workers=4
+2026-06-06T02:44:45.235982Z  INFO integrity guard worker started quick_interval_secs=300 full_interval_secs=3600
+2026-06-06T02:44:45.240038Z  INFO Startup readiness self-probe passed — server is accepting requests host=127.0.0.1 port=56245
+2026-06-06T02:44:45.252516Z  INFO integrity guard: periodic full integrity check passed
+2026-06-06T02:44:53.246107Z  INFO backfill: message watermark unchanged, skipping message_seq=0 message_max_id=0
+2026-06-06T02:45:00.291416Z  WARN archive maintenance: could not locate archive .git directory; will retry next cycle
+[supervisor] daemon exited with error: signal: terminated
+[supervisor] restarting in 16s (attempt 5/5)
+[info] --no-auth: Bearer token authentication disabled for this run
+[info] Stale Agent Mail process(es) holding /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 — killing PIDs [81351]
+2026-06-06T02:47:13.060994Z  INFO Active database database=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/storage.sqlite3 storage_root=/Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo
+2026-06-06T02:47:13.066131Z  INFO [startup-search] initialized search v3 bridge at /Users/tranquangdang21/.local/share/mcp-agent-mail/git_mailbox_repo/search_index
+2026-06-06T02:47:13.066186Z  INFO [startup-search] delaying backfill to prioritize startup responsiveness delay_secs=8
+2026-06-06T02:47:13.066421Z  INFO disk monitor worker started interval_secs=60
+2026-06-06T02:47:13.066430Z  INFO HTTP server supervisor started host=127.0.0.1 port=56326 workers=4
+2026-06-06T02:47:13.066450Z  INFO archive maintenance worker started interval_secs=1800 startup_delay_secs=15
+2026-06-06T02:47:13.069844Z  INFO HTTP runtime reactor selected reactor="default" workers=4
+2026-06-06T02:47:13.066529Z  INFO integrity guard worker started quick_interval_secs=300 full_interval_secs=3600
+2026-06-06T02:47:13.071072Z  INFO Startup readiness self-probe passed — server is accepting requests host=127.0.0.1 port=56326
+2026-06-06T02:47:13.082822Z  INFO integrity guard: periodic full integrity check passed
+[supervisor] daemon exited with error: signal: terminated
+[supervisor] max restarts (5) exceeded, not restarting

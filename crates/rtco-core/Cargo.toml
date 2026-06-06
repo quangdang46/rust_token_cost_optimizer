@@ -1,0 +1,40 @@
+[package]
+name = "rtco-core"
+version = "0.40.0"
+edition = "2021"
+authors = ["Patrick Szymkowiak"]
+description = "Core library for rtco - filtering, tracking, configuration, and utilities"
+license = "Apache 2.0"
+
+[features]
+default = []
+test-support = []
+
+[dependencies]
+anyhow = "1.0"
+regex = "1"
+lazy_static = "1.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+colored = "2"
+dirs = "5"
+rusqlite = { version = "0.33", features = ["bundled"] }
+toml = "0.8"
+chrono = "0.4"
+sha2 = "0.10"
+ureq = "2"
+getrandom = "0.4"
+walkdir = "2"
+which = "8"
+aho-corasick = "1"
+blake3 = "1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[lints.rust]
+unsafe_code = "deny"
+warnings = "deny"
