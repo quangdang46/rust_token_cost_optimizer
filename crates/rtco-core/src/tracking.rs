@@ -288,6 +288,14 @@ impl Tracker {
     /// ```
     pub fn new() -> Result<Self> {
         let db_path = get_db_path()?;
+        Self::open_path(db_path)
+    }
+
+    /// Open or create a tracker at the given database path.
+    ///
+    /// This contains all the initialization logic shared between [`new`] and
+    /// test-only constructors: schema creation, migrations, and index setup.
+    fn open_path(db_path: PathBuf) -> Result<Self> {
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -373,6 +381,17 @@ impl Tracker {
             eprintln!("rtco: tracking redaction migration skipped: {}", e);
         }
         Ok(tracker)
+    }
+
+    /// Create a tracker with an explicit database path (test-only).
+    ///
+    /// Each call creates an isolated database so parallel tests don't interfere
+    /// with each other's records.
+    #[cfg(test)]
+    pub(crate) fn with_db_path(db_path: PathBuf) -> Result<Self> {
+        // Ensure the file doesn't already exist from a previous run
+        let _ = std::fs::remove_file(&db_path);
+        Self::open_path(db_path)
     }
 
     /// Redact `original_cmd` and `project_path` for rows newer than 90 days.
@@ -1586,6 +1605,26 @@ pub fn args_display(args: &[OsString]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Mutex;
+
+    /// Sequential counter for unique test database paths.
+    static TEST_DB_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    /// Global lock for tests that must manipulate `RTCO_DB_PATH` (process-global
+    /// env var). Prevents parallel interference with [`test_db_path_env_and_default`].
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Create a `Tracker` backed by an isolated temporary database so parallel
+    /// tests don't interfere with each other's records.
+    fn test_tracker() -> Tracker {
+        let n = TEST_DB_COUNTER.fetch_add(1, Ordering::SeqCst);
+        let path = std::env::temp_dir().join(format!(
+            "rtco_test_{pid}_{n}.db",
+            pid = std::process::id()
+        ));
+        Tracker::with_db_path(path).expect("Failed to create test tracker")
+    }
 
     // 1. estimate_tokens — verify ~4 chars/token ratio
     #[test]
@@ -1611,7 +1650,7 @@ mod tests {
     // 3. Tracker::record + get_recent — round-trip DB
     #[test]
     fn test_tracker_record_and_recent() {
-        let tracker = Tracker::new().expect("Failed to create tracker");
+        let tracker = test_tracker();
 
         // Use unique test identifier to avoid conflicts with other tests
         let test_cmd = format!("rtco git status test_{}", std::process::id());
@@ -1635,7 +1674,7 @@ mod tests {
     // 4. track_passthrough doesn't dilute stats (input=0, output=0)
     #[test]
     fn test_track_passthrough_no_dilution() {
-        let tracker = Tracker::new().expect("Failed to create tracker");
+        let tracker = test_tracker();
 
         // Use unique test identifiers
         let pid = std::process::id();
@@ -1679,6 +1718,13 @@ mod tests {
     // 5. TimedExecution::track records with exec_time > 0
     #[test]
     fn test_timed_execution_records_time() {
+        // Set isolated DB path so the internal Tracker::new() in track()
+        // writes to the same DB the test reads from.
+        let _guard = ENV_LOCK.lock().unwrap();
+        let db_path = std::env::temp_dir().join("rtco_test_timed_track.db");
+        std::env::set_var("RTCO_DB_PATH", &db_path);
+        let _ = std::fs::remove_file(&db_path);
+
         let timer = TimedExecution::start();
         std::thread::sleep(std::time::Duration::from_millis(10));
         timer.track("test cmd", "rtco test", "raw input data", "filtered");
@@ -1687,11 +1733,21 @@ mod tests {
         let tracker = Tracker::new().expect("Failed to create tracker");
         let recent = tracker.get_recent(5).expect("Failed to get recent");
         assert!(recent.iter().any(|r| r.rtco_cmd == "rtco test"));
+
+        std::env::remove_var("RTCO_DB_PATH");
+        let _ = std::fs::remove_file(&db_path);
     }
 
     // 6. TimedExecution::track_passthrough records with 0 tokens
     #[test]
     fn test_timed_execution_passthrough() {
+        // Set isolated DB path so the internal Tracker::new() in
+        // track_passthrough() writes to the same DB the test reads from.
+        let _guard = ENV_LOCK.lock().unwrap();
+        let db_path = std::env::temp_dir().join("rtco_test_timed_pt.db");
+        std::env::set_var("RTCO_DB_PATH", &db_path);
+        let _ = std::fs::remove_file(&db_path);
+
         let timer = TimedExecution::start();
         timer.track_passthrough("git tag", "rtco git tag (passthrough)");
 
@@ -1706,6 +1762,9 @@ mod tests {
         // savings_pct should be 0 for passthrough
         assert_eq!(pt.savings_pct, 0.0);
         assert_eq!(pt.saved_tokens, 0);
+
+        std::env::remove_var("RTCO_DB_PATH");
+        let _ = std::fs::remove_file(&db_path);
     }
 
     // 7. get_db_path respects environment variable RTK_DB_PATH
@@ -1714,8 +1773,6 @@ mod tests {
     #[test]
     fn test_db_path_env_and_default() {
         use std::env;
-        use std::sync::Mutex;
-        static ENV_LOCK: Mutex<()> = Mutex::new(());
         let _guard = ENV_LOCK.lock().unwrap();
 
         let custom_path = env::temp_dir().join("rtk_test_custom.db");
@@ -1773,7 +1830,7 @@ mod tests {
     // 12. record_parse_failure + get_parse_failure_summary roundtrip
     #[test]
     fn test_parse_failure_roundtrip() {
-        let tracker = Tracker::new().expect("Failed to create tracker");
+        let tracker = test_tracker();
         let test_cmd = format!("git -C /path status test_{}", std::process::id());
 
         tracker
@@ -1791,7 +1848,7 @@ mod tests {
     // 13. recovery_rate calculation
     #[test]
     fn test_parse_failure_recovery_rate() {
-        let tracker = Tracker::new().expect("Failed to create tracker");
+        let tracker = test_tracker();
         let pid = std::process::id();
 
         // 2 successes, 1 failure
@@ -1858,7 +1915,6 @@ mod tests {
     // hash_project_paths = true). They serialise via `TRACKING_ENV_LOCK` to
     // avoid env-var races, mirroring `test_db_path_env_and_default`.
 
-    use std::sync::Mutex;
     static TRACKING_ENV_LOCK: Mutex<()> = Mutex::new(());
 
     struct ScopedEnv {
