@@ -18,7 +18,7 @@ use std::process::Command;
 ///
 /// # Examples
 /// ```
-/// use rtk::utils::truncate;
+/// use rtco_core::utils::truncate;
 /// assert_eq!(truncate("hello world", 8), "hello...");
 /// assert_eq!(truncate("hi", 10), "hi");
 /// ```
@@ -41,7 +41,7 @@ pub fn truncate(s: &str, max_len: usize) -> String {
 ///
 /// # Examples
 /// ```
-/// use rtk::utils::strip_ansi;
+/// use rtco_core::utils::strip_ansi;
 /// let colored = "\x1b[31mError\x1b[0m";
 /// assert_eq!(strip_ansi(colored), "Error");
 /// ```
@@ -70,7 +70,7 @@ pub fn strip_ansi(text: &str) -> String {
 ///
 /// # Examples
 /// ```
-/// use rtk::utils::format_tokens;
+/// use rtco_core::utils::format_tokens;
 /// assert_eq!(format_tokens(1_234_567), "1.2M");
 /// assert_eq!(format_tokens(59_234), "59.2K");
 /// assert_eq!(format_tokens(694), "694");
@@ -95,7 +95,7 @@ pub fn format_tokens(n: usize) -> String {
 ///
 /// # Examples
 /// ```
-/// use rtk::utils::format_usd;
+/// use rtco_core::utils::format_usd;
 /// assert_eq!(format_usd(1234.567), "$1234.57");
 /// assert_eq!(format_usd(12.345), "$12.35");
 /// assert_eq!(format_usd(0.123), "$0.12");
@@ -122,7 +122,7 @@ pub fn format_usd(amount: f64) -> String {
 ///
 /// # Examples
 /// ```
-/// use rtk::utils::format_cpt;
+/// use rtco_core::utils::format_cpt;
 /// assert_eq!(format_cpt(0.000003), "$3.00/MTok");
 /// assert_eq!(format_cpt(0.0000038), "$3.80/MTok");
 /// assert_eq!(format_cpt(0.00000386), "$3.86/MTok");
@@ -139,7 +139,7 @@ pub fn format_cpt(cpt: f64) -> String {
 ///
 /// # Examples
 /// ```
-/// use rtk::utils::join_with_overflow;
+/// use rtco_core::utils::join_with_overflow;
 /// let items = vec!["a".to_string(), "b".to_string()];
 /// assert_eq!(join_with_overflow(&items, 5, 3, "items"), "a\nb\n... +2 more items");
 /// assert_eq!(join_with_overflow(&items, 2, 3, "items"), "a\nb");
@@ -156,7 +156,7 @@ pub fn join_with_overflow(items: &[String], total: usize, max: usize, label: &st
 ///
 /// # Examples
 /// ```
-/// use rtk::utils::truncate_iso_date;
+/// use rtco_core::utils::truncate_iso_date;
 /// assert_eq!(truncate_iso_date("2024-01-15T10:30:00Z"), "2024-01-15");
 /// assert_eq!(truncate_iso_date("2024-01-15"), "2024-01-15");
 /// assert_eq!(truncate_iso_date("short"), "short");
@@ -174,7 +174,7 @@ pub fn truncate_iso_date(date: &str) -> &str {
 ///
 /// # Examples
 /// ```
-/// use rtk::utils::ok_confirmation;
+/// use rtco_core::utils::ok_confirmation;
 /// assert_eq!(ok_confirmation("merged", "#42"), "ok merged #42");
 /// assert_eq!(ok_confirmation("created", "PR #5 https://..."), "ok created PR #5 https://...");
 /// ```
@@ -263,7 +263,7 @@ pub fn count_tokens(text: &str) -> usize {
 ///
 /// # Examples
 /// ```no_run
-/// use rtk::utils::detect_package_manager;
+/// use rtco_core::utils::detect_package_manager;
 /// let pm = detect_package_manager();
 /// // Returns "pnpm" if pnpm-lock.yaml exists, "yarn" if yarn.lock, else "npm"
 /// ```
@@ -407,7 +407,7 @@ pub fn human_bytes(bytes: u64) -> String {
 ///
 /// # Examples
 /// ```
-/// use rtk::utils::conservative_normalize;
+/// use rtco_core::utils::conservative_normalize;
 /// assert_eq!(conservative_normalize("pid=12345"), "pid=N");
 /// assert_eq!(conservative_normalize("commit abc1234567890 done"), "commit abcH done");
 /// assert_eq!(conservative_normalize("no separator here"), "no separator here");
@@ -457,7 +457,7 @@ pub fn conservative_normalize(line: &str) -> String {
 ///
 /// # Examples
 /// ```
-/// use rtk::utils::deduplicate_conservative;
+/// use rtco_core::utils::deduplicate_conservative;
 /// let lines = vec!["pid=100", "pid=200", "foo=bar"];
 /// let result = deduplicate_conservative(&lines);
 /// // pid=100 is first (index 0), pid=200 is a duplicate (index 1), foo=bar is unique (index 2)
@@ -496,7 +496,7 @@ pub fn deduplicate_conservative<'a>(lines: &[&'a str]) -> Vec<(usize, &'a str)> 
 ///
 /// # Examples
 /// ```
-/// use rtk::utils::should_skip_compression;
+/// use rtco_core::utils::should_skip_compression;
 /// assert!(should_skip_compression("short", 100));
 /// assert!(!should_skip_compression("a much longer output string that exceeds the threshold", 10));
 /// ```

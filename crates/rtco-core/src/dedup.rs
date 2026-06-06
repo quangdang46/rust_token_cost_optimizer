@@ -10,8 +10,8 @@
 //! # Usage
 //!
 //! ```no_run
-//! use rtk::dedup::DedupFilter;
-//! use rtk::stream::StreamFilter;
+//! use rtco_core::dedup::DedupFilter;
+//! use rtco_core::stream::StreamFilter;
 //!
 //! let mut filter = DedupFilter::new(3, 1000); // threshold=3, window=1000
 //! let out = filter.feed_line("ERROR: timeout at 192.168.1.1");

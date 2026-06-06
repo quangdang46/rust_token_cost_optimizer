@@ -6,7 +6,8 @@
 //! the first and last lines while filling remaining slots by importance.
 
 use super::keyword_detector::KeywordDetector;
-use super::text_stats::is_stack_trace;
+use super::stack_trace::detect_stack_traces;
+use std::collections::HashSet;
 
 /// Scored metadata for a single line of output.
 #[derive(Debug, Clone)]
@@ -25,12 +26,21 @@ const SUMMARY_BOOST: f64 = 0.4;
 /// Score every line in `lines` using keyword detection plus contextual boosts.
 ///
 /// Boosts applied on top of the base keyword score:
-/// - **Stack trace frames**: `+0.3` (recognised by [`is_stack_trace`])
+/// - **Stack trace frames**: `+0.3` (detected by [`detect_stack_traces`])
 /// - **Summary lines** (level == `Summary`): `+0.4`
 ///
 /// Returns a `Vec<LineScore>` with one entry per input line, preserving order.
 pub fn score_lines(lines: &[&str]) -> Vec<LineScore> {
     let det = KeywordDetector::new();
+    let traces = detect_stack_traces(lines);
+
+    // Build a set of line indices that are inside stack traces
+    let mut stack_indices: HashSet<usize> = HashSet::new();
+    for trace in &traces {
+        for idx in trace.start_line..=trace.end_line {
+            stack_indices.insert(idx);
+        }
+    }
 
     lines
         .iter()
@@ -39,7 +49,7 @@ pub fn score_lines(lines: &[&str]) -> Vec<LineScore> {
             let level = det.classify_line(line);
             let mut score = level.score();
 
-            if is_stack_trace(line) {
+            if stack_indices.contains(&idx) {
                 score += STACK_TRACE_BOOST;
             }
             if matches!(level, super::keyword_detector::LineLevel::Summary) {

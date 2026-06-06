@@ -8,7 +8,7 @@
 //! # Usage
 //!
 //! ```no_run
-//! use rtk::content_detector::{detect_content_type, ContentType};
+//! use rtco_core::content_detector::{detect_content_type, ContentType};
 //!
 //! let kind = detect_content_type(r#"[{"name":"rtco","version":"0.28.2"}]"#);
 //! assert_eq!(kind, ContentType::JsonArray);
@@ -56,19 +56,19 @@ lazy_static! {
     static ref JSON_OBJECT_OPEN: Regex = Regex::new(r"^\s*\{").unwrap();
     static ref JSON_OBJECT_CLOSE: Regex = Regex::new(r"\}\s*$").unwrap();
 
-    /// Diff hunk header: `--- a/file`, `+++ b/file`, `@@ -1,3 +1,5 @@`.
+    /// Diff hunk header: `--- a/file`, `+++ b/file`, `@@ -1,3 +1,5 @@`,
+    /// and also handles `--- original_file` / `+++ modified_file` without `a/` prefix.
     static ref DIFF_HEADER: Regex =
-        Regex::new(r"^diff --git |^--- [ab/]|^\+\+\+ [ab/]|^@@\s+-?\d+").unwrap();
+        Regex::new(r"^diff --git |^--- (?:[ab]/)?\S|^\+\+\+ (?:[ab]/)?\S|^@@\s+-?\d+").unwrap();
+    static ref DIFF_HUNK: Regex =
+        Regex::new(r"^@@\s+-?\d+").unwrap();
 
     /// Search / grep result: `file.ext:NN:...` or `file.ext-NN-...`.
     static ref SEARCH_RESULT: Regex =
-        Regex::new(r"^\S+\.(?:rs|py|js|ts|go|java|c|cpp|h|rb|toml|yaml|yml|json|md):\d+[:\-]").unwrap();
+        Regex::new(r"^\S+\.(?:rs|py|js|ts|go|java|kt|swift|c|cpp|cxx|h|hpp|hh|rb|toml|yaml|yml|json|md|txt|sh|bash|zsh|fish|ps1|css|scss|less|php|sql|xml|conf|cfg|ini|env|log|r|lua|hs|ex|exs|vue|svelte|tex|svg|gradle|sbt|makefile|dockerfile):\d+[:\-]").unwrap();
 
     /// HTML tag at the start of input.
     static ref HTML_TAG: Regex = Regex::new(r"(?i)^\s*<!DOCTYPE\s+html|^\s*<html[\s>]").unwrap();
-
-    /// Inline HTML -- at least one open/close tag pair anywhere.
-    static ref HTML_INLINE: Regex = Regex::new(r"<[a-zA-Z][^>]*>.*</[a-zA-Z]").unwrap();
 
     /// Build/compiler output indicators.  Each alternative is tested per-line
     /// (the function does per-line matching, not multi-line, so `^` means
@@ -78,8 +78,9 @@ lazy_static! {
 
     /// Source code indicator keywords that appear at the start of a line
     /// (after optional leading whitespace).
+    /// Handles both `pub fn` and `pub(crate) fn` / `pub(super) fn` etc.
     static ref SOURCE_CODE_LINE: Regex = Regex::new(
-        r"^(pub\s+)?(fn |func |def |class |import |from |package |module |namespace |struct |enum |trait |impl |type |const |let |var |async |use |extern |static |#\[|//|/\*|\*/)"
+        r"^(pub(?:\s+|\([^)]*\)\s*)?)?(fn |func |def |class |import |from |package |module |namespace |struct |enum |trait |impl |type |const |let |var |async |use |extern |static |#\[|//|/\*|\*/)"
     ).unwrap();
 }
 
@@ -126,11 +127,8 @@ pub fn detect_content_type(input: &str) -> ContentType {
     }
 
     // -- 5. Build output --
-    let build_lines = input
-        .lines()
-        .filter(|l| BUILD_ERROR.is_match(l.trim()))
-        .count();
-    if build_lines >= 1 {
+    let has_build = input.lines().any(|l| BUILD_ERROR.is_match(l.trim()));
+    if has_build {
         return ContentType::BuildOutput;
     }
 
@@ -149,6 +147,7 @@ pub fn detect_content_type(input: &str) -> ContentType {
     let code_lines = input
         .lines()
         .filter(|l| SOURCE_CODE_LINE.is_match(l.trim_start()))
+        .take(2)
         .count();
     if code_lines >= 2 {
         return ContentType::SourceCode;
@@ -327,6 +326,47 @@ def main():
         // Should not panic, and classify as PlainText (no specific markers)
         let kind = detect_content_type(input);
         assert_eq!(kind, ContentType::PlainText);
+    }
+
+    #[test]
+    fn source_code_rust_pub_crate_fn() {
+        let input = "\
+pub(crate) fn helper() -> i32 {
+    42
+}
+pub(super) fn internal() {}";
+        assert_eq!(detect_content_type(input), ContentType::SourceCode);
+    }
+
+    #[test]
+    fn source_code_rust_module() {
+        let input = "\
+mod foo;
+use bar::Baz;
+const X: i32 = 1;";
+        assert_eq!(detect_content_type(input), ContentType::SourceCode);
+    }
+
+    #[test]
+    fn source_code_wins_over_build_heuristic() {
+        // Source code with multiple code-like lines should be SourceCode
+        let input = "\
+// TODO: fix this later
+fn main() {
+    let x = 1;
+}";
+        assert_eq!(detect_content_type(input), ContentType::SourceCode);
+    }
+
+    #[test]
+    fn diff_without_ab_prefix() {
+        let input = "\
+--- original_file
++++ modified_file
+@@ -1,3 +1,5 @@
++added
+-removed";
+        assert_eq!(detect_content_type(input), ContentType::GitDiff);
     }
 
     #[test]

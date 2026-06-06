@@ -8,7 +8,7 @@
 //! # Usage
 //!
 //! ```
-//! use rtk::stack_trace::{detect_stack_traces, StackLanguage};
+//! use rtco_core::stack_trace::{detect_stack_traces, StackLanguage};
 //!
 //! let lines = vec![
 //!     "Traceback (most recent call last):",
@@ -67,7 +67,11 @@ lazy_static! {
     static ref PY_FILE_LINE: Regex =
         Regex::new(r#"^\s+File ""#).unwrap();
 
-    // -- JavaScript / Node --
+    /// Exception chain message (Python 3 chained exceptions).
+    /// e.g. "During handling of the above exception, another exception occurred:"
+    ///      "The above exception was the direct cause of the following exception:"
+    static ref PY_CHAIN_MSG: Regex =
+        Regex::new(r"^(During handling of the above exception|The above exception was)").unwrap();
     static ref JS_AT_FRAME: Regex =
         Regex::new(r"^\s+at\s+").unwrap();
     static ref JS_ERROR_LINE: Regex =
@@ -219,8 +223,13 @@ fn is_trace_end(language: StackLanguage, line: &str) -> bool {
         // traceback header and NOT a File line.  The exception summary
         // (e.g. "KeyError: 'x'") is included in the trace, then the trace
         // ends on the NEXT non-blank, non-indented line.
+        // Exception chain messages (e.g. "During handling...") are also
+        // kept as part of the trace.
         StackLanguage::Python => {
-            if PY_TRACEBACK_HEADER.is_match(line) || PY_FILE_LINE.is_match(line) {
+            if PY_TRACEBACK_HEADER.is_match(line)
+                || PY_FILE_LINE.is_match(line)
+                || PY_CHAIN_MSG.is_match(line)
+            {
                 return false;
             }
             if line.starts_with("  ") {
@@ -285,7 +294,7 @@ fn is_trace_end(language: StackLanguage, line: &str) -> bool {
 /// # Examples
 ///
 /// ```
-/// use rtk::stack_trace::{detect_stack_traces, StackLanguage};
+/// use rtco_core::stack_trace::{detect_stack_traces, StackLanguage};
 ///
 /// let lines = vec![
 ///     "Traceback (most recent call last):",
@@ -577,6 +586,49 @@ mod tests {
         assert_eq!(traces.len(), 2);
         assert_eq!(traces[0].language, StackLanguage::Go);
         assert_eq!(traces[1].language, StackLanguage::Go);
+    }
+
+    #[test]
+    fn python_chained_exceptions() {
+        let lines = vec![
+            "Traceback (most recent call last):",
+            "  File \"app.py\", line 2, in <module>",
+            "    process()",
+            "  File \"app.py\", line 5, in process",
+            "    raise ValueError('original')",
+            "ValueError: original",
+            "",
+            "During handling of the above exception, another exception occurred:",
+            "",
+            "Traceback (most recent call last):",
+            "  File \"app.py\", line 2, in <module>",
+            "    process()",
+            "  File \"app.py\", line 8, in process",
+            "    raise RuntimeError('wrapped')",
+            "RuntimeError: wrapped",
+            "done",
+        ];
+        let traces = detect_stack_traces(&lines);
+        // Should detect both traces (each is a separate Traceback)
+        assert!(traces.len() >= 2, "expected 2 traces, got {}", traces.len());
+        // All traces should be Python
+        for t in &traces {
+            assert_eq!(
+                t.language,
+                StackLanguage::Python,
+                "trace should be Python: {:?}",
+                t
+            );
+        }
+        // The chain message is standalone text between traces,
+        // not part of either trace.
+        let has_chain_in_trace = traces
+            .iter()
+            .any(|t| t.frames.iter().any(|f| f.contains("During handling")));
+        assert!(
+            !has_chain_in_trace,
+            "chain message should not be inside a trace"
+        );
     }
 
     // -- Multiple traces in one output --

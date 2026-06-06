@@ -13,7 +13,7 @@
 //! # Quick Start
 //!
 //! ```no_run
-//! use rtk::tracking::{TimedExecution, Tracker};
+//! use rtco_core::tracking::{TimedExecution, Tracker};
 //!
 //! // Track a command execution
 //! let timer = TimedExecution::start();
@@ -119,7 +119,7 @@ use super::constants::{DEFAULT_HISTORY_DAYS, HISTORY_DB, RTK_DATA_DIR};
 /// # Examples
 ///
 /// ```no_run
-/// use rtk::tracking::Tracker;
+/// use rtco_core::tracking::Tracker;
 ///
 /// let tracker = Tracker::new()?;
 /// tracker.record("ls -la", "rtco ls", 1000, 200, 50)?;
@@ -281,7 +281,7 @@ impl Tracker {
     /// # Examples
     ///
     /// ```no_run
-    /// use rtk::tracking::Tracker;
+    /// use rtco_core::tracking::Tracker;
     ///
     /// let tracker = Tracker::new()?;
     /// # Ok::<(), anyhow::Error>(())
@@ -542,7 +542,7 @@ impl Tracker {
     /// # Examples
     ///
     /// ```no_run
-    /// use rtk::tracking::Tracker;
+    /// use rtco_core::tracking::Tracker;
     ///
     /// let tracker = Tracker::new()?;
     /// tracker.record("ls -la", "rtco ls", 1000, 200, 50)?;
@@ -716,7 +716,7 @@ impl Tracker {
     /// # Examples
     ///
     /// ```no_run
-    /// use rtk::tracking::Tracker;
+    /// use rtco_core::tracking::Tracker;
     ///
     /// let tracker = Tracker::new()?;
     /// let summary = tracker.get_summary()?;
@@ -854,7 +854,7 @@ impl Tracker {
     /// # Examples
     ///
     /// ```no_run
-    /// use rtk::tracking::Tracker;
+    /// use rtco_core::tracking::Tracker;
     ///
     /// let tracker = Tracker::new()?;
     /// let days = tracker.get_all_days()?;
@@ -927,7 +927,7 @@ impl Tracker {
     /// # Examples
     ///
     /// ```no_run
-    /// use rtk::tracking::Tracker;
+    /// use rtco_core::tracking::Tracker;
     ///
     /// let tracker = Tracker::new()?;
     /// let weeks = tracker.get_by_week()?;
@@ -1002,7 +1002,7 @@ impl Tracker {
     /// # Examples
     ///
     /// ```no_run
-    /// use rtk::tracking::Tracker;
+    /// use rtco_core::tracking::Tracker;
     ///
     /// let tracker = Tracker::new()?;
     /// let months = tracker.get_by_month()?;
@@ -1078,7 +1078,7 @@ impl Tracker {
     /// # Examples
     ///
     /// ```no_run
-    /// use rtk::tracking::Tracker;
+    /// use rtco_core::tracking::Tracker;
     ///
     /// let tracker = Tracker::new()?;
     /// let recent = tracker.get_recent(10)?;
@@ -1438,7 +1438,7 @@ pub fn record_parse_failure_silent(raw_command: &str, error_message: &str, succe
 /// # Examples
 ///
 /// ```
-/// use rtk::tracking::estimate_tokens;
+/// use rtco_core::tracking::estimate_tokens;
 ///
 /// assert_eq!(estimate_tokens(""), 0);
 /// assert_eq!(estimate_tokens("abcd"), 1);  // 4 chars = 1 token
@@ -1459,7 +1459,7 @@ pub fn estimate_tokens(text: &str) -> usize {
 /// # Examples
 ///
 /// ```no_run
-/// use rtk::tracking::TimedExecution;
+/// use rtco_core::tracking::TimedExecution;
 ///
 /// let timer = TimedExecution::start();
 /// let input = execute_standard_command()?;
@@ -1481,7 +1481,7 @@ impl TimedExecution {
     /// # Examples
     ///
     /// ```no_run
-    /// use rtk::tracking::TimedExecution;
+    /// use rtco_core::tracking::TimedExecution;
     ///
     /// let timer = TimedExecution::start();
     /// // ... execute command ...
@@ -1510,7 +1510,7 @@ impl TimedExecution {
     /// # Examples
     ///
     /// ```no_run
-    /// use rtk::tracking::TimedExecution;
+    /// use rtco_core::tracking::TimedExecution;
     ///
     /// let timer = TimedExecution::start();
     /// let input = "long output...";
@@ -1547,7 +1547,7 @@ impl TimedExecution {
     /// # Examples
     ///
     /// ```no_run
-    /// use rtk::tracking::TimedExecution;
+    /// use rtco_core::tracking::TimedExecution;
     ///
     /// let timer = TimedExecution::start();
     /// // ... execute streaming command ...
@@ -1571,7 +1571,7 @@ impl TimedExecution {
 ///
 /// ```
 /// use std::ffi::OsString;
-/// use rtk::tracking::args_display;
+/// use rtco_core::tracking::args_display;
 ///
 /// let args = vec![OsString::from("status"), OsString::from("--short")];
 /// assert_eq!(args_display(&args), "status --short");

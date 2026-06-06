@@ -108,7 +108,7 @@ impl KeywordDetector {
     ///
     /// # Examples
     /// ```
-    /// use rtk::keyword_detector::{KeywordDetector, LineLevel};
+    /// use rtco_core::keyword_detector::{KeywordDetector, LineLevel};
     /// let det = KeywordDetector::new();
     /// assert_eq!(det.classify_line("ERROR: connection refused"), LineLevel::Error);
     /// assert_eq!(det.classify_line("vulnerability found in auth"), LineLevel::Security);
@@ -143,7 +143,7 @@ impl KeywordDetector {
     ///
     /// # Examples
     /// ```
-    /// use rtk::keyword_detector::KeywordDetector;
+    /// use rtco_core::keyword_detector::KeywordDetector;
     /// let det = KeywordDetector::new();
     /// assert_eq!(det.score_line("FATAL: out of memory"), 1.0);
     /// assert_eq!(det.score_line("All 42 tests passed"), 0.4);

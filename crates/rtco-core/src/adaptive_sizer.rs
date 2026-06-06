@@ -31,7 +31,7 @@ use std::hash::{Hash, Hasher};
 ///
 /// # Examples
 /// ```
-/// use rtk::adaptive_sizer::simhash;
+/// use rtco_core::adaptive_sizer::simhash;
 /// let a = simhash("ERROR: timeout at 192.168.1.1");
 /// let b = simhash("ERROR: timeout at 192.168.1.2");
 /// assert_ne!(a, b);
@@ -101,7 +101,7 @@ fn hamming_distance(a: u64, b: u64) -> u32 {
 ///
 /// # Examples
 /// ```
-/// use rtk::adaptive_sizer::count_unique_by_simhash;
+/// use rtco_core::adaptive_sizer::count_unique_by_simhash;
 /// let items = vec![
 ///     "ERROR: timeout at 192.168.1.1",
 ///     "ERROR: timeout at 192.168.1.1",  // exact duplicate
@@ -149,7 +149,7 @@ pub fn count_unique_by_simhash_with_threshold(items: &[&str], threshold: u32) ->
 ///
 /// # Examples
 /// ```
-/// use rtk::adaptive_sizer::bigram_coverage_curve;
+/// use rtco_core::adaptive_sizer::bigram_coverage_curve;
 /// let text = "line one\nline two\nline three\nline four\nline five";
 /// let curve = bigram_coverage_curve(text);
 /// assert_eq!(curve.len(), 5);
@@ -234,7 +234,7 @@ fn extract_bigrams(set: &mut HashSet<(char, char)>, text: &str) {
 ///
 /// # Examples
 /// ```
-/// use rtk::adaptive_sizer::compute_optimal_k;
+/// use rtco_core::adaptive_sizer::compute_optimal_k;
 /// // Small set returns all items
 /// let items: Vec<&str> = vec!["a", "b", "c"];
 /// assert_eq!(compute_optimal_k(&items, 100), 3);

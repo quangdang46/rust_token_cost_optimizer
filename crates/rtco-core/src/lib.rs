@@ -93,15 +93,48 @@ pub fn filter_output(command: &str, raw_output: &str) -> FilteredOutput {
 
 /// Check if RTCO has a filter for the given command/tool name.
 pub fn has_filter(command: &str) -> bool {
-    // Route command name through the filter system
-    match command {
-        "git" | "gh" | "cargo" | "npm" | "pnpm" | "npx" | "yarn" | "pip" | "pip3" | "mvn"
-        | "gradle" | "gradlew" | "dotnet" | "go" | "golangci-lint" | "rustup" | "just"
-        | "make" | "docker" | "kubectl" | "psql" | "ls" | "tree" | "find" | "grep"
-        | "cat" | "read" | "wc" | "du" | "df" | "env" | "ps" | "curl" | "wget"
-        | "terraform" | "tofu" | "helm" | "ssh" | "ping" => true,
-        _ => false,
-    }
+    matches!(
+        command,
+        "git"
+            | "gh"
+            | "cargo"
+            | "npm"
+            | "pnpm"
+            | "npx"
+            | "yarn"
+            | "pip"
+            | "pip3"
+            | "mvn"
+            | "gradle"
+            | "gradlew"
+            | "dotnet"
+            | "go"
+            | "golangci-lint"
+            | "rustup"
+            | "just"
+            | "make"
+            | "docker"
+            | "kubectl"
+            | "psql"
+            | "ls"
+            | "tree"
+            | "find"
+            | "grep"
+            | "cat"
+            | "read"
+            | "wc"
+            | "du"
+            | "df"
+            | "env"
+            | "ps"
+            | "curl"
+            | "wget"
+            | "terraform"
+            | "tofu"
+            | "helm"
+            | "ssh"
+            | "ping"
+    )
 }
 
 /// Detect content type from raw output.

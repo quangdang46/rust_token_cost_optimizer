@@ -22,7 +22,7 @@ use std::collections::HashMap;
 ///
 /// # Examples
 /// ```
-/// use rtk::text_stats::shannon_entropy;
+/// use rtco_core::text_stats::shannon_entropy;
 /// assert!(shannon_entropy("hello hello hello") < 0.5);
 /// assert!(shannon_entropy("a1b2c3d4-e5f6-7890-abcd-ef1234567890") > 0.8);
 /// ```
@@ -70,7 +70,7 @@ pub fn shannon_entropy(text: &str) -> f64 {
 ///
 /// # Examples
 /// ```
-/// use rtk::text_stats::{simhash, hamming_distance};
+/// use rtco_core::text_stats::{simhash, hamming_distance};
 /// let a = simhash("ERROR: connection timeout at 192.168.1.1");
 /// let b = simhash("ERROR: connection timeout at 192.168.1.2");
 /// assert!(hamming_distance(a, b) < 10); // similar lines → low distance
@@ -142,7 +142,7 @@ fn hash_bytes_to_u64(bytes: &[u8]) -> u64 {
 ///
 /// # Examples
 /// ```
-/// use rtk::text_stats::estimate_tokens;
+/// use rtco_core::text_stats::estimate_tokens;
 /// let json = r#"{"name": "test", "value": 42}"#;
 /// let english = "The quick brown fox jumps over the lazy dog";
 /// // JSON has more tokens per char than English
@@ -276,7 +276,7 @@ impl LineSeverity {
 ///
 /// # Examples
 /// ```
-/// use rtk::text_stats::{classify_severity, LineSeverity};
+/// use rtco_core::text_stats::{classify_severity, LineSeverity};
 /// assert_eq!(classify_severity("ERROR: connection refused"), LineSeverity::Error);
 /// assert_eq!(classify_severity("warning: unused variable"), LineSeverity::Warning);
 /// assert_eq!(classify_severity("  at com.example.Main.main"), LineSeverity::Unknown);
@@ -365,7 +365,7 @@ fn contains_word(text: &str, word: &str) -> bool {
 ///
 /// # Examples
 /// ```
-/// use rtk::text_stats::is_stack_trace;
+/// use rtco_core::text_stats::is_stack_trace;
 /// assert!(is_stack_trace("    at Object.<anonymous> (/app/index.js:10:5)"));
 /// assert!(is_stack_trace("  File \"main.py\", line 42, in <module>"));
 /// assert!(!is_stack_trace("Hello world"));
