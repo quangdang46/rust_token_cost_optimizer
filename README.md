@@ -92,10 +92,8 @@ The hook transparently intercepts Bash commands and rewrites them to `rtco` equi
 ## Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rtco-ai/rtco/refs/heads/master/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/refs/heads/master/install.sh | sh
 ```
-
-Or via Homebrew: `brew install rtco`
 
 ## Quick Start
 
@@ -168,7 +166,7 @@ brew install rtco
 
 ### Quick Install (Linux/macOS)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/rtco-ai/rtco/refs/heads/master/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/refs/heads/master/install.sh | sh
 ```
 
 ### Cargo
