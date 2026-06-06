@@ -252,9 +252,8 @@ pub fn ruby_exec(tool: &str) -> Command {
     Command::new(tool)
 }
 
-/// Count whitespace-delimited tokens in text. Used by filter tests to verify
-/// token savings claims.
-#[cfg(any(test, feature = "test-support"))]
+/// Count whitespace-delimited tokens in text. Used to estimate token counts
+/// for filtering and compression.
 pub fn count_tokens(text: &str) -> usize {
     text.split_whitespace().count()
 }
