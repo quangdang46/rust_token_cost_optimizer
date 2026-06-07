@@ -2474,7 +2474,7 @@ mod tests {
 
     #[test]
     fn test_format_all_formatted() {
-        let content = include_str!("../../../tests/fixtures/dotnet/format_success.json");
+        let content = include_str!("../../../../../tests/fixtures/dotnet/format_success.json");
         let summary = dotnet_format_report::parse_format_report_from_str(content)
             .expect("parse format report");
 
@@ -2484,7 +2484,7 @@ mod tests {
 
     #[test]
     fn test_format_needs_formatting() {
-        let content = include_str!("../../../tests/fixtures/dotnet/format_changes.json");
+        let content = include_str!("../../../../../tests/fixtures/dotnet/format_changes.json");
         let summary = dotnet_format_report::parse_format_report_from_str(content)
             .expect("parse format report");
 
@@ -2551,7 +2551,7 @@ mod tests {
     #[test]
     fn test_format_report_summary_uses_fresh_report_file() {
         let mut tmp = tempfile::NamedTempFile::new().expect("create temp file");
-        let content = include_str!("../../../tests/fixtures/dotnet/format_success.json");
+        let content = include_str!("../../../../../tests/fixtures/dotnet/format_success.json");
         tmp.write_all(content.as_bytes()).expect("write fixture");
         let raw = "RAW OUTPUT";
 

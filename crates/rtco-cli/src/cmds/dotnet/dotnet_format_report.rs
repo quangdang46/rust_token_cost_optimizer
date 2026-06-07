@@ -93,7 +93,7 @@ mod tests {
 
     #[test]
     fn test_parse_format_report_all_formatted() {
-        let content = include_str!("../../../tests/fixtures/dotnet/format_success.json");
+        let content = include_str!("../../../../../tests/fixtures/dotnet/format_success.json");
         let summary = parse_format_report_from_str(content).expect("parse report");
 
         assert_eq!(summary.total_files, 2);
@@ -103,7 +103,7 @@ mod tests {
 
     #[test]
     fn test_parse_format_report_with_changes() {
-        let content = include_str!("../../../tests/fixtures/dotnet/format_changes.json");
+        let content = include_str!("../../../../../tests/fixtures/dotnet/format_changes.json");
         let summary = parse_format_report_from_str(content).expect("parse report");
 
         assert_eq!(summary.total_files, 3);
@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_parse_format_report_empty() {
-        let content = include_str!("../../../tests/fixtures/dotnet/format_empty.json");
+        let content = include_str!("../../../../../tests/fixtures/dotnet/format_empty.json");
         let summary = parse_format_report_from_str(content).expect("parse report");
 
         assert_eq!(summary.total_files, 0);
