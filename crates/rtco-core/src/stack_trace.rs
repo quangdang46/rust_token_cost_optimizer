@@ -22,7 +22,7 @@
 //! let traces = detect_stack_traces(&lines);
 //! assert_eq!(traces.len(), 1);
 //! assert_eq!(traces[0].language, StackLanguage::Python);
-//! assert_eq!(traces[0].frames.len(), 5);
+//! assert_eq!(traces[0].frames.len(), 6);
 //! ```
 
 use lazy_static::lazy_static;

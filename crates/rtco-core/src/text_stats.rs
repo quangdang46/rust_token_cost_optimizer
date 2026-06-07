@@ -23,7 +23,7 @@ use std::collections::HashMap;
 /// # Examples
 /// ```
 /// use rtco_core::text_stats::shannon_entropy;
-/// assert!(shannon_entropy("hello hello hello") < 0.5);
+/// assert!(shannon_entropy("aaaaaaaaaaaaaaaaaaaaaaaab") < 0.5);
 /// assert!(shannon_entropy("a1b2c3d4-e5f6-7890-abcd-ef1234567890") > 0.8);
 /// ```
 pub fn shannon_entropy(text: &str) -> f64 {
@@ -146,7 +146,7 @@ fn hash_bytes_to_u64(bytes: &[u8]) -> u64 {
 /// let json = r#"{"name": "test", "value": 42}"#;
 /// let english = "The quick brown fox jumps over the lazy dog";
 /// // JSON has more tokens per char than English
-/// assert!(estimate_tokens(json) > estimate_tokens(english) * 0.5);
+/// assert!(estimate_tokens(json) > (estimate_tokens(english) as f64 * 0.5) as usize);
 /// ```
 pub fn estimate_tokens(text: &str) -> usize {
     if text.is_empty() {

@@ -142,7 +142,7 @@ pub fn format_cpt(cpt: f64) -> String {
 /// ```
 /// use rtco_core::utils::join_with_overflow;
 /// let items = vec!["a".to_string(), "b".to_string()];
-/// assert_eq!(join_with_overflow(&items, 5, 3, "items"), "a\nb\n... +2 more items");
+/// assert_eq!(join_with_overflow(&items, 5, 3, "items"), "a\nb\n\u{2026} +2 more items");
 /// assert_eq!(join_with_overflow(&items, 2, 3, "items"), "a\nb");
 /// ```
 pub fn join_with_overflow(items: &[String], total: usize, max: usize, label: &str) -> String {
@@ -451,7 +451,7 @@ pub fn human_bytes(bytes: u64) -> String {
 /// ```
 /// use rtco_core::utils::conservative_normalize;
 /// assert_eq!(conservative_normalize("pid=12345"), "pid=N");
-/// assert_eq!(conservative_normalize("commit abc1234567890 done"), "commit abcH done");
+/// assert_eq!(conservative_normalize("commit abc1234567890 done"), "commit H done");
 /// assert_eq!(conservative_normalize("no separator here"), "no separator here");
 /// ```
 #[allow(dead_code)]

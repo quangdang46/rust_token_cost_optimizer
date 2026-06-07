@@ -1481,9 +1481,8 @@ pub fn estimate_tokens(text: &str) -> usize {
 /// use rtco_core::tracking::TimedExecution;
 ///
 /// let timer = TimedExecution::start();
-/// let input = execute_standard_command()?;
-/// let output = execute_rtk_command()?;
-/// timer.track("ls -la", "rtco ls", &input, &output);
+/// // ... execute command ...
+/// timer.track("ls -la", "rtco ls", "input", "output");
 /// # Ok::<(), anyhow::Error>(())
 /// ```
 pub struct TimedExecution {
@@ -1648,6 +1647,7 @@ mod tests {
     // 3. Tracker::record + get_recent — round-trip DB
     #[test]
     fn test_tracker_record_and_recent() {
+        let _guard = ENV_LOCK.lock().unwrap();
         let tracker = test_tracker();
 
         // Use unique test identifier to avoid conflicts with other tests
@@ -1672,6 +1672,7 @@ mod tests {
     // 4. track_passthrough doesn't dilute stats (input=0, output=0)
     #[test]
     fn test_track_passthrough_no_dilution() {
+        let _guard = ENV_LOCK.lock().unwrap();
         let tracker = test_tracker();
 
         // Use unique test identifiers
@@ -1719,7 +1720,8 @@ mod tests {
         // Set isolated DB path so the internal Tracker::new() in track()
         // writes to the same DB the test reads from.
         let _guard = ENV_LOCK.lock().unwrap();
-        let db_path = std::env::temp_dir().join("rtco_test_timed_track.db");
+        let db_path =
+            std::env::temp_dir().join(format!("rtco_test_timed_track_{}.db", std::process::id()));
         std::env::set_var("RTCO_DB_PATH", &db_path);
         let _ = std::fs::remove_file(&db_path);
 
@@ -1828,6 +1830,7 @@ mod tests {
     // 12. record_parse_failure + get_parse_failure_summary roundtrip
     #[test]
     fn test_parse_failure_roundtrip() {
+        let _guard = ENV_LOCK.lock().unwrap();
         let tracker = test_tracker();
         let test_cmd = format!("git -C /path status test_{}", std::process::id());
 
