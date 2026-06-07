@@ -1,140 +1,38 @@
 # CI/CD Flows
 
-## PR Quality Gates (ci.yml)
+## CI (ci.yml)
 
-Trigger: pull_request to develop or master
-
-```
-                          ┌──────────────────┐
-                          │    PR opened      │
-                          └────────┬─────────┘
-                                   │
-                          ┌────────▼─────────┐
-                          │    fmt --all     │
-                          └────────┬─────────┘
-                                   │
-                       ┌───────────▼──────────┐
-                       │ clippy --all-targets │
-                       └───┬───┬───┬───┬───┬──┘
-                           │   │   │   │   │
-           ┌───────────────┘   │   │   │   └────────────────┐
-           │       ┌───────────┘   │   └───────────┐        │
-           ▼       ▼              ▼               ▼        ▼
-     ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌─────────┐ ┌──────────┐
-     │ test     │ │ security │ │ semgrep   │ │benchmark│ │ doc      │
-     │ ubuntu   │ │ cargo    │ │ AST-aware │ │ >=80%   │ │ review   │
-     │ windows  │ │ audit    │ │ diff-only │ │ savings │ │ ai agent │
-     │ macos    │ │ patterns │ │           │ │         │ │          │
-     └────┬─────┘ └────┬─────┘ └─────┬─────┘ └────┬────┘ └────┬─────┘
-          │            │             │             │            │
-          └────────────┴─────────┬───┴─────────────┴────────────┘
-                                 │
-                      ┌──────────▼─────────┐
-                      │  All must pass     │
-                      │  to merge          │
-                      └────────────────────┘
-
-     + DCO check (independent, develop PRs only)
-     + Dependabot (weekly: Cargo deps + GitHub Actions)
-```
-
-## Merge to develop — pre-release (cd.yml)
-
-Trigger: push to develop | workflow_dispatch (not master) | Concurrency: cancel-in-progress
+Trigger: push or pull_request to `main`
 
 ```
      ┌──────────────────┐
-     │ push to develop   │
-     │ OR dispatch       │
+     │  push / PR to    │
+     │  main            │
      └────────┬─────────┘
               │
-     ┌────────▼──────────────────┐
-     │ pre-release                │
-     │ compute next version      │
-     │ from conventional commits │
-     │ tag = v{next}-rc.{run}    │
-     └────────┬──────────────────┘
-              │
-     ┌────────▼──────────────────┐
-     │ release.yml               │
-     │ prerelease = true         │
-     └────────┬──────────────────┘
-              │
-     ┌────────▼──────────────────┐
-     │ Build                     │
-     │ 5 platforms + DEB + RPM   │
-     └────────┬──────────────────┘
-              │
-     ┌────────▼──────────────────┐
-     │ GitHub Release            │
-     │ (pre-release badge)       │
-     │                           │
-     │ Discord:  SKIPPED         │
-     │ Homebrew: SKIPPED         │
-     └──────────────────────────┘
-```
-
-## Merge to master — stable release (cd.yml)
-
-Trigger: push to master (only) | Concurrency: never cancelled
-
-```
-     ┌──────────────────┐
-     │ push to master    │
+     ┌────────▼─────────┐
+     │  cargo fmt       │
+     │  -- --check      │
      └────────┬─────────┘
               │
-     ┌────────▼──────────────────┐
-     │ release-please            │
-     │ analyze conventional      │
-     │ commits                   │
-     └────────┬──────────────────┘
+     ┌────────▼─────────────┐
+     │  cargo clippy        │
+     │  --all-targets       │
+     │  -D warnings         │
+     └────────┬─────────────┘
               │
-         ┌────┴────────────────┐
-         │                     │
-    no release           release created
-         │                     │
-         ▼                     ▼
-  ┌──────────────┐    ┌───────────────────────┐
-  │ create/update│    │ release.yml            │
-  │ release PR   │    │ prerelease = false     │
-  └──────────────┘    └───────────┬───────────┘
-                                  │
-                     ┌────────────▼────────────┐
-                     │ Build                   │
-                     │ 5 platforms + DEB + RPM  │
-                     └────────────┬────────────┘
-                                  │
-                     ┌────────────▼────────────┐
-                     │ GitHub Release           │
-                     │ (stable, "Latest" badge) │
-                     └──┬─────────┬─────────┬──┘
-                        │         │         │
-                        ▼         ▼         ▼
-                    Discord   Homebrew   latest
-                    notify    tap update  tag
+     ┌────────▼─────────┐
+     │  cargo test      │
+     │  --all-features  │
+     └──────────────────┘
 ```
 
-## Manual release (release.yml)
+## CD (cd.yml)
 
-Trigger: workflow_dispatch
+Trigger: push to `main` (or workflow_dispatch)
 
-```
-     ┌────────────────────────┐
-     │ workflow_dispatch       │
-     │ inputs: tag, prerelease │
-     └───────────┬────────────┘
-                 │
-     ┌───────────▼────────────┐
-     │ Full build pipeline     │
-     │ 5 platforms + DEB + RPM │
-     └───────────┬────────────┘
-                 │
-          ┌──────┴──────┐
-          │             │
-   prerelease=false  prerelease=true
-          │             │
-          ▼             ▼
-     Discord        pre-release
-     Homebrew       badge only
-     latest tag
-```
+Runs the same quality checks as CI on push to main.
+
+## Manual release
+
+Not configured for this fork. Use `cargo build --release` locally to build binaries.
