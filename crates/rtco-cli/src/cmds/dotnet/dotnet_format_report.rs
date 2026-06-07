@@ -2,8 +2,6 @@
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
@@ -45,16 +43,14 @@ pub struct FormatSummary {
 }
 
 pub fn parse_format_report(path: &Path) -> Result<FormatSummary> {
-    let file = File::open(path)
+    let content = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read dotnet format report at {}", path.display()))?;
-    let reader = BufReader::new(file);
+    parse_format_report_from_str(&content)
+}
 
-    let entries: Vec<FormatReportEntry> = serde_json::from_reader(reader).with_context(|| {
-        format!(
-            "Failed to parse dotnet format report JSON at {}",
-            path.display()
-        )
-    })?;
+pub fn parse_format_report_from_str(content: &str) -> Result<FormatSummary> {
+    let entries: Vec<FormatReportEntry> =
+        serde_json::from_str(content).context("Failed to parse dotnet format report JSON")?;
 
     let total_files = entries.len();
     let files_with_changes: Vec<FileWithChanges> = entries
@@ -94,19 +90,11 @@ pub fn parse_format_report(path: &Path) -> Result<FormatSummary> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
-
-    fn fixture(name: &str) -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("tests")
-            .join("fixtures")
-            .join("dotnet")
-            .join(name)
-    }
 
     #[test]
     fn test_parse_format_report_all_formatted() {
-        let summary = parse_format_report(&fixture("format_success.json")).expect("parse report");
+        let content = include_str!("../../../tests/fixtures/dotnet/format_success.json");
+        let summary = parse_format_report_from_str(content).expect("parse report");
 
         assert_eq!(summary.total_files, 2);
         assert_eq!(summary.files_unchanged, 2);
@@ -115,7 +103,8 @@ mod tests {
 
     #[test]
     fn test_parse_format_report_with_changes() {
-        let summary = parse_format_report(&fixture("format_changes.json")).expect("parse report");
+        let content = include_str!("../../../tests/fixtures/dotnet/format_changes.json");
+        let summary = parse_format_report_from_str(content).expect("parse report");
 
         assert_eq!(summary.total_files, 3);
         assert_eq!(summary.files_unchanged, 1);
@@ -126,7 +115,8 @@ mod tests {
 
     #[test]
     fn test_parse_format_report_empty() {
-        let summary = parse_format_report(&fixture("format_empty.json")).expect("parse report");
+        let content = include_str!("../../../tests/fixtures/dotnet/format_empty.json");
+        let summary = parse_format_report_from_str(content).expect("parse report");
 
         assert_eq!(summary.total_files, 0);
         assert_eq!(summary.files_unchanged, 0);

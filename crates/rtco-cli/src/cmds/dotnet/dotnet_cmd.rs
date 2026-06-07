@@ -8,6 +8,9 @@ use rtco_core::utils::{resolved_command, truncate};
 use crate::dotnet_format_report;
 use crate::dotnet_trx;
 use anyhow::{Context, Result};
+
+#[cfg(test)]
+use std::io::Write as IoWrite;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use serde_json::Value;
@@ -1365,14 +1368,6 @@ mod tests {
         )
     }
 
-    fn format_fixture(name: &str) -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("tests")
-            .join("fixtures")
-            .join("dotnet")
-            .join(name)
-    }
-
     #[test]
     fn test_has_binlog_arg_detects_variants() {
         let args = vec!["-bl:my.binlog".to_string()];
@@ -2479,9 +2474,9 @@ mod tests {
 
     #[test]
     fn test_format_all_formatted() {
-        let summary =
-            dotnet_format_report::parse_format_report(&format_fixture("format_success.json"))
-                .expect("parse format report");
+        let content = include_str!("../../../tests/fixtures/dotnet/format_success.json");
+        let summary = dotnet_format_report::parse_format_report_from_str(content)
+            .expect("parse format report");
 
         let output = format_dotnet_format_output(&summary, true);
         assert!(output.contains("ok dotnet format: 2 files formatted correctly"));
@@ -2489,9 +2484,9 @@ mod tests {
 
     #[test]
     fn test_format_needs_formatting() {
-        let summary =
-            dotnet_format_report::parse_format_report(&format_fixture("format_changes.json"))
-                .expect("parse format report");
+        let content = include_str!("../../../tests/fixtures/dotnet/format_changes.json");
+        let summary = dotnet_format_report::parse_format_report_from_str(content)
+            .expect("parse format report");
 
         let output = format_dotnet_format_output(&summary, true);
         assert!(output.contains("Format: 2 files need formatting"));
@@ -2555,10 +2550,12 @@ mod tests {
 
     #[test]
     fn test_format_report_summary_uses_fresh_report_file() {
-        let report = format_fixture("format_success.json");
+        let mut tmp = tempfile::NamedTempFile::new().expect("create temp file");
+        let content = include_str!("../../../tests/fixtures/dotnet/format_success.json");
+        tmp.write_all(content.as_bytes()).expect("write fixture");
         let raw = "RAW OUTPUT";
 
-        let output = format_report_summary_or_raw(Some(&report), true, raw, UNIX_EPOCH);
+        let output = format_report_summary_or_raw(Some(tmp.path()), true, raw, UNIX_EPOCH);
         assert!(output.contains("ok dotnet format: 2 files formatted correctly"));
     }
 

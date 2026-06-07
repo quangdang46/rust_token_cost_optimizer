@@ -5,16 +5,10 @@ on:
   push:
     branches: [main]
 
-concurrency:
-  group: cd-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
-  # CI checks run on push to main
   check:
     name: Check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
