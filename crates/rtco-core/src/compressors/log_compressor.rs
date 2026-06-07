@@ -320,7 +320,10 @@ impl LogCompressor {
             LogFormat::Jest => {
                 if trimmed.starts_with("FAIL ") {
                     LogLevel::Error
-                } else if trimmed.starts_with("PASS ") || trimmed.contains("Tests:") || trimmed.contains("Snapshots:") {
+                } else if trimmed.starts_with("PASS ")
+                    || trimmed.contains("Tests:")
+                    || trimmed.contains("Snapshots:")
+                {
                     LogLevel::Info
                 } else if trimmed.contains("console.warn") || trimmed.contains("console.error") {
                     LogLevel::Warn

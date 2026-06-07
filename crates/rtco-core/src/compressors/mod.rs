@@ -10,6 +10,7 @@ pub mod diff_compressor;
 pub mod log_compressor;
 pub mod search_compressor;
 pub mod smart_crusher;
+pub mod tag_protector;
 
 use serde::{Deserialize, Serialize};
 

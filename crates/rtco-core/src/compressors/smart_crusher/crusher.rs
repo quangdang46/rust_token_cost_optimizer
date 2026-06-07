@@ -9,7 +9,7 @@ use crate::compressors::{CompressionStrategy, CrushResult, CrushedField};
 use crate::utils::count_tokens;
 
 use super::classifier::classify_array;
-use super::planner::{plan_compression, CrusherConfig};
+use super::planner::{plan_compression, SmartCrusherConfig};
 
 /// Maximum depth for recursive crushing of nested values.
 const MAX_RECURSION_DEPTH: usize = 20;
@@ -41,7 +41,7 @@ fn try_compress_with_stats(input: &str) -> Result<(String, CrushResult), String>
     let mut value: Value =
         serde_json::from_str(input).map_err(|e| format!("JSON parse error: {}", e))?;
 
-    let config = CrusherConfig::default();
+    let config = SmartCrusherConfig::default();
     let original_tokens = count_tokens(input);
 
     let mut crushed_fields = Vec::new();
@@ -65,7 +65,7 @@ fn try_compress_with_stats(input: &str) -> Result<(String, CrushResult), String>
 fn crush_value(
     value: &mut Value,
     path: &[String],
-    config: &CrusherConfig,
+    config: &SmartCrusherConfig,
     crushed: &mut Vec<CrushedField>,
     depth: usize,
 ) {
@@ -304,7 +304,8 @@ mod tests {
                     "large_array": items
                 }
             }
-        })).unwrap();
+        }))
+        .unwrap();
         let output = compress_json(&input);
         let parsed: Value = serde_json::from_str(&output).unwrap();
         let arr = parsed["level1"]["level2"]["large_array"]
