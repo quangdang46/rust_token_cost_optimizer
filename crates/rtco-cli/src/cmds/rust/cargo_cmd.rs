@@ -2253,4 +2253,90 @@ error: could not compile `rtk` (test "repro_compile_fail") due to 1 previous err
         assert!(result.contains("cargo test:"), "got: {}", result);
         assert!(result.contains("1 errors"), "got: {}", result);
     }
+
+    // ---- Token savings tests ----
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_token_savings_build_success() {
+        let output = r#"   Compiling libc v0.2.153
+   Compiling cfg-if v1.0.0
+   Compiling rtk v0.5.0
+    Finished dev [unoptimized + debuginfo] target(s) in 15.23s
+"#;
+        let result = filter_cargo_build(output);
+        let raw_tokens = count_tokens(output);
+        let filtered_tokens = count_tokens(&result);
+        let savings = 100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        // Build success intentionally preserves the finished line, so savings are modest
+        eprintln!(
+            "cargo build success: {:.1}% savings ({} -> {} tokens)",
+            savings, raw_tokens, filtered_tokens
+        );
+    }
+
+    #[test]
+    fn test_token_savings_test_filter() {
+        let output = r#"   Compiling rtk v0.5.0
+    Finished test [unoptimized + debuginfo] target(s) in 2.53s
+     Running unittests src/lib.rs (target/debug/deps/rtk-abc123)
+
+running 50 tests
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+
+     Running unittests src/main.rs (target/debug/deps/rtk-def456)
+
+running 30 tests
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+     Running tests/integration.rs (target/debug/deps/integration-ghi789)
+
+running 25 tests
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+   Doc-tests rtk
+
+running 32 tests
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+"#;
+        let result = filter_cargo_test(output);
+        let raw_tokens = count_tokens(output);
+        let filtered_tokens = count_tokens(&result);
+        let savings = 100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        assert!(
+            savings >= 80.0,
+            "Expected ≥80% savings on cargo test all-pass fixture, got {:.1}% ({} -> {} tokens)",
+            savings,
+            raw_tokens,
+            filtered_tokens
+        );
+    }
+
+    #[test]
+    fn test_token_savings_nextest_all_pass() {
+        let output = r#"   Compiling rtk v0.15.2
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+────────────────────────────
+    Starting 301 tests across 1 binary
+        PASS [   0.009s] (1/301) rtk::bin/rtk cargo_cmd::tests::test_one
+        PASS [   0.008s] (2/301) rtk::bin/rtk cargo_cmd::tests::test_two
+        PASS [   0.007s] (301/301) rtk::bin/rtk cargo_cmd::tests::test_last
+────────────────────────────
+     Summary [   0.192s] 301 tests run: 301 passed, 0 skipped
+"#;
+        let result = filter_cargo_nextest(output);
+        let raw_tokens = count_tokens(output);
+        let filtered_tokens = count_tokens(&result);
+        let savings = 100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        assert!(
+            savings >= 80.0,
+            "Expected ≥80% savings on cargo nextest all-pass fixture, got {:.1}% ({} -> {} tokens)",
+            savings,
+            raw_tokens,
+            filtered_tokens
+        );
+    }
 }

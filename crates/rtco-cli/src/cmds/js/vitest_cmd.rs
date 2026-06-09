@@ -397,4 +397,40 @@ Scope: all 6 workspace projects
         assert_eq!(data.total, 2);
         assert_eq!(data.passed, 2);
     }
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_vitest_parser_savings() {
+        let input = r#"
+Scope: all 6 workspace projects
+ WARN  deprecated inflight@1.0.6: This module is not supported
+
+{"numTotalTests": 13, "numPassedTests": 13, "numFailedTests": 0, "numPendingTests": 0, "testResults": [], "startTime": 1000}
+"#;
+        let result = VitestParser::parse(input);
+        let data = result.unwrap();
+        let output = data.format(FormatMode::from_verbosity(0));
+
+        let raw_tokens = count_tokens(input);
+        let filtered_tokens = count_tokens(&output);
+        let raw_bytes = input.len();
+        let filtered_bytes = output.len();
+        let token_savings =
+            100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        let byte_savings =
+            100.0 - (filtered_bytes as f64 / raw_bytes as f64 * 100.0);
+        assert!(
+            token_savings >= 60.0,
+            "Expected ≥60% token savings, got {:.1}%",
+            token_savings
+        );
+        assert!(
+            byte_savings >= 60.0,
+            "Expected ≥60% byte savings, got {:.1}%",
+            byte_savings
+        );
+    }
 }

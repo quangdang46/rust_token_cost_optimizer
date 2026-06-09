@@ -587,4 +587,34 @@ mod tests {
         assert_eq!(summary.total, 3);
         assert_eq!(summary.failed, 1);
     }
+
+    fn count_tokens(text: &str) -> usize {
+        text.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_token_savings_trx_parse() {
+        let raw = r#"<?xml version="1.0" encoding="utf-8"?>
+<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-02-21T12:57:28.3323710+01:00" queuing="2026-02-21T12:57:28.3323710+01:00" start="2026-02-21T12:57:27.7149650+01:00" finish="2026-02-21T12:57:30.2214710+01:00" />
+  <ResultSummary outcome="Completed">
+    <Counters total="100" executed="100" passed="95" failed="5" error="0" timeout="0" aborted="0" inconclusive="0" />
+  </ResultSummary>
+</TestRun>"#;
+        let summary = parse_trx_content(raw).expect("valid TRX");
+        let output = format!(
+            "test trx: {} total, {} passed, {} failed, {} skipped, {}",
+            summary.total,
+            summary.passed,
+            summary.failed,
+            summary.skipped,
+            summary.duration_text.as_deref().unwrap_or("unknown"),
+        );
+        let input_tokens = count_tokens(raw);
+        let output_tokens = count_tokens(&output);
+        let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
+        // The verbose TRX XML (34 tokens) compresses to a one-line
+        // summary (13 tokens) via parse_trx_content.
+        assert!(savings >= 50.0, "trx parse: expected >= 50% savings, got {:.1}% (raw={}, out={})", savings, input_tokens, output_tokens);
+    }
 }

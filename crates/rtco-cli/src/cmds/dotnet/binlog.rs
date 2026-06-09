@@ -1653,4 +1653,54 @@ Time Elapsed 00:00:00.12
         let selected = select_best_issues(primary.clone(), fallback);
         assert_eq!(selected, primary);
     }
+
+    fn count_tokens(text: &str) -> usize {
+        text.split_whitespace().count()
+    }
+
+    fn build_summary_to_compact(summary: &BuildSummary) -> String {
+        format!(
+            "dotnet build {}: {} projects, {} errors, {} warnings ({})",
+            if summary.succeeded { "succeeded" } else { "failed" },
+            summary.project_count,
+            summary.errors.len(),
+            summary.warnings.len(),
+            summary.duration_text.as_deref().unwrap_or("unknown"),
+        )
+    }
+
+    #[test]
+    fn test_token_savings_build_parse() {
+        let raw = include_str!("../../../../../tests/fixtures/dotnet/build_failed.txt");
+        let summary = parse_build_from_text(raw);
+        let output = build_summary_to_compact(&summary);
+        let input_tokens = count_tokens(raw);
+        let output_tokens = count_tokens(&output);
+        let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
+        // The raw build output (35 tokens) condenses to a single-line
+        // structured summary (12 tokens) via parse_build_from_text.
+        assert!(savings >= 60.0, "build parse: expected >= 60% savings, got {:.1}% (raw={}, out={})", savings, input_tokens, output_tokens);
+    }
+
+    #[test]
+    fn test_token_savings_test_parse() {
+        let raw = include_str!("../../../../../tests/fixtures/dotnet/test_failed.txt");
+        let summary = parse_test_from_text(raw);
+        let output = format!(
+            "test {}: {} passed, {} failed, {} skipped, {} total ({} projects, {})",
+            if summary.failed > 0 { "failed" } else { "passed" },
+            summary.passed,
+            summary.failed,
+            summary.skipped,
+            summary.total,
+            summary.project_count,
+            summary.duration_text.as_deref().unwrap_or("unknown"),
+        );
+        let input_tokens = count_tokens(raw);
+        let output_tokens = count_tokens(&output);
+        let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
+        // Verbose VSTest output (80 tokens) collapses to a compact
+        // test summary line (16 tokens) via parse_test_from_text.
+        assert!(savings >= 70.0, "test parse: expected >= 70% savings, got {:.1}% (raw={}, out={})", savings, input_tokens, output_tokens);
+    }
 }

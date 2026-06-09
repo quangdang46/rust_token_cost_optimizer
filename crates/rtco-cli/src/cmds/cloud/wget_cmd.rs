@@ -364,4 +364,52 @@ mod tests {
         let result = extract_filename_from_output("", "https://example.com/", &[]);
         assert_eq!(result, "index.html");
     }
+
+    // ── Token savings tests ───────────────────────────────
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_token_savings_wget_error_output() {
+        let raw_stderr = "\
+--2024-01-01 12:00:00--  https://example.com/not-found
+Resolving example.com (example.com)... 93.184.216.34
+Connecting to example.com (example.com)|93.184.216.34|:443... connected.
+HTTP request sent, awaiting response... 404 Not Found
+2024-01-01 12:00:00 ERROR 404: Not Found.";
+        let url = "https://example.com/not-found";
+        let error = parse_error(raw_stderr, "");
+        let compact = format!("{} FAILED: {}", compact_url(url), error);
+        let input_tokens = count_tokens(raw_stderr);
+        let output_tokens = count_tokens(&compact);
+        let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
+        assert!(savings >= 60.0, "wget error output: expected >= 60% savings, got {:.1}% (raw={}, out={})", savings, input_tokens, output_tokens);
+    }
+
+    #[test]
+    fn test_token_savings_wget_success_output() {
+        let raw_wget = "\
+--2024-01-01 12:00:00--  https://example.com/file.tar.gz
+Resolving example.com (example.com)... 93.184.216.34
+Connecting to example.com (example.com)|93.184.216.34|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 1234567 (1.2M) [application/octet-stream]
+Saving to: 'file.tar.gz'
+
+     0K .......... .......... .......... .......... ..........  4% 1.23M 1s
+   500K .......... .......... .......... .......... .......... 44% 2.34M 0s
+  1000K .......... .......... .......... ....                 100%
+
+2024-01-01 12:00:01 (1.23 MB/s) - 'file.tar.gz' saved [1234567/1234567]";
+        let url = "https://example.com/file.tar.gz";
+        let filename = extract_filename_from_output(raw_wget, url, &[]);
+        // get_file_size returns 0 (file doesn't exist), format_size(0) = "?"
+        let compact = format!("{} ok | {} | ?", compact_url(url), filename);
+        let input_tokens = count_tokens(raw_wget);
+        let output_tokens = count_tokens(&compact);
+        let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
+        assert!(savings >= 60.0, "wget success output: expected >= 60% savings, got {:.1}% (raw={}, out={})", savings, input_tokens, output_tokens);
+    }
 }

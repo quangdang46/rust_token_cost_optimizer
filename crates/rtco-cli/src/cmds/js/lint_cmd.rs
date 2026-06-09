@@ -711,4 +711,68 @@ mod tests {
         assert!(!is_python_linter("biome"));
         assert!(!is_python_linter("unknown"));
     }
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_filter_eslint_json_savings() {
+        let input = r#"[
+            {
+                "filePath": "/Users/test/project/src/utils.ts",
+                "messages": [
+                    {
+                        "ruleId": "prefer-const",
+                        "severity": 1,
+                        "message": "Use const instead of let",
+                        "line": 10,
+                        "column": 5
+                    },
+                    {
+                        "ruleId": "prefer-const",
+                        "severity": 1,
+                        "message": "Use const instead of let",
+                        "line": 15,
+                        "column": 5
+                    }
+                ],
+                "errorCount": 0,
+                "warningCount": 2
+            },
+            {
+                "filePath": "/Users/test/project/src/api.ts",
+                "messages": [
+                    {
+                        "ruleId": "@typescript-eslint/no-unused-vars",
+                        "severity": 2,
+                        "message": "Variable x is unused",
+                        "line": 20,
+                        "column": 10
+                    }
+                ],
+                "errorCount": 1,
+                "warningCount": 0
+            }
+        ]"#;
+        let output = filter_eslint_json(input);
+        let raw_tokens = count_tokens(input);
+        let filtered_tokens = count_tokens(&output);
+        let raw_bytes = input.len();
+        let filtered_bytes = output.len();
+        let token_savings =
+            100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        let byte_savings =
+            100.0 - (filtered_bytes as f64 / raw_bytes as f64 * 100.0);
+        assert!(
+            token_savings >= 60.0,
+            "Expected ≥60% token savings, got {:.1}%",
+            token_savings
+        );
+        assert!(
+            byte_savings >= 60.0,
+            "Expected ≥60% byte savings, got {:.1}%",
+            byte_savings
+        );
+    }
 }

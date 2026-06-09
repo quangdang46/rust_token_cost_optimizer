@@ -77,19 +77,18 @@ fn grep_wrapper(input: &str) -> String {
         return input.to_string();
     }
 
-    let mut out = format!("{} matches in {}F:\n\n", total, by_file.len());
+    let mut out = format!("grep {}F {}hits\n", by_file.len(), total);
     let mut files: Vec<_> = by_file.iter().collect();
     files.sort_by_key(|(f, _)| *f);
 
     for (file, matches) in files {
-        out.push_str(&format!("[file] {} ({}):\n", file, matches.len()));
+        out.push_str(&format!("{} ({}):\n", file, matches.len()));
         for (line_num, content) in matches.iter().take(MAX_PIPE_MATCHES) {
-            out.push_str(&format!("  {:>4}: {}\n", line_num, content.trim()));
+            out.push_str(&format!(" {}:{}\n", line_num, content.trim()));
         }
         if matches.len() > MAX_PIPE_MATCHES {
-            out.push_str(&format!("  +{}\n", matches.len() - MAX_PIPE_MATCHES));
+            out.push_str(&format!(" +{}\n", matches.len() - MAX_PIPE_MATCHES));
         }
-        out.push('\n');
     }
 
     out
@@ -118,22 +117,22 @@ fn find_wrapper(input: &str) -> String {
         by_dir.entry(dir).or_default().push(name);
     }
 
-    let mut out = format!("{} files in {} dirs:\n\n", paths.len(), by_dir.len());
+    let mut out = format!("find {}f {}d\n", paths.len(), by_dir.len());
     let mut dirs: Vec<_> = by_dir.iter().collect();
     dirs.sort_by_key(|(d, _)| *d);
 
     for (dir, files) in dirs.iter().take(MAX_PIPE_DIRS) {
-        out.push_str(&format!("{}/  ({})\n", dir, files.len()));
+        out.push_str(&format!("{}/ {}f\n", dir, files.len()));
         for f in files.iter().take(MAX_PIPE_FILES) {
-            out.push_str(&format!("  {}\n", f));
+            out.push_str(&format!(" {}\n", f));
         }
         if files.len() > MAX_PIPE_FILES {
-            out.push_str(&format!("  +{}\n", files.len() - MAX_PIPE_FILES));
+            out.push_str(&format!(" +{}\n", files.len() - MAX_PIPE_FILES));
         }
     }
 
     if dirs.len() > MAX_PIPE_DIRS {
-        out.push_str(&format!("\n+{} more dirs\n", dirs.len() - MAX_PIPE_DIRS));
+        out.push_str(&format!("+{}d\n", dirs.len() - MAX_PIPE_DIRS));
     }
 
     out
@@ -264,7 +263,7 @@ mod tests {
         let input = "src/main.rs:42:fn main() {\nsrc/lib.rs:10:pub fn helper() {}\n";
         let out = f(input);
         assert!(
-            out.contains("main.rs") || out.contains("matches"),
+            out.contains("main.rs") || out.contains("hits"),
             "out={}",
             out
         );
@@ -341,7 +340,7 @@ mod tests {
         let input = "src/main.rs:42:fn main() {\nsrc/lib.rs:10:pub fn helper() {}\n";
         let f = auto_detect_filter(input);
         let out = f(input);
-        assert!(!out.is_empty());
+        assert!(out.contains("hits"), "out={}", out);
     }
 
     #[test]
@@ -387,7 +386,7 @@ mod tests {
         let f = resolve_filter("find").expect("find filter must exist");
         let input = "./src/main.rs\n./src/lib.rs\n./tests/foo.rs\n";
         let out = f(input);
-        assert!(out.contains("3 files"), "out={}", out);
+        assert!(out.contains("3f"), "out={}", out);
     }
 
     #[test]
@@ -400,7 +399,7 @@ mod tests {
         let input = "./src/main.rs\n./src/lib.rs\n./src/cmd/mod.rs\n./tests/foo.rs\n";
         let f = auto_detect_filter(input);
         let out = f(input);
-        assert!(out.contains("4 files"), "out={}", out);
+        assert!(out.contains("4f"), "out={}", out);
     }
 
     #[test]
@@ -408,7 +407,7 @@ mod tests {
         let input = "/home/user/src/main.rs\n/home/user/src/lib.rs\n/home/user/tests/foo.rs\n";
         let f = auto_detect_filter(input);
         let out = f(input);
-        assert!(out.contains("3 files"), "out={}", out);
+        assert!(out.contains("3f"), "out={}", out);
     }
 
     #[test]
@@ -425,7 +424,7 @@ mod tests {
         let f = auto_detect_filter(input);
         let out = f(input);
         assert!(
-            !out.contains("files"),
+            !out.contains("find "),
             "should not trigger find filter: out={}",
             out
         );
@@ -510,8 +509,8 @@ mod tests {
         let output = grep_wrapper(&input);
         let savings = 100.0 - (count_tokens(&output) as f64 / count_tokens(&input) as f64 * 100.0);
         assert!(
-            savings >= 40.0, // TODO: grep pipe filter below 60% target — improve grouping
-            "grep filter: expected ≥40% savings, got {:.1}% (in={}, out={})",
+            savings >= 55.0,
+            "grep filter: expected ≥55% savings, got {:.1}% (in={}, out={})",
             savings, count_tokens(&input), count_tokens(&output)
         );
     }
@@ -531,8 +530,8 @@ mod tests {
         let output = find_wrapper(&input);
         let savings = 100.0 - (count_tokens(&output) as f64 / count_tokens(&input) as f64 * 100.0);
         assert!(
-            savings >= 40.0, // TODO: find pipe filter below 60% target — improve grouping
-            "find filter: expected ≥40% savings, got {:.1}% (in={}, out={})",
+            savings >= 48.0,
+            "find filter: expected ≥48% savings, got {:.1}% (in={}, out={})",
             savings, count_tokens(&input), count_tokens(&output)
         );
     }

@@ -68,11 +68,11 @@ fn is_list_format(output: &str) -> bool {
     })
 }
 
-/// Filter column mode: strip separator lines, compact whitespace
+/// Filter column mode: strip separator lines, compact whitespace, skip header
 fn filter_column(output: &str) -> String {
     let mut result = Vec::new();
     let mut data_rows = 0;
-    let mut header_seen = false;
+    let mut header_skipped = false;
     let mut total_data = 0;
 
     for line in output.lines() {
@@ -86,10 +86,10 @@ fn filter_column(output: &str) -> String {
             continue;
         }
 
-        if !header_seen {
-            header_seen = true;
-            let cols: Vec<&str> = trimmed.split_whitespace().collect();
-            result.push(cols.join("\t"));
+        if !header_skipped {
+            // Skip the header row
+            header_skipped = true;
+            continue;
         } else {
             total_data += 1;
             if data_rows < MAX_DATA_ROWS {
@@ -144,12 +144,12 @@ fn filter_line(output: &str) -> String {
     result.join("\n")
 }
 
-/// Filter list mode: pipe-separated → tab-separated
+/// Filter list mode: pipe-separated → tab-separated, skip header
 fn filter_list(output: &str) -> String {
     let mut result = Vec::new();
     let mut data_rows = 0;
     let mut total_data = 0;
-    let mut has_header = false;
+    let mut header_skipped = false;
 
     for line in output.lines() {
         let trimmed = line.trim();
@@ -158,9 +158,10 @@ fn filter_list(output: &str) -> String {
             continue;
         }
 
-        if !has_header {
-            has_header = true;
-            result.push(trimmed.replace('|', "\t"));
+        if !header_skipped {
+            // Skip the header row
+            header_skipped = true;
+            continue;
         } else {
             total_data += 1;
             if data_rows < MAX_DATA_ROWS {
@@ -217,7 +218,7 @@ mod tests {
     fn test_filter_list_basic() {
         let input = "id|name|email\n1|alice|a@b.com\n2|bob|b@b.com\n";
         let result = filter_list(input);
-        assert!(result.contains("id\tname\temail"));
+        assert!(!result.contains("id\tname\temail")); // header stripped
         assert!(result.contains("1\talice\ta@b.com"));
         assert!(result.contains("2\tbob\tb@b.com"));
     }
@@ -242,7 +243,7 @@ mod tests {
     fn test_filter_column_basic() {
         let input = "id  name   email\n--  -----  -----\n1   alice  a@b.com\n2   bob    b@b.com\n";
         let result = filter_column(input);
-        assert!(result.contains("id\tname\temail"));
+        assert!(!result.contains("id\tname\temail")); // header stripped
         assert!(result.contains("1\talice\ta@b.com"));
         assert!(!result.contains("--"));
     }
@@ -275,14 +276,14 @@ mod tests {
     fn test_filter_sqlite_output_routes_to_list() {
         let input = "id|name|email\n1|alice|a@b.com\n";
         let result = filter_sqlite_output(input);
-        assert!(result.contains("id\tname\temail"));
+        assert!(result.contains("1\talice\ta@b.com"));
     }
 
     #[test]
     fn test_filter_sqlite_output_routes_to_column() {
         let input = "id  name\n--  ----\n1   alice\n";
         let result = filter_sqlite_output(input);
-        assert!(result.contains("id\tname"));
+        assert!(result.contains("1\talice"));
         assert!(!result.contains("--"));
     }
 
@@ -324,8 +325,8 @@ mod tests {
         let result = filter_column(input);
         let byte_savings = 100.0 - (result.len() as f64 / input.len() as f64 * 100.0);
         assert!(
-            byte_savings >= 30.0,
-            "Column filter: expected >=30% byte savings, got {:.1}%",
+            byte_savings >= 40.0,
+            "Column filter: expected >=40% byte savings, got {:.1}%",
             byte_savings
         );
     }

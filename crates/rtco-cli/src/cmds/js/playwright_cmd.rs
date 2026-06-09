@@ -480,4 +480,67 @@ mod tests {
         assert_eq!(result.tier(), 3); // Passthrough
         assert!(!result.is_ok());
     }
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_playwright_parser_savings() {
+        let input = r#"{
+            "stats": {
+                "expected": 0,
+                "unexpected": 1,
+                "skipped": 0,
+                "duration": 1500.0
+            },
+            "suites": [
+                {
+                    "title": "my.spec.ts",
+                    "specs": [
+                        {
+                            "title": "should work",
+                            "ok": false,
+                            "tests": [
+                                {
+                                    "status": "unexpected",
+                                    "results": [
+                                        {
+                                            "status": "failed",
+                                            "errors": [{"message": "Expected true to be false"}],
+                                            "duration": 500
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "suites": []
+                }
+            ],
+            "errors": []
+        }"#;
+        let result = PlaywrightParser::parse(input);
+        let data = result.unwrap();
+        let output = data.format(FormatMode::from_verbosity(0));
+
+        let raw_tokens = count_tokens(input);
+        let filtered_tokens = count_tokens(&output);
+        let raw_bytes = input.len();
+        let filtered_bytes = output.len();
+        let token_savings =
+            100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        let byte_savings =
+            100.0 - (filtered_bytes as f64 / raw_bytes as f64 * 100.0);
+        assert!(
+            token_savings >= 60.0,
+            "Expected ≥60% token savings, got {:.1}%",
+            token_savings
+        );
+        assert!(
+            byte_savings >= 60.0,
+            "Expected ≥60% byte savings, got {:.1}%",
+            byte_savings
+        );
+    }
 }

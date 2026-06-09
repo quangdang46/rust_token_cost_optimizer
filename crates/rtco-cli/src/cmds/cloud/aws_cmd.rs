@@ -763,10 +763,9 @@ fn filter_logs_events(json_str: &str) -> Option<FilterResult> {
                 let time_of_day = epoch_secs % 86400;
                 let h = time_of_day / 3600;
                 let m = (time_of_day % 3600) / 60;
-                let s = time_of_day % 60;
                 // Convert days to Y-M-D (simplified: good through 2099)
-                let (y, mo, d) = days_to_ymd(days);
-                format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02}", y, mo, d, h, m, s)
+                let (_y, mo, d) = days_to_ymd(days);
+                format!("{:02}-{:02} {:02}:{:02}", mo, d, h, m)
             }
             _ => "??:??:??".to_string(),
         };
@@ -782,7 +781,14 @@ fn filter_logs_events(json_str: &str) -> Option<FilterResult> {
             msg.to_string()
         };
 
-        lines.push(format!("{} {}", time_str, compact_msg));
+        // Strip leading ISO-8601 timestamp from log messages (redundant with event timestamp)
+        let msg = LOG_TS_PREFIX_RE.replace(&compact_msg, "");
+        // Strip handler class prefixes
+        let msg = LOG_HANDLER_RE.replace(&msg, "");
+        // Shorten duration markers
+        let msg = LOG_DURATION_RE.replace(&msg, " dur=$1");
+
+        lines.push(format!("{} {}", time_str, msg));
     }
 
     if truncated {
@@ -1362,6 +1368,12 @@ fn filter_eks_cluster(json_str: &str) -> Option<FilterResult> {
 
 lazy_static! {
     static ref S3_TRANSFER_RE: Regex = Regex::new(r"^(upload|download|delete|copy|move):").unwrap();
+    /// Strips leading ISO-8601 timestamps from log messages (redundant with event timestamp)
+    static ref LOG_TS_PREFIX_RE: Regex = Regex::new(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[Z]? ").unwrap();
+    /// Strips service handler class prefixes (e.g. "[com.example.Handler]") from log messages
+    static ref LOG_HANDLER_RE: Regex = Regex::new(r"\[[^\]]*\]\s*").unwrap();
+    /// Shortens "duration=XXms" to "dur=XX"
+    static ref LOG_DURATION_RE: Regex = Regex::new(r" duration=(\d+)ms").unwrap();
 }
 
 fn filter_sqs_messages(json_str: &str) -> Option<FilterResult> {
@@ -2876,7 +2888,7 @@ upload: file10.txt to s3://bucket/file10.txt
         let result = filter_logs_events(json).unwrap();
         assert_eq!(
             result.text,
-            "2024-01-15 09:50:00 INFO: server started\n2024-01-15 09:51:00 ERROR: connection lost"
+            "01-15 09:50 INFO: server started\n01-15 09:51 ERROR: connection lost"
         );
     }
 

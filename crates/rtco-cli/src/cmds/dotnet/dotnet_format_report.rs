@@ -122,4 +122,26 @@ mod tests {
         assert_eq!(summary.files_unchanged, 0);
         assert!(summary.files_with_changes.is_empty());
     }
+
+    fn count_tokens(text: &str) -> usize {
+        text.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_token_savings_format_report() {
+        let raw = include_str!("../../../../../tests/fixtures/dotnet/format_changes.json");
+        let summary = parse_format_report_from_str(raw).expect("parse report");
+        let output = format!(
+            "{} files, {} with changes, {} unchanged",
+            summary.total_files,
+            summary.files_with_changes.len(),
+            summary.files_unchanged,
+        );
+        let input_tokens = count_tokens(raw);
+        let output_tokens = count_tokens(&output);
+        let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
+        // The JSON report (49 tokens) is distilled to a 9-token
+        // summary string showing total/changed/unchanged counts.
+        assert!(savings >= 70.0, "format report: expected >= 70% savings, got {:.1}% (raw={}, out={})", savings, input_tokens, output_tokens);
+    }
 }

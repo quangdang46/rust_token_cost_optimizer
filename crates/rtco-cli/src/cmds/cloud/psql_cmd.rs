@@ -78,12 +78,13 @@ fn is_expanded_format(output: &str) -> bool {
 /// Filter psql table format:
 /// - Strip separator lines (----+----)
 /// - Strip (N rows) footer
+/// - Strip header row (column names)
 /// - Trim column padding
 /// - Output tab-separated
 fn filter_table(output: &str) -> String {
     let mut result = Vec::new();
     let mut data_rows = 0;
-    let mut total_rows = 0;
+    let mut header_seen = false;
 
     for line in output.lines() {
         let trimmed = line.trim();
@@ -105,13 +106,14 @@ fn filter_table(output: &str) -> String {
 
         // This is a data or header row with | delimiters
         if trimmed.contains('|') {
-            total_rows += 1;
-            // First row is header, don't count it as data
-            if total_rows > 1 {
-                data_rows += 1;
+            if !header_seen {
+                // Skip header row
+                header_seen = true;
+                continue;
             }
+            data_rows += 1;
 
-            if data_rows <= MAX_TABLE_ROWS || total_rows == 1 {
+            if data_rows <= MAX_TABLE_ROWS {
                 let cols: Vec<&str> = trimmed.split('|').map(|c| c.trim()).collect();
                 result.push(cols.join("\t"));
             }
@@ -194,10 +196,10 @@ mod tests {
     fn test_snapshot_table_format() {
         let input = " id | username    | email             | status\n----+-------------+-------------------+--------\n  1 | alice_smith  | alice@example.com | active\n  2 | bob_jones   | bob@example.com   | active\n(2 rows)\n";
         let result = filter_table(input);
-        assert!(result.contains("id\tusername\temail\tstatus"));
         assert!(result.contains("alice_smith\talice@example.com"));
         assert!(!result.contains("---+---"));
         assert!(!result.contains("(2 rows)"));
+        assert!(!result.contains("id\tusername")); // header stripped
     }
 
     #[test]
@@ -238,7 +240,7 @@ mod tests {
     fn test_filter_table_basic() {
         let input = " id | name  | email\n----+-------+---------\n  1 | alice | a@b.com\n  2 | bob   | b@b.com\n(2 rows)\n";
         let result = filter_table(input);
-        assert!(result.contains("id\tname\temail"));
+        assert!(!result.contains("id\tname\temail")); // header stripped
         assert!(result.contains("1\talice\ta@b.com"));
         assert!(result.contains("2\tbob\tb@b.com"));
         assert!(!result.contains("----"));
@@ -256,9 +258,9 @@ mod tests {
 
         let result = filter_table(&input);
         assert!(result.contains("... +20 more rows"));
-        // Header + MAX_TABLE_ROWS data rows + overflow line
+        // MAX_TABLE_ROWS data rows + overflow line (no header)
         let result_lines: Vec<&str> = result.lines().collect();
-        assert_eq!(result_lines.len(), MAX_TABLE_ROWS + 2); // 1 header + data + 1 overflow
+        assert_eq!(result_lines.len(), MAX_TABLE_ROWS + 1); // data + 1 overflow
     }
 
     #[test]
@@ -307,7 +309,7 @@ name | bob
     fn test_filter_psql_routes_to_table() {
         let input = " id | name\n----+------\n  1 | foo\n(1 row)\n";
         let result = filter_psql_output(input);
-        assert!(result.contains("id\tname"));
+        assert!(result.contains("1\tfoo"));
         assert!(!result.contains("----"));
     }
 
@@ -321,9 +323,11 @@ name | bob
 
     #[test]
     fn test_filter_table_strips_row_count() {
-        let input = " c\n---\n 1\n(1 row)\n";
+        let input = " c | d\n---+----\n 1 | x\n(1 row)\n";
         let result = filter_table(input);
         assert!(!result.contains("(1 row)"));
+        assert!(!result.contains("c")); // header stripped
+        assert!(result.contains("1\tx")); // data preserved
     }
 
     #[test]
@@ -345,8 +349,8 @@ name | bob
         let output_tokens = count_tokens(&result);
         let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
         assert!(
-            savings >= 40.0,
-            "Table filter: expected >=40% savings, got {:.1}%",
+            savings >= 50.0,
+            "Table filter: expected >=50% savings, got {:.1}%",
             savings
         );
     }

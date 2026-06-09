@@ -182,4 +182,47 @@ Code style issues found in the above file(s). Forgot to run Prettier?
         assert!(result.contains("Error"));
         assert!(!result.contains("All files formatted"));
     }
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_filter_prettier_output_savings() {
+        // "All formatted" output compresses heavily into a single summary line.
+        let input = r#"
+Checking formatting...
+[error] src/components/button.tsx: SyntaxError: Unexpected token (5:10)
+[error] src/lib/parser.ts: SyntaxError: Unexpected token (12:3)
+[error] src/app/page.tsx: SyntaxError: Unexpected token (22:8)
+[warn] Code style issues found in 6 files. Forgot to run Prettier?
+[warn] Run `prettier --write` to fix the above files automatically
+Running prettier in check mode against 42 staged files
+Processed 42 files total in 1.2 seconds
+[warn] Ignored 5 files due to .prettierignore
+[warn] Ignored build artifacts in dist/ folder
+[warn] Formatting check complete with 3 warnings
+[warn] Use --write flag to auto-format all files
+All matched files use Prettier code style!
+        "#;
+        let output = filter_prettier_output(input);
+        let raw_tokens = count_tokens(input);
+        let filtered_tokens = count_tokens(&output);
+        let raw_bytes = input.len();
+        let filtered_bytes = output.len();
+        let token_savings =
+            100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        let byte_savings =
+            100.0 - (filtered_bytes as f64 / raw_bytes as f64 * 100.0);
+        assert!(
+            token_savings >= 60.0,
+            "Expected ≥60% token savings, got {:.1}%",
+            token_savings
+        );
+        assert!(
+            byte_savings >= 60.0,
+            "Expected ≥60% byte savings, got {:.1}%",
+            byte_savings
+        );
+    }
 }

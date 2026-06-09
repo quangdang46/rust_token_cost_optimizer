@@ -21,6 +21,14 @@ lazy_static! {
     static ref HORIZONTAL_RULE_RE: Regex =
         Regex::new(r"(?m)^\s*(?:---+|\*\*\*+|___+)\s*$").unwrap();
     static ref MULTI_BLANK_RE: Regex = Regex::new(r"\n{3,}").unwrap();
+    static ref HEADING_MARKER_RE: Regex = Regex::new(r"(?m)^\s*#+\s+").unwrap();
+    static ref BOLD_RE: Regex = Regex::new(r"\*\*([^*]+)\*\*").unwrap();
+    static ref STRIKETHROUGH_RE: Regex = Regex::new(r"~~([^~]+)~~").unwrap();
+    static ref LINK_URL_RE: Regex = Regex::new(r"\[([^\]]*)\]\([^)]+\)").unwrap();
+    static ref LIST_PREFIX_RE: Regex = Regex::new(r"(?m)^\s*[-*+]\s+").unwrap();
+    static ref CHECKBOX_RE: Regex = Regex::new(r"\s*\[[ x]\]\s*").unwrap();
+    static ref INLINE_CODE_RE: Regex = Regex::new(r"`([^`]+)`").unwrap();
+    static ref TABLE_SEP_RE: Regex = Regex::new(r"(?m)^\s*\|?\s*[-]+\s*[-| ]+[-]+\s*\|?\s*$").unwrap();
 }
 
 /// Filter markdown body to remove noise while preserving meaningful content.
@@ -104,6 +112,22 @@ fn filter_markdown_segment(text: &str) -> String {
     s = BADGE_LINE_RE.replace_all(&s, "").to_string();
     s = IMAGE_ONLY_LINE_RE.replace_all(&s, "").to_string();
     s = HORIZONTAL_RULE_RE.replace_all(&s, "").to_string();
+    // Strip heading markers (## Summary -> Summary)
+    s = HEADING_MARKER_RE.replace_all(&s, "").to_string();
+    // Strip bold markers (**text** -> text)
+    s = BOLD_RE.replace_all(&s, "$1").to_string();
+    // Strip strikethrough markers (~~text~~ -> text)
+    s = STRIKETHROUGH_RE.replace_all(&s, "$1").to_string();
+    // Strip list markers (- item -> item, * item -> item)
+    s = LIST_PREFIX_RE.replace_all(&s, "").to_string();
+    // Strip checkbox markers ([x] or [ ])
+    s = CHECKBOX_RE.replace_all(&s, " ").to_string();
+    // Strip inline code markers (`text` -> text)
+    s = INLINE_CODE_RE.replace_all(&s, "$1").to_string();
+    // Strip table separator rows (| --- | --- |)
+    s = TABLE_SEP_RE.replace_all(&s, "").to_string();
+    // Collapse link text+URL to just text (keeps the meaning, drops gratuitous tokens)
+    s = LINK_URL_RE.replace_all(&s, "$1").to_string();
     s = MULTI_BLANK_RE.replace_all(&s, "\n\n").to_string();
     s
 }
@@ -1407,7 +1431,7 @@ mod tests {
         let input = "# Title\n[![CI](https://img.shields.io/badge.svg)](https://github.com/actions)\nSome text";
         let result = filter_markdown_body(input);
         assert!(!result.contains("shields.io"));
-        assert!(result.contains("# Title"));
+        assert!(result.contains("Title"));
         assert!(result.contains("Some text"));
     }
 
@@ -1416,7 +1440,7 @@ mod tests {
         let input = "# Title\n![screenshot](https://example.com/img.png)\nSome text";
         let result = filter_markdown_body(input);
         assert!(!result.contains("![screenshot]"));
-        assert!(result.contains("# Title"));
+        assert!(result.contains("Title"));
         assert!(result.contains("Some text"));
     }
 
@@ -1463,10 +1487,11 @@ mod tests {
     fn test_filter_markdown_body_meaningful_content_preserved() {
         let input = "## Summary\n- Item 1\n- Item 2\n\n[Link](https://example.com)\n\n| Col1 | Col2 |\n| --- | --- |\n| a | b |";
         let result = filter_markdown_body(input);
-        assert!(result.contains("## Summary"));
-        assert!(result.contains("- Item 1"));
-        assert!(result.contains("- Item 2"));
-        assert!(result.contains("[Link](https://example.com)"));
+        assert!(result.contains("Summary"));
+        assert!(result.contains("Item 1"));
+        assert!(result.contains("Item 2"));
+        // Link is converted to plain text (URL stripped)
+        assert!(result.contains("Link"));
         assert!(result.contains("| Col1 | Col2 |"));
     }
 
@@ -1518,17 +1543,17 @@ ___
         let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
 
         assert!(
-            savings >= 30.0,
-            "Expected ≥30% savings, got {:.1}% (input: {} tokens, output: {} tokens)",
+            savings >= 55.0,
+            "Markdown filter: expected ≥55% savings, got {:.1}% (input: {} tokens, output: {} tokens)",
             savings,
             input_tokens,
             output_tokens
         );
 
-        // Verify meaningful content preserved
-        assert!(result.contains("## Summary"));
-        assert!(result.contains("## Changes"));
-        assert!(result.contains("## Test Plan"));
+        // Verify meaningful content preserved (heading markers are stripped)
+        assert!(result.contains("Summary"));
+        assert!(result.contains("Changes"));
+        assert!(result.contains("Test Plan"));
         assert!(result.contains("Filter HTML comments"));
     }
 }

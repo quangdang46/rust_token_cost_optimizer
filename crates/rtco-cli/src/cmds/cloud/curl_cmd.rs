@@ -239,4 +239,38 @@ mod tests {
         let json_result = filter_curl_output(&json_payload, true);
         assert!(matches!(json_result.content, Cow::Borrowed(_)));
     }
+
+    // ── Token savings tests ───────────────────────────────
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_token_savings_long_non_json() {
+        let long: String = (0..200).map(|i| format!("token_{} value_{} data_{}", i, i, i)).collect::<Vec<_>>().join(" ");
+        let result = filter_curl_output(&long, true);
+        let input_tokens = count_tokens(&long);
+        let output_tokens = count_tokens(&result.content);
+        let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
+        assert!(savings >= 60.0, "curl long non-JSON: expected >= 60% savings, got {:.1}% (raw={}, out={})", savings, input_tokens, output_tokens);
+    }
+
+    #[test]
+    fn test_token_savings_long_json_passthrough() {
+        // JSON payloads are passed through unchanged (no truncation) so savings
+        // are 0% — that is intentional (#1536). The token "saving" is that the
+        // full JSON is available for downstream parsers rather than being
+        // silently corrupted by mid-stream truncation.
+        let body = (0..200)
+            .map(|i| format!(r#"{{"id":{},"name":"item-{:04}"}}"#, i, i))
+            .collect::<Vec<_>>()
+            .join(",");
+        let json = format!("[{}]", body);
+        let result = filter_curl_output(&json, true);
+        let input_tokens = count_tokens(&json);
+        let output_tokens = count_tokens(&result.content);
+        // Passthrough means identical token count.
+        assert!(output_tokens == input_tokens, "JSON passthrough should preserve tokens, got {} vs {}", output_tokens, input_tokens);
+    }
 }

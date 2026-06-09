@@ -234,4 +234,48 @@ npm notice
         let result = filter_npm_output(output);
         assert_eq!(result, "ok");
     }
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_filter_npm_output_savings() {
+        let input = r#"
+> project@1.0.0 build
+> next build
+
+npm WARN deprecated inflight@1.0.6: This module is not supported
+npm WARN deprecated uuid@3.4.0: Please upgrade to uuid@8 or later
+npm WARN deprecated querystring@0.2.0: This package is no longer maintained
+npm WARN deprecated request@2.88.2: request has been deprecated
+npm notice
+npm notice New patch version of npm available! 10.2.4 -> 10.8.0
+npm notice New major version of npm available! 10.2.4 -> 12.0.0
+npm notice
+npm notice 3 packages are looking for funding
+
+ Creating an optimized production build...
+ ✓ Build completed
+"#;
+        let output = filter_npm_output(input);
+        let raw_tokens = count_tokens(input);
+        let filtered_tokens = count_tokens(&output);
+        let raw_bytes = input.len();
+        let filtered_bytes = output.len();
+        let token_savings =
+            100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        let byte_savings =
+            100.0 - (filtered_bytes as f64 / raw_bytes as f64 * 100.0);
+        assert!(
+            token_savings >= 60.0,
+            "Expected ≥60% token savings, got {:.1}%",
+            token_savings
+        );
+        assert!(
+            byte_savings >= 60.0,
+            "Expected ≥60% byte savings, got {:.1}%",
+            byte_savings
+        );
+    }
 }

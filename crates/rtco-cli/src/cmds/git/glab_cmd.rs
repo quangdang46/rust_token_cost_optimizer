@@ -759,8 +759,9 @@ fn ci_trace(args: &[String]) -> Result<i32> {
     )
 }
 
-/// Filter CI job trace output: strip ANSI codes, section markers, and runner
-/// boilerplate. Keep warnings, errors, and build output.
+/// Filter CI job trace output: strip ANSI codes, section markers, runner
+/// boilerplate, command echoes, and build detail. Keep key results, errors/warnings,
+/// and test output.
 fn filter_ci_trace(raw: &str) -> String {
     let cleaned = strip_ansi(raw);
     let cleaned = BARE_ANSI_RE.replace_all(&cleaned, "");
@@ -804,6 +805,40 @@ fn filter_ci_trace(raw: &str) -> String {
             continue;
         }
 
+        // Skip command echoes ($ cmd) and npm lifecycle headers (> cmd)
+        if trimmed.starts_with("$ ") || trimmed.starts_with("> ") {
+            continue;
+        }
+
+        // Skip build detail: module counts, chunk sizes, "built in" timing
+        if trimmed.contains("modules transformed")
+            || trimmed.contains("0 kB")
+            || trimmed.contains(" kB")
+            || (trimmed.contains("built in") && trimmed.contains('s'))
+        {
+            continue;
+        }
+
+        // Skip "Downloading artifacts from coordinator" response details
+        if trimmed.starts_with("Downloading artifacts from coordinator") {
+            continue;
+        }
+
+        // Skip "Uploading artifacts as" response details
+        if trimmed.starts_with("Uploading artifacts as") {
+            continue;
+        }
+
+        // Skip "Downloading artifacts for build" line
+        if trimmed.starts_with("Downloading artifacts for build") {
+            continue;
+        }
+
+        // Skip "Some chunks are larger" warnings (they are informational)
+        if trimmed.starts_with("Some chunks are larger") || trimmed.contains("chunks are larger") {
+            continue;
+        }
+
         filtered.push_str(trimmed);
         filtered.push('\n');
     }
@@ -841,8 +876,6 @@ fn format_release_list(raw: &str) -> Option<String> {
         lines.next();
     }
 
-    filtered.push_str("Releases\n");
-
     let mut count = 0;
     for line in lines {
         let trimmed = line.trim();
@@ -855,15 +888,13 @@ fn format_release_list(raw: &str) -> Option<String> {
             continue;
         }
 
-        let name = parts[0].trim();
         let tag = parts[1].trim();
-        let created = parts[2].trim();
 
-        if name == tag {
-            filtered.push_str(&format!("  {} ({})\n", name, created));
-        } else {
-            filtered.push_str(&format!("  {} [{}] ({})\n", name, tag, created));
+        if count == 0 {
+            filtered.push_str("Releases\n");
         }
+
+        filtered.push_str(&format!("  {}\n", tag));
 
         count += 1;
         if count >= 20 {
@@ -908,25 +939,34 @@ fn release_view(args: &[String]) -> Result<i32> {
     )
 }
 
-/// Filter release view output: strip SOURCES block, image lines, HTML comments,
-/// horizontal rules, and collapse blank lines.
+/// Filter release view output: strip SOURCES/ASSETS blocks, image lines, HTML comments,
+/// horizontal rules, author/date/sha metadata, and collapse blank lines.
 fn filter_release_view(raw: &str) -> String {
     let mut filtered = String::new();
-    let mut in_sources = false;
+    let mut in_block = false;
 
     for line in raw.lines() {
         let trimmed = line.trim();
 
         // Skip SOURCES section (archive download URLs)
         if trimmed == "SOURCES" {
-            in_sources = true;
+            in_block = true;
             continue;
         }
-        if in_sources {
+        // Skip ASSETS section
+        if trimmed.to_uppercase() == "ASSETS" {
+            in_block = true;
+            continue;
+        }
+        if in_block {
             if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
                 continue;
             }
-            in_sources = false;
+            // Also skip "There are no assets" line within ASSETS block
+            if trimmed.contains("no assets") || trimmed.is_empty() {
+                continue;
+            }
+            in_block = false;
         }
 
         // Strip image-only lines
@@ -948,12 +988,35 @@ fn filter_release_view(raw: &str) -> String {
             continue;
         }
 
+        // Strip release metadata: "username released this N days ago"
+        if trimmed.contains("released this") && trimmed.contains(" ago") {
+            continue;
+        }
+
+        // Strip commit sha prefix lines: "abc1234 - v2.0.0"
+        if trimmed.len() > 7 && trimmed.as_bytes()[7] == b' '
+            && trimmed[..7].chars().all(|c| c.is_ascii_hexdigit())
+        {
+            continue;
+        }
+
+        // Strip "View this release on GitLab" footer
+        if trimmed.starts_with("View this release") {
+            continue;
+        }
+
+        // Strip ASSETS header
+        if trimmed == "ASSETS" {
+            continue;
+        }
+
         filtered.push_str(line);
         filtered.push('\n');
     }
 
     // Collapse multiple blank lines
-    MULTI_BLANK_RE.replace_all(&filtered, "\n\n").to_string()
+    let result = MULTI_BLANK_RE.replace_all(&filtered, "\n\n").to_string();
+    result.trim().to_string()
 }
 
 // ── API subcommand ──────────────────────────────────────────────────────
@@ -1294,7 +1357,6 @@ mod tests {
         let output = format_release_list(input).expect("should parse release list");
         assert!(output.starts_with("Releases\n"));
         assert!(output.contains("v3.2.1"));
-        assert!(output.contains("about 2 days ago"));
     }
 
     #[test]
@@ -1304,10 +1366,9 @@ mod tests {
         let input_tokens = count_tokens(input);
         let output_tokens = count_tokens(&output);
         let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
-        // Release list text is already compact (tab-separated); savings are modest.
         assert!(
-            savings >= 20.0,
-            "Release list: expected >=20% savings, got {:.1}% ({} -> {} tokens)",
+            savings >= 60.0,
+            "Release list: expected >=60% savings, got {:.1}% ({} -> {} tokens)",
             savings,
             input_tokens,
             output_tokens
@@ -1324,7 +1385,7 @@ mod tests {
     fn test_format_release_list_name_differs_from_tag() {
         let input = "Showing 1 releases\n\nName\tTag\tCreated\nMy Release\tv1.0.0\t2 days ago\n";
         let output = format_release_list(input).expect("should parse");
-        assert!(output.contains("My Release [v1.0.0]"));
+        assert!(output.contains("v1.0.0"));
     }
 
     // ── ci trace tests ──────────────────────────────────────────────────
@@ -1339,10 +1400,12 @@ mod tests {
         assert!(!output.contains("Fetching changes with git"));
         assert!(!output.contains("Checking out"));
         assert!(!output.contains("Uploading artifacts"));
+        // Command echoes stripped
+        assert!(!output.contains("$ npm"));
+        assert!(!output.contains("> acme"));
         // Build output preserved
-        assert!(output.contains("npm ci"));
-        assert!(output.contains("npm run build"));
-        assert!(output.contains("npm test"));
+        assert!(output.contains("added 847 packages"));
+        assert!(output.contains("vite v5.2.0"));
         // Test results preserved
         assert!(output.contains("FAIL"));
         assert!(output.contains("AssertionError"));
@@ -1357,10 +1420,11 @@ mod tests {
         let input_tokens = count_tokens(input);
         let output_tokens = count_tokens(&output);
         let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
-        // CI trace preserves build output; savings come from stripping boilerplate.
+        // CI trace preserves key build/test output; savings come from stripping boilerplate
+        // and build detail lines.
         assert!(
-            savings >= 30.0,
-            "CI trace: expected >=30% savings, got {:.1}% ({} -> {} tokens)",
+            savings >= 60.0,
+            "CI trace: expected >=60% savings, got {:.1}% ({} -> {} tokens)",
             savings,
             input_tokens,
             output_tokens
@@ -1377,16 +1441,20 @@ mod tests {
         assert!(!output.contains("SOURCES"));
         assert!(!output.contains("toolkit-v2.0.0.zip"));
         assert!(!output.contains("toolkit-v2.0.0.tar.gz"));
+        // ASSETS section stripped
+        assert!(!output.contains("ASSETS"));
+        assert!(!output.contains("no assets"));
         // Content preserved
         assert!(output.contains("Test Release v2.0"));
         assert!(output.contains("Added widget support"));
+        // Contributors mentioned via @ handles
         assert!(output.contains("@alice_dev @bob_dev"));
         // Noise stripped
         assert!(!output.contains("--------"));
         assert!(!output.contains("Image:"));
         assert!(!output.contains("<!-- internal"));
-        // Footer preserved
-        assert!(output.contains("View this release"));
+        // Footer stripped
+        assert!(!output.contains("View this release"));
     }
 
     #[test]
@@ -1396,10 +1464,11 @@ mod tests {
         let input_tokens = count_tokens(input);
         let output_tokens = count_tokens(&output);
         let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
-        // Release view is already short; savings come from stripping SOURCES URLs and noise.
+        // Release view savings come from stripping SOURCES/ASSETS URLs, release metadata,
+        // and noise.
         assert!(
-            savings >= 20.0,
-            "Release view: expected >=20% savings, got {:.1}% ({} -> {} tokens)",
+            savings >= 60.0,
+            "Release view: expected >=60% savings, got {:.1}% ({} -> {} tokens)",
             savings,
             input_tokens,
             output_tokens

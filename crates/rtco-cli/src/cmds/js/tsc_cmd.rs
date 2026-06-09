@@ -340,4 +340,43 @@ src/app.tsx(20,5): error TS2345: Argument of type 'number' is not assignable.
         assert!(result.contains("TS2322"), "got: {}", result);
         assert!(result.contains("TS2345"), "got: {}", result);
     }
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_filter_tsc_output_savings() {
+        // Include lots of compilation progress/build noise that filter_tsc_output
+        // strips entirely (only TSC_ERROR-pattern lines survive).
+        let mut input = String::new();
+        input.push_str("TypeScript compiler version 5.4.0\n");
+        input.push_str("Checking TypeScript files...\n");
+        for i in 1..=20 {
+            input.push_str(&format!("[{}/20] Building module src/area{}...\n", i, i));
+        }
+        input.push_str("info Visit https://aka.ms/tsc-config for TypeScript configuration\n");
+        input.push_str("verbose Finished at 10:32:45 after 2.84s\n");
+        input.push_str("src/server/api/auth.ts(12,5): error TS2322: Type 'string' is not assignable to type 'number'.\n");
+        input.push_str("Found 1 errors in 1 files.\n");
+        let output = filter_tsc_output(&input);
+        let raw_tokens = count_tokens(&input);
+        let filtered_tokens = count_tokens(&output);
+        let raw_bytes = input.len();
+        let filtered_bytes = output.len();
+        let token_savings =
+            100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        let byte_savings =
+            100.0 - (filtered_bytes as f64 / raw_bytes as f64 * 100.0);
+        assert!(
+            token_savings >= 60.0,
+            "Expected ≥60% token savings, got {:.1}%",
+            token_savings
+        );
+        assert!(
+            byte_savings >= 60.0,
+            "Expected ≥60% byte savings, got {:.1}%",
+            byte_savings
+        );
+    }
 }

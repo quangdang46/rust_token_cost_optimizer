@@ -485,4 +485,42 @@ CREATE INDEX "session_status_idx" ON "Session"("status");
         assert_eq!(extract_number("42 models generated"), Some(42));
         assert_eq!(extract_number("no numbers here"), None);
     }
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_filter_prisma_generate_savings() {
+        let input = r#"
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v5.7.0) to ./node_modules/@prisma/client in 234ms
+
+Start by importing your Prisma Client:
+
+import { PrismaClient } from '@prisma/client'
+
+42 models, 18 enums, 890 types generated
+"#;
+        let output = filter_prisma_generate(input);
+        let raw_tokens = count_tokens(input);
+        let filtered_tokens = count_tokens(&output);
+        let raw_bytes = input.len();
+        let filtered_bytes = output.len();
+        let token_savings =
+            100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        let byte_savings =
+            100.0 - (filtered_bytes as f64 / raw_bytes as f64 * 100.0);
+        assert!(
+            token_savings >= 60.0,
+            "Expected ≥60% token savings, got {:.1}%",
+            token_savings
+        );
+        assert!(
+            byte_savings >= 60.0,
+            "Expected ≥60% byte savings, got {:.1}%",
+            byte_savings
+        );
+    }
 }

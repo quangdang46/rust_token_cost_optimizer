@@ -669,4 +669,41 @@ mod tests {
         assert!(!react.dev_dependency, "react should be prod");
         assert!(eslint.dev_dependency, "eslint should be dev");
     }
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_filter_pnpm_install_savings() {
+        let input = r#"Progress: resolved 125, reused 120, downloaded 5
+Progress: resolved 250, reused 245, downloaded 8
+Progress: resolved 375, reused 370, downloaded 10
+Progress: resolved 500, reused 490, downloaded 12
+Progress: resolved 625, reused 610, downloaded 15
++ express@4.18.2
+- lodash@4.17.21
+packages in node_modules: 185
+dependencies: resolved 500, installed 485
+"#;
+        let output = filter_pnpm_install(input);
+        let raw_tokens = count_tokens(input);
+        let filtered_tokens = count_tokens(&output);
+        let raw_bytes = input.len();
+        let filtered_bytes = output.len();
+        let token_savings =
+            100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        let byte_savings =
+            100.0 - (filtered_bytes as f64 / raw_bytes as f64 * 100.0);
+        assert!(
+            token_savings >= 60.0,
+            "Expected ≥60% token savings, got {:.1}%",
+            token_savings
+        );
+        assert!(
+            byte_savings >= 60.0,
+            "Expected ≥60% byte savings, got {:.1}%",
+            byte_savings
+        );
+    }
 }

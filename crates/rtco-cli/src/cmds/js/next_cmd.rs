@@ -226,4 +226,68 @@ Route (app)                    Size     First Load JS
         );
         assert_eq!(extract_time("No time here"), None);
     }
+
+    fn count_tokens(s: &str) -> usize {
+        s.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_filter_next_build_savings() {
+        let input = r#"
+   ▲ Next.js 15.2.0
+
+   Creating an optimized production build ...
+✓ Compiled successfully
+✓ Linting and checking validity of types
+
+✓ Collecting page data
+   Generating static pages (6/6)
+   Finalizing page generation
+
+info  - Need to disable some ESLint rules? https://nextjs.org/docs/basic-features/eslint
+info  - Creating an optimized production build...
+warn  - You have enabled experimental feature (appDir) in next.config.js.
+warn  - Experimental features are not covered by semver, and may cause unexpected or broken application behavior. Proceed with caution.
+
+○ /                            1.2 kB        132 kB
+● /dashboard                   2.5 kB        156 kB
+○ /api/auth                    0.5 kB         89 kB
+○ /users                       1.8 kB        201 kB
+● /settings                    3.2 kB        245 kB
+○ /api/health                  0.3 kB         45 kB
+
+Route (app)                    Size     First Load JS
+┌ ○ /                          1.2 kB        132 kB
+├ ● /dashboard                 2.5 kB        156 kB
+├ ○ /api/auth                  0.5 kB         89 kB
+├ ○ /users                     1.8 kB        201 kB
+├ ● /settings                  3.2 kB        245 kB
+└ ○ /api/health                0.3 kB         45 kB
+
+○  (Static)  prerendered as static content
+●  (SSG)     prerendered as static HTML
+λ  (Server)  server-side renders at runtime
+
+✓ Built in 34.2s
+"#;
+        let output = filter_next_build(input);
+        let raw_tokens = count_tokens(input);
+        let filtered_tokens = count_tokens(&output);
+        let raw_bytes = input.len();
+        let filtered_bytes = output.len();
+        let token_savings =
+            100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
+        let byte_savings =
+            100.0 - (filtered_bytes as f64 / raw_bytes as f64 * 100.0);
+        assert!(
+            token_savings >= 60.0,
+            "Expected ≥60% token savings, got {:.1}%",
+            token_savings
+        );
+        assert!(
+            byte_savings >= 60.0,
+            "Expected ≥60% byte savings, got {:.1}%",
+            byte_savings
+        );
+    }
 }

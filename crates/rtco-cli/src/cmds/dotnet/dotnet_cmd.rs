@@ -2579,4 +2579,48 @@ mod tests {
 
         assert!(!missing_file.exists());
     }
+
+    fn count_tokens(text: &str) -> usize {
+        text.split_whitespace().count()
+    }
+
+    #[test]
+    fn test_token_savings_build_output() {
+        let raw = include_str!("../../../../../tests/fixtures/dotnet/build_failed.txt");
+        let summary = binlog::parse_build_from_text(raw);
+        let output = format_build_output(&summary, Path::new("/tmp/test.binlog"));
+        let input_tokens = count_tokens(raw);
+        let output_tokens = count_tokens(&output);
+        let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
+        // The build_failed fixture is already terse (12 lines). The formatter
+        // removes verbatim duplicate diagnostics and restore noise.
+        assert!(savings >= 40.0, "build: expected >= 40% savings, got {:.1}% (raw={}, out={})", savings, input_tokens, output_tokens);
+    }
+
+    #[test]
+    fn test_token_savings_test_output() {
+        let raw = include_str!("../../../../../tests/fixtures/dotnet/test_failed.txt");
+        let summary = binlog::parse_test_from_text(raw);
+        let output = format_test_output(&summary, &[], &[], Path::new("/tmp/test.binlog"));
+        let input_tokens = count_tokens(raw);
+        let output_tokens = count_tokens(&output);
+        let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
+        // Single-failure fixture; the formatter still strips VSTest
+        // banner, file paths, and execution progress lines.
+        assert!(savings >= 50.0, "test: expected >= 50% savings, got {:.1}% (raw={}, out={})", savings, input_tokens, output_tokens);
+    }
+
+    #[test]
+    fn test_token_savings_format_output() {
+        let raw = include_str!("../../../../../tests/fixtures/dotnet/format_success.json");
+        let summary = dotnet_format_report::parse_format_report_from_str(raw)
+            .expect("parse format report");
+        let output = format_dotnet_format_output(&summary, true);
+        let input_tokens = count_tokens(raw);
+        let output_tokens = count_tokens(&output);
+        let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
+        // The JSON report is compact (20 tokens for 2 files); the format
+        // summary condenses it to a one-liner (7 tokens).
+        assert!(savings >= 60.0, "format: expected >= 60% savings, got {:.1}% (raw={}, out={})", savings, input_tokens, output_tokens);
+    }
 }
