@@ -1,0 +1,13 @@
+src/app.py:5:1: error: Library stubs not installed for "flask"
+src/app.py:8:12: error: Incompatible types in assignment (expression has type "Optional[str]", variable has type "str")
+src/app.py:15:5: error: Function is missing a return type annotation
+src/app.py:22:9: error: "User" has no attribute "email_verified"  [attr-defined]
+src/utils/db.py:4:1: error: Name "Connection" is not defined
+src/utils/db.py:10:12: error: Argument "host" to "connect" has incompatible type "int"; expected "str"
+src/utils/db.py:18:20: error: Returning Any from function declared to return "str"
+src/utils/format.py:7:1: error: Module has no attribute "format_date"  [attr-defined]
+src/utils/format.py:12:5: error: List comprehension has incompatible type "int"; expected "str"
+src/models/user.py:20:5: error: Signature of "save" incompatible with supertype "BaseModel"
+src/models/user.py:35:12: error: Cannot assign to a method  [misc]
+src/models/user.py:42:1: error: Function "User.__str__" is missing a return type annotation  [no-untyped-def]
+Found 12 errors in 4 files (checked 12 source files)

@@ -1,0 +1,31 @@
+> vitest run
+
+ RUN  v1.6.0 /data/projects/webapp
+
+ ✓ tests/common/mod.test.ts (5 tests) 12ms
+ ✓ tests/analytics/savings.test.ts (3 tests) 4ms
+ ✗ tests/filters/git.test.ts (3 tests) 45ms
+   → GitFilter › filters git log output
+
+ ❯ tests/filters/git.test.ts (3 tests) 45ms
+   ✓ filters git diff output 3ms
+   ✓ handles empty input 1ms
+   ✗ filters git log output 41ms
+     → expect(received).toBe(expected)
+
+ ✓ tests/parser/config.test.ts (4 tests) 8ms
+ ✗ tests/integration/api.test.ts (2 tests) 67ms
+   → API returns 401 for invalid token
+
+ ❯ tests/integration/api.test.ts (2 tests) 67ms
+   ✓ returns 200 for valid request 32ms
+   ✗ returns 401 for invalid token 35ms
+     → expected 401 to be 403
+
+ Test Files  2 failed | 3 passed (5)
+      Tests  2 failed | 12 passed (14)
+   Duration  142ms
+
+Files that failed:
+  - tests/filters/git.test.ts
+  - tests/integration/api.test.ts

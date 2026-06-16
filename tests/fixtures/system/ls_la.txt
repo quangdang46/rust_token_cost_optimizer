@@ -1,0 +1,16 @@
+total 2456
+drwxr-xr-x  12 alice staff    384 Jun 16 15:30 .
+drwxr-xr-x   5 alice staff    160 Jun 16 08:00 ..
+-rw-r--r--   1 alice staff   1024 Jun 16 15:30 Cargo.toml
+-rw-r--r--   1 alice staff  11357 Jun 16 15:30 LICENSE
+-rw-r--r--   1 alice staff   3456 Jun 16 15:30 README.md
+drwxr-xr-x   3 alice staff     96 Jun 16 15:30 docs/
+-rw-r--r--   1 alice staff    512 Jun 16 15:30 rust-toolchain.toml
+drwxr-xr-x   4 alice staff    128 Jun 16 15:30 scripts/
+drwxr-xr-x   6 alice staff    192 Jun 16 15:30 src/
+drwxr-xr-x   4 alice staff    128 Jun 16 15:30 tests/
+-rw-r--r--   1 alice staff  24576 Jun 16 15:30 Cargo.lock
+drwxr-xr-x   2 alice staff     64 Jun 16 12:00 target/
+drwxr-xr-x   8 alice staff    256 Jun 14 10:00 .git/
+-rw-r--r--   1 alice staff    128 Jun 14 10:00 .gitignore
+-rw-r--r--   1 alice staff     64 Jun 14 10:00 .claude/

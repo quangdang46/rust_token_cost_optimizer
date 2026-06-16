@@ -1,0 +1,24 @@
+rake db:migrate
+== 20260615143210 CreateUsers: migrating =====================================
+-- create_table(:users)
+   -> 0.0123s
+== 20260615143210 CreateUsers: migrated (0.0126s) ============================
+
+== 20260615143211 CreatePosts: migrating =====================================
+-- create_table(:posts)
+   -> 0.0089s
+-- add_foreign_key(:posts, :users)
+   -> 0.0045s
+== 20260615143211 CreatePosts: migrated (0.0140s) ============================
+
+== 20260615143212 AddEmailToUsers: migrating =================================
+-- add_column(:users, :email, :string)
+   -> 0.0032s
+-- add_index(:users, :email, {:unique=>true})
+   -> 0.0041s
+== 20260615143212 AddEmailToUsers: migrated (0.0078s) ========================
+
+== 20260615143213 CreateCategories: migrating =================================
+-- create_table(:categories)
+   -> 0.0102s
+== 20260615143213 CreateCategories: migrated (0.0105s) ========================

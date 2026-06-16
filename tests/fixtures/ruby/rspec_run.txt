@@ -1,0 +1,8 @@
+.........*
+
+Finished in 4.82 seconds (files took 0.45 seconds to load)
+8 examples, 1 failure, 0 pending
+
+Failed examples:
+
+rspec ./spec/models/user_spec.rb:5 # User validates presence of email

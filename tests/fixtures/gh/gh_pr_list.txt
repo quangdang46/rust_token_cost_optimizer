@@ -1,0 +1,12 @@
+Showing 10 of 10 open pull requests in rtco-ai/rtco
+
+#47  feat(core): add token counting optimization              feature/token-optimization  about 2 hours ago
+#46  fix(js): handle pnpm workspace output format             feature/js-filter-updates   about 5 hours ago
+#45  docs: update README with new installation options        docs/readme-update          yesterday
+#44  feat(filter): implement docker ps output filter           feature/docker-filter       yesterday
+#43  fix(kubectl): handle pods with no ready containers        fix/kubectl-crash           2 days ago
+#42  chore(deps): update rusqlite to 0.31.0                   deps/rusqlite              2 days ago
+#41  feat(analytics): add per-command token savings breakdown  feature/per-cmd-savings    3 days ago
+#40  test: add integration tests for git log filter            test/git-log-integration   3 days ago
+#39  fix(git): handle detached HEAD state in branch filter     fix/detached-head          4 days ago
+#38  docs: add architecture documentation                      docs/architecture          4 days ago

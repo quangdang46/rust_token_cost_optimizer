@@ -1,0 +1,35 @@
+> jest --passWithNoTests
+
+ PASS   tests/components/Button.test.tsx
+  Button
+    ✓ renders correctly (15 ms)
+    ✓ handles click events (8 ms)
+    ✓ supports disabled state (5 ms)
+    ✓ renders with custom className (6 ms)
+
+ PASS   tests/components/Modal.test.tsx
+  Modal
+    ✓ renders when open (12 ms)
+    ✓ does not render when closed (3 ms)
+    ✓ calls onClose on backdrop click (10 ms)
+    ✓ renders children (4 ms)
+
+ PASS   tests/hooks/useAuth.test.tsx
+  useAuth
+    ✓ returns null when not authenticated (5 ms)
+    ✓ returns user when authenticated (8 ms)
+    ✓ throws on invalid token (22 ms)
+
+ PASS   tests/utils/format.test.ts
+  formatDate
+    ✓ formats date correctly (2 ms)
+    ✓ handles invalid date input (1 ms)
+  formatCurrency
+    ✓ formats USD correctly (1 ms)
+    ✓ formats EUR correctly (1 ms)
+
+Test Suites: 4 passed, 4 total
+Tests:       15 passed, 15 total
+Snapshots:   0 written, 0 total
+Time:        0.876 s
+Ran all test suites.

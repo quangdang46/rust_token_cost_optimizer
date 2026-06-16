@@ -1,0 +1,14 @@
+Inspecting 24 files
+..CC.C.W..C...C..CC..C..
+
+Offenses:
+
+app/controllers/users_controller.rb:5:3: C: Style/Documentation: Missing top-level class documentation comment.
+app/controllers/users_controller.rb:8:5: C: Layout/EmptyLinesAroundMethodBody: Extra empty line detected at method body beginning.
+app/controllers/users_controller.rb:12:10: W: Lint/UselessAssignment: Useless assignment to variable - `result`.
+app/models/user.rb:3:1: C: Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+app/models/user.rb:10:5: C: Rails/UniqueValidationWithoutIndex: Uniqueness validation should be backed by a database index.
+app/models/user.rb:15:3: C: Style/ClassVars: Replace class var @@count with a class instance variable.
+app/serializers/user_serializer.rb:8:15: C: Style/StringLiterals: Prefer single-quoted strings when you don't need string interpolation or special symbols.
+
+24 files inspected, 7 offenses detected, 1 offense auto-correctable

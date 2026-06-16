@@ -1,0 +1,39 @@
+src/app/page.tsx:8:12 - error TS2322: Type 'string | undefined' is not assignable to type 'string'
+  Type 'undefined' is not assignable to type 'string'
+
+8   const name: string = user?.name;
+             ~~~~
+
+src/components/Button.tsx:15:5 - error TS6133: 'event' is declared but its value never read
+
+15     const handleClick = (event: MouseEvent) => {
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+16       console.log('clicked');
+         ~~~~~~~~~~~~~~~~~~~~~~~
+17     };
+         ~
+
+src/lib/api.ts:23:14 - error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'
+  Type 'undefined' is not assignable to type 'number'
+
+23   const result = await fetch(`/api/users/${id}`);
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+24   return result.json();
+     ~~~~~~~~~~~~~~~~~~~~
+
+src/utils/format.ts:42:7 - error TS2532: Object is possibly 'undefined'
+
+42   if (obj.value.length > 0) {
+         ~~~~~~~~~
+
+src/server/db.ts:55:16 - error TS2571: Object is of type 'unknown'
+
+55   const data = JSON.parse(response);
+                  ~~~~~~~~~~~~~~~~
+
+src/types/index.ts:12:3 - error TS2304: Cannot find name 'RequestInit'
+
+12   RequestInit,
+     ~~~~~~~~~~~
+
+Found 6 errors. Watching for file changes.

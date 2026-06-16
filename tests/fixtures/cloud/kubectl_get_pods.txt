@@ -1,0 +1,16 @@
+NAMESPACE     NAME                                      READY   STATUS      RESTARTS   AGE
+default       pod/api-7a3b5c8d9e-f1a2b                 2/2     Running     0          12h
+default       pod/web-b9a8c7d6e5-f3a4b                 1/1     Running     1          12h
+default       pod/db-c1d2e3f4a5-f5a6b                 1/1     Running     0          12h
+default       pod/cache-d4e5f6a7b8-f7a8b               1/1     Running     0          12h
+default       pod/job-backup-e5f6a7b8c9-f0a1           0/1     Completed   0          6h
+default       pod/monitoring-f6a7b8c9d0-f2a3b          2/2     Running     0          12h
+default       pod/queue-a7b8c9d0e1-f4a5b               1/1     Running     0          12h
+default       pod/storage-b8c9d0e1f2-f6a7b             1/1     Running     0          12h
+kube-system   pod/coredns-7a8b9c0d1e-f8a9b             1/1     Running     0          7d
+kube-system   pod/etcd-minikube-f0a1b2c3               1/1     Running     0          7d
+kube-system   pod/kube-apiserver-minikube-f2a3b4       1/1     Running     0          7d
+kube-system   pod/kube-controller-manager-minikube-f4  1/1     Running     0          7d
+kube-system   pod/kube-proxy-f6a7b8c9                  1/1     Running     0          7d
+kube-system   pod/kube-scheduler-minikube-f8a9b0       1/1     Running     0          7d
+kube-system   pod/storage-provisioner-f0a1b2           1/1     Running     0          7d

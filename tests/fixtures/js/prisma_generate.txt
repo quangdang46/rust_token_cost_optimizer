@@ -1,0 +1,13 @@
+npx prisma generate
+Prisma schema loaded from prisma/schema.prisma
+
+✔ Generated Prisma Client (v5.14.0) to ./node_modules/@prisma/client in 124ms
+
+You can now start using Prisma Client in your code. Reference:
+{
+  "modelCount": 12,
+  "type": "prisma-client"
+}
+
+Want to learn more about Prisma Client?
+Read the docs at https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client

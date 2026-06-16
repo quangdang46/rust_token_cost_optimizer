@@ -1,0 +1,19 @@
+2026-06-16 15:30:45.234 [INFO]  Starting RTCO server on port 8080
+2026-06-16 15:30:45.235 [INFO]  Loaded config from /home/alice/.config/rtco/config.toml
+2026-06-16 15:30:45.236 [DEBUG] Initializing SQLite tracking database
+2026-06-16 15:30:45.238 [INFO]  Database initialized at /home/alice/.config/rtco/tracking.db
+2026-06-16 15:30:45.240 [INFO]  Registered command filters: git, gh, cargo, npm, pnpm, python, go, docker, kubectl, system
+2026-06-16 15:30:46.001 [INFO]  Received request: rtco git log -10
+2026-06-16 15:30:46.005 [DEBUG] Executing: git log -10
+2026-06-16 15:30:46.042 [INFO]  Filtered output: 1248 -> 156 tokens (87.5% savings)
+2026-06-16 15:30:46.043 [INFO]  Tracked command `git log` in database
+2026-06-16 15:30:47.120 [WARN]  Filter warning for `cargo test`: failed to parse test output, using passthrough
+2026-06-16 15:30:47.121 [INFO]  Tracked command `cargo test` in database (0% savings - passthrough)
+2026-06-16 15:30:48.234 [ERROR] Failed to execute `kubectl get pods`: command not found
+2026-06-16 15:30:48.235 [ERROR] kubectl is not installed. Please install kubectl first.
+2026-06-16 15:30:49.001 [INFO]  Received request: rtco proxy npm install
+2026-06-16 15:30:49.002 [INFO]  Proxy mode: bypassing filter, executing raw command
+2026-06-16 15:30:52.345 [INFO]  Proxy command `npm install` completed (0% savings)
+2026-06-16 15:31:00.001 [INFO]  Generating token savings report...
+2026-06-16 15:31:00.050 [INFO]  Total tokens saved: 1,234,567 (avg 78.3% per command)
+2026-06-16 15:31:00.051 [INFO]  Most used commands: git log (45%), cargo test (22%), npm test (12%)

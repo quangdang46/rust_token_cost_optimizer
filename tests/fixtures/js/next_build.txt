@@ -1,0 +1,37 @@
+▲ Next.js 14.2.4
+
+ ✓ Creating dev environment
+ ✓ Creating layout
+ ✓ Creating page
+ ✓ Creating src/ directory
+ ✓ Initializing project with TypeScript (strict)
+ ✓ Installing dependencies:
+   - react
+   - react-dom
+   - next
+
+Initialized a git repository.
+
+Success! Created webapp at /data/projects/webapp
+
+> Build Optimization
+
+   ✓ Linting and checking validity of types
+   ✓ Collecting page data
+   ✓ Generating static pages (6/6)
+   ✓ Finalizing page optimization
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    179 B          86.1 kB
+├ ○ /api/auth                            0 B            86.1 kB
+├ ○ /api/users                           0 B            86.1 kB
+├ ○ /dashboard                           2.6 kB         88.7 kB
+├ ○ /dashboard/settings                  1.2 kB         87.3 kB
+├ ○ /dashboard/analytics                 3.4 kB         89.5 kB
+├ λ /post/[id]                           1.8 kB         87.9 kB
+└ ○ /_not-found                          0 B            86.1 kB
+
+○  (Static)   prerendered as static content
+λ  (Dynamic)  server-rendered on demand
+
+Build took 4.32 seconds

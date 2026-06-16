@@ -1,0 +1,12 @@
+  main
+  feature/token-optimization
+  feature/js-filter-updates
+  fix/detached-head
+  release/v0.29.0
+  release/v0.28.2
+  experimental/ansi-stripper
+* (HEAD detached at 7a3b5c8)
+  origin/main
+  origin/feature/token-optimization
+  origin/feature/js-filter-updates
+  origin/release/v0.29.0

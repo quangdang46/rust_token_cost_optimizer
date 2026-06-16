@@ -1,0 +1,79 @@
+   Compiling rtco v0.29.0 (/data/projects/rust_token_cost_optimizer)
+   Compiling core v0.1.0 (/data/projects/rust_token_cost_optimizer/src/core)
+
+    Finished test [unoptimized + debuginfo] target(s) in 4.52s
+     Running unittests src/main.rs (target/debug/deps/rtco-7a3b5c8d)
+
+running 12 tests
+test test_empty_input ... ok
+test test_malformed_input ... ok
+test test_unicode_input ... ok
+test test_ansi_codes ... ok
+test test_git_log_format ... ok
+test test_git_log_savings ... ok
+test test_git_status_format ... ok
+test test_git_status_savings ... ok
+test test_token_count ... ok
+test test_tracking_record ... ok
+test test_config_parse ... ok
+test test_config_defaults ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/cmds/git/git.rs (target/debug/deps/git-4a5b6c7d)
+
+running 6 tests
+test test_git_log_output ... ok
+test test_git_log_savings ... ok
+test test_git_diff_output ... ok
+test test_git_status_output ... ok
+test test_git_show_output ... FAILED
+test test_git_branch_output ... ok
+
+failures:
+
+---- test_git_show_output stdout ----
+Error: "rtco: filter warning: failed to parse commit message"
+thread 'test_git_show_output' panicked at src/cmds/git/git.rs:312:5:
+assertion `left == right` failed
+  left: "expected output"
+  right: ""
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_git_show_output
+
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/cmds/js/pnpm.rs (target/debug/deps/pnpm-b8c9d0e1)
+
+running 4 tests
+test test_pnpm_list_output ... ok
+test test_pnpm_list_savings ... ok
+test test_pnpm_install_output ... ok
+test test_pnpm_install_savings ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/core/tracking.rs (target/debug/deps/tracking-c9d0e1f2)
+
+running 8 tests
+test test_track_command ... ok
+test test_track_command_error ... ok
+test test_get_history ... ok
+test test_get_history_empty ... ok
+test test_get_stats ... ok
+test test_get_stats_empty ... ok
+test test_prune_old ... ok
+test test_database_init ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests rtco
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--bin rtco`

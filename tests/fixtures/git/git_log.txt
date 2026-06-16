@@ -1,0 +1,172 @@
+commit 7a3b5c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b
+Author: Alice Johnson <alice@example.com>
+Date:   Mon Jun 15 14:32:10 2026 -0400
+
+    feat(core): add token counting optimization for large outputs
+
+    This improves performance by batching token counts
+    and using a more efficient string matching algorithm.
+
+commit b9a8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0
+Author: Bob Smith <bob@example.com>
+Date:   Mon Jun 15 12:15:00 2026 -0400
+
+    fix(parser): handle empty input in config parser
+
+    Fixes a panic when the config file is empty.
+
+commit c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0
+Author: Carol Davis <carol@example.com>
+Date:   Sun Jun 14 22:45:30 2026 -0400
+
+    docs: update README with new installation instructions
+
+    Added pnpm and Homebrew installation options.
+
+commit d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3
+Author: Alice Johnson <alice@example.com>
+Date:   Sun Jun 14 16:20:15 2026 -0400
+
+    refactor(cli): extract argument parsing into separate module
+
+    Broke down the monolithic main.rs into smaller, testable
+    modules. No functional changes.
+
+commit e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4
+Author: David Wilson <david@example.com>
+Date:   Sat Jun 13 11:05:45 2026 -0400
+
+    feat(filter): implement docker ps output filter
+
+    Compresses docker ps output to show only essential fields:
+    container id, image, status, ports.
+
+commit f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5
+Author: Bob Smith <bob@example.com>
+Date:   Sat Jun 13 09:30:00 2026 -0400
+
+    test: add integration tests for git log filter
+
+    Tests cover normal output, empty repo, and binary file cases.
+
+commit a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6
+Author: Carol Davis <carol@example.com>
+Date:   Fri Jun 12 17:52:20 2026 -0400
+
+    fix(js): handle pnpm workspace output format
+
+    The workspace protocol dependencies were not being
+    parsed correctly. Added support for the workspace:^ syntax.
+
+commit b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7
+Author: Alice Johnson <alice@example.com>
+Date:   Fri Jun 12 14:10:35 2026 -0400
+
+    chore(deps): update rusqlite to 0.31.0
+
+    Bumps rusqlite from 0.29.0 to 0.31.0.
+
+commit c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8
+Author: Eve Martinez <eve@example.com>
+Date:   Thu Jun 11 20:00:00 2026 -0400
+
+    feat(analytics): add per-command token savings breakdown
+
+    The gain command now shows individual savings for each
+    command type in the history.
+
+commit d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9
+Author: David Wilson <david@example.com>
+Date:   Thu Jun 11 15:45:10 2026 -0400
+
+    fix(kubectl): handle pods with no ready containers
+
+    Prevents crash when a pod has zero ready containers
+    by defaulting to "0/0" instead of panicking.
+
+commit e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
+Author: Bob Smith <bob@example.com>
+Date:   Wed Jun 10 13:20:30 2026 -0400
+
+    style: apply cargo fmt to entire codebase
+
+    Ran `cargo fmt --all` to standardize formatting.
+
+commit f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1
+Author: Carol Davis <carol@example.com>
+Date:   Wed Jun 10 10:00:00 2026 -0400
+
+    feat(core): add configurable max line limit
+
+    Users can now set max_lines in config.toml to control
+    how many lines each filter outputs.
+
+commit a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+Author: Alice Johnson <alice@example.com>
+Date:   Tue Jun 9 18:35:15 2026 -0400
+
+    fix(git): handle detached HEAD state in branch filter
+
+    When HEAD is detached, show the commit hash instead
+    of "(HEAD detached at ...)".
+
+commit b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3
+Author: Eve Martinez <eve@example.com>
+Date:   Tue Jun 9 14:00:45 2026 -0400
+
+    docs: add architecture documentation
+
+    New ARCHITECTURE.md describing the module layout
+    and filter pipeline.
+
+commit c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4
+Author: David Wilson <david@example.com>
+Date:   Mon Jun 8 16:10:00 2026 -0400
+
+    feat(analytics): implement ccusage data parsing
+
+    Parse Claude Code usage CSVs to correlate token savings
+    with actual API usage.
+
+commit d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5
+Author: Bob Smith <bob@example.com>
+Date:   Mon Jun 8 11:30:20 2026 -0400
+
+    fix: handle SIGPIPE gracefully
+
+    Prevent crash when the output is piped to head or less.
+
+commit e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6
+Author: Carol Davis <carol@example.com>
+Date:   Sun Jun 7 21:15:00 2026 -0400
+
+    test: add token savings assertions to all filter modules
+
+    Ensures every filter meets the 60% minimum token savings
+    target.
+
+commit f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7
+Author: Alice Johnson <alice@example.com>
+Date:   Sun Jun 7 15:00:35 2026 -0400
+
+    chore(release): bump version to 0.29.0
+
+    New features, bug fixes, and performance improvements.
+
+commit 9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b
+Author: Eve Martinez <eve@example.com>
+Date:   Sat Jun 6 10:45:10 2026 -0400
+
+    feat(git): add diff stat filter
+
+    Condenses git diff --stat output to show only changed
+    files and insertions/deletions counts.
+
+commit 0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c
+Author: David Wilson <david@example.com>
+Date:   Sat Jun 6 08:00:00 2026 -0400
+
+    fix(js): handle Next.js build output with warnings
+
+    Filters out verbose webpack build info while preserving
+    actual errors and warnings.

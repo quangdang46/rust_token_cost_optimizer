@@ -1,0 +1,23 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   src/core/filter.rs
+	modified:   src/cmds/git/git.rs
+	new file:   tests/fixtures/git/git_log.txt
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   Cargo.toml
+	modified:   src/main.rs
+	deleted:    docs/old_architecture.md
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	tests/fixtures/gh/
+	tests/fixtures/js/
+	tests/fixtures/git/
+	scripts/benchmark.sh
+	.claude/rules/

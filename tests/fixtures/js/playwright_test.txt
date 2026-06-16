@@ -1,0 +1,19 @@
+npx playwright test
+
+Running 8 tests using 4 workers
+
+  ✓ 1 [chromium] › login.spec.ts:3:1 › should display login form (2.1s)
+  ✓ 2 [chromium] › login.spec.ts:10:1 › should login with valid credentials (3.4s)
+  ✓ 3 [chromium] › login.spec.ts:18:1 › should show error with invalid credentials (2.8s)
+  ✓ 4 [firefox] › dashboard.spec.ts:3:1 › should show dashboard after login (3.1s)
+  ✓ 5 [firefox] › dashboard.spec.ts:12:1 › should display user data (2.5s)
+  ✗ 6 [firefox] › dashboard.spec.ts:20:1 › should handle empty state (4.2s)
+  ✓ 7 [webkit] › navigation.spec.ts:3:1 › should navigate between pages (3.0s)
+  ✗ 8 [webkit] › navigation.spec.ts:14:1 › should handle 404 page (3.7s)
+
+  6 passed, 2 failed (18.8s)
+
+  Failed tests:
+
+  [firefox] › dashboard.spec.ts:20:1 › should handle empty state
+  [webkit] › navigation.spec.ts:14:1 › should handle 404 page

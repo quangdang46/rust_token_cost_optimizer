@@ -1,0 +1,22 @@
+Checking formatting...
+src/app/page.tsx
+src/components/Button.tsx
+src/lib/api.ts
+src/utils/format.ts
+src/server/db.ts
+src/types/index.ts
+src/styles/globals.css
+src/pages/_app.tsx
+src/pages/index.tsx
+src/pages/api/auth.ts
+src/pages/api/users.ts
+src/middleware.ts
+src/hooks/useAuth.ts
+src/hooks/useDebounce.ts
+src/components/Layout.tsx
+src/components/Navbar.tsx
+src/components/Footer.tsx
+src/components/Card.tsx
+src/components/Modal.tsx
+src/lib/prisma.ts
+Code style issues found in the above file(s). Forgot to run Prettier?
