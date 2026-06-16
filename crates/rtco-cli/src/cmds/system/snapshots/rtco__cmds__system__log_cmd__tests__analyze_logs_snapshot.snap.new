@@ -1,5 +1,6 @@
 ---
 source: crates/rtco-cli/src/cmds/system/log_cmd.rs
+assertion_line: 282
 expression: output
 ---
 Log Summary
