@@ -2528,53 +2528,62 @@ fn run_cli() -> Result<i32> {
 /// SECURITY: whitelist pattern — new commands are NOT integrity-checked
 /// until explicitly added here. A forgotten command fails open (no check)
 /// rather than creating false confidence about what's protected.
+#[allow(clippy::match_like_matches_macro)]
 fn is_operational_command(cmd: &Commands) -> bool {
-    matches!(
-        cmd,
+    match cmd {
         Commands::Ls { .. }
-            | Commands::Tree { .. }
-            | Commands::Read { .. }
-            | Commands::Smart { .. }
-            | Commands::Git { .. }
-            | Commands::Gh { .. }
-            | Commands::Glab { .. }
-            | Commands::Pnpm { .. }
-            | Commands::Err { .. }
-            | Commands::Test { .. }
-            | Commands::Json { .. }
-            | Commands::Deps { .. }
-            | Commands::Env { .. }
-            | Commands::Find { .. }
-            | Commands::Diff { .. }
-            | Commands::Log { .. }
-            | Commands::Dotnet { .. }
-            | Commands::Docker { .. }
-            | Commands::Kubectl { .. }
-            | Commands::Sqlite { .. }
-            | Commands::Summary { .. }
-            | Commands::Grep { .. }
-            | Commands::Wget { .. }
-            | Commands::Vitest { .. }
-            | Commands::Prisma { .. }
-            | Commands::Tsc { .. }
-            | Commands::Next { .. }
-            | Commands::Lint { .. }
-            | Commands::Prettier { .. }
-            | Commands::Playwright { .. }
-            | Commands::Cargo { .. }
-            | Commands::Npm { .. }
-            | Commands::Npx { .. }
-            | Commands::Curl { .. }
-            | Commands::Ruff { .. }
-            | Commands::Pytest { .. }
-            | Commands::Rake { .. }
-            | Commands::Rubocop { .. }
-            | Commands::Rspec { .. }
-            | Commands::Pip { .. }
-            | Commands::Go { .. }
-            | Commands::GolangciLint { .. }
-            | Commands::Gt { .. }
-    )
+        | Commands::Tree { .. }
+        | Commands::Read { .. }
+        | Commands::Smart { .. }
+        | Commands::Git { .. }
+        | Commands::Gh { .. }
+        | Commands::Glab { .. }
+        | Commands::Pnpm { .. }
+        | Commands::Err { .. }
+        | Commands::Test { .. }
+        | Commands::Json { .. }
+        | Commands::Deps { .. }
+        | Commands::Env { .. }
+        | Commands::Find { .. }
+        | Commands::Diff { .. }
+        | Commands::Log { .. }
+        | Commands::Dotnet { .. }
+        | Commands::Docker { .. }
+        | Commands::Kubectl { .. }
+        | Commands::Sqlite { .. }
+        | Commands::Summary { .. }
+        | Commands::Grep { .. }
+        | Commands::Wget { .. }
+        | Commands::Vitest { .. }
+        | Commands::Prisma { .. }
+        | Commands::Tsc { .. }
+        | Commands::Next { .. }
+        | Commands::Lint { .. }
+        | Commands::Prettier { .. }
+        | Commands::Playwright { .. }
+        | Commands::Cargo { .. }
+        | Commands::Npm { .. }
+        | Commands::Npx { .. }
+        | Commands::Curl { .. }
+        | Commands::Ruff { .. }
+        | Commands::Pytest { .. }
+        | Commands::Rake { .. }
+        | Commands::Rubocop { .. }
+        | Commands::Rspec { .. }
+        | Commands::Pip { .. }
+        | Commands::Go { .. }
+        | Commands::GolangciLint { .. }
+        | Commands::Gt { .. }
+        | Commands::Aws { .. }
+        | Commands::Psql { .. }
+        | Commands::Wc { .. }
+        | Commands::Jest { .. }
+        | Commands::Format { .. }
+        | Commands::Mypy { .. }
+        | Commands::Gradlew { .. }
+        | Commands::Mvn { .. } => true,
+        _ => false,
+    }
 }
 
 #[cfg(test)]

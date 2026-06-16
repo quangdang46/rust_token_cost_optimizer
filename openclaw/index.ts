@@ -1,32 +1,32 @@
 /**
  * RTK Rewrite Plugin for OpenClaw
  *
- * Transparently rewrites exec tool commands to RTK equivalents
+ * Transparently rewrites exec tool commands to RTCO equivalents
  * before execution, achieving 60-90% LLM token savings.
  *
- * All rewrite logic lives in `rtk rewrite` (src/discover/registry.rs).
+ * All rewrite logic lives in `rtco rewrite` (src/discover/registry.rs).
  * This plugin is a thin delegate — to add or change rules, edit the
  * Rust registry, not this file.
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
-let rtkAvailable: boolean | null = null;
+let rtcoAvailable: boolean | null = null;
 
-function checkRtk(): boolean {
-  if (rtkAvailable !== null) return rtkAvailable;
+function checkRtco(): boolean {
+  if (rtcoAvailable !== null) return rtcoAvailable;
   try {
-    execSync("which rtk", { stdio: "ignore" });
-    rtkAvailable = true;
+    execFileSync("which", ["rtco"], { stdio: "ignore" });
+    rtcoAvailable = true;
   } catch {
-    rtkAvailable = false;
+    rtcoAvailable = false;
   }
-  return rtkAvailable;
+  return rtcoAvailable;
 }
 
 function tryRewrite(command: string): string | null {
   try {
-    const result = execSync(`rtk rewrite ${JSON.stringify(command)}`, {
+    const result = execFileSync("rtco", ["rewrite", JSON.stringify(command)], {
       encoding: "utf-8",
       timeout: 2000,
     }).trim();
@@ -43,8 +43,8 @@ export default function register(api: any) {
 
   if (!enabled) return;
 
-  if (!checkRtk()) {
-    console.warn("[rtk] rtk binary not found in PATH — plugin disabled");
+  if (!checkRtco()) {
+    console.warn("[rtco] rtco binary not found in PATH — plugin disabled");
     return;
   }
 
@@ -60,7 +60,7 @@ export default function register(api: any) {
       if (!rewritten) return;
 
       if (verbose) {
-        console.log(`[rtk] ${command} -> ${rewritten}`);
+        console.log(`[rtco] ${command} -> ${rewritten}`);
       }
 
       return { params: { ...event.params, command: rewritten } };
@@ -69,6 +69,6 @@ export default function register(api: any) {
   );
 
   if (verbose) {
-    console.log("[rtk] OpenClaw plugin registered");
+    console.log("[rtco] OpenClaw plugin registered");
   }
 }

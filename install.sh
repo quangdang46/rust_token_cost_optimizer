@@ -222,6 +222,26 @@ main() {
                     command -v unzip >/dev/null || die "unzip not found"
                     unzip -q "$TMP/$archive" -d "$TMP" ;;
             esac
+            # Path traversal safety check: reject files that escape the extraction root
+            while IFS= read -r -d '' file; do
+                # Reject paths that are absolute and outside TMP
+                case "$file" in
+                    "$TMP"/*) ;;
+                    *) die "Path traversal blocked: $file is outside extraction root" ;;
+                esac
+                # Reject paths containing parent directory references
+                case "$file" in
+                    *"/../"*|*"/..") die "Path traversal blocked: $file contains parent directory reference" ;;
+                esac
+                # Reject symlinks pointing outside TMP
+                if [ -L "$file" ]; then
+                    link_target=$(readlink "$file")
+                    case "$link_target" in
+                        "$TMP"/*) ;;
+                        *) die "Symlink traversal blocked: $file -> $link_target (points outside extraction root)" ;;
+                    esac
+                fi
+            done < <(find "$TMP" -maxdepth 3 -print0 2>/dev/null)
             local bin
             bin=$(find "$TMP" -maxdepth 3 -name "$BINARY_NAME" -type f -perm -111 2>/dev/null | head -1)
             [ -n "$bin" ] || die "Binary not found inside $archive"

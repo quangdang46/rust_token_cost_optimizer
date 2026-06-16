@@ -9,6 +9,8 @@ on:
 permissions:
   contents: read
 
+# For CD release workflow, configure GIT_APP_TOKEN secret in repo settings
+# with contents:write and pull-requests:write permissions
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings

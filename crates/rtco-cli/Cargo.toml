@@ -47,6 +47,9 @@ libc = "0.2"
 [build-dependencies]
 toml = "0.8"
 
+[dev-dependencies]
+insta = { version = "1", features = ["filters"] }
+
 [lints.rust]
 unsafe_code = "deny"
 warnings = "deny"
