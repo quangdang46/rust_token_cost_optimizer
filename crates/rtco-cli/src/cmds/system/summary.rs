@@ -297,3 +297,151 @@ fn extract_number(text: &str, after: &str) -> Option<usize> {
         .and_then(|c| c.get(1))
         .and_then(|m| m.as_str().parse().ok())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_number() {
+        assert_eq!(extract_number("5 passed", "passed"), Some(5));
+        assert_eq!(extract_number("10 failed", "failed"), Some(10));
+        assert_eq!(extract_number("3 skipped", "skipped"), Some(3));
+        assert_eq!(extract_number("no match here", "passed"), None);
+    }
+
+    #[test]
+    fn test_detect_output_type_test_results() {
+        let output = "test result: ok. 5 passed, 0 failed";
+        let detected = detect_output_type(output, "cargo test");
+        assert!(matches!(detected, OutputType::TestResults));
+
+        let output2 = "PASS src/main.rs - 5 passed, 0 failed";
+        let detected2 = detect_output_type(output2, "node test.js");
+        assert!(matches!(detected2, OutputType::TestResults));
+    }
+
+    #[test]
+    fn test_detect_output_type_build() {
+        let output = "Compiling hello-world v1.0.0";
+        let detected = detect_output_type(output, "cargo build");
+        assert!(matches!(detected, OutputType::BuildOutput));
+    }
+
+    #[test]
+    fn test_detect_output_type_log() {
+        let output = "[info] Starting server\n[error] Connection failed";
+        let detected = detect_output_type(output, "server");
+        assert!(matches!(detected, OutputType::LogOutput));
+    }
+
+    #[test]
+    fn test_detect_output_type_json() {
+        let output = "{\"key\": \"value\"}";
+        let detected = detect_output_type(output, "print_object");
+        assert!(matches!(detected, OutputType::JsonOutput));
+    }
+
+    #[test]
+    fn test_detect_output_type_list() {
+        let output = "file1\nfile2\nfile3";
+        let detected = detect_output_type(output, "ls");
+        assert!(matches!(detected, OutputType::ListOutput));
+    }
+
+    #[test]
+    fn test_detect_output_type_generic() {
+        // Must not match test, build, log, json or list patterns
+        // Use a long line with >=10 words so it doesn't match ListOutput
+        let output = "Some long output text that does not match any specific pattern classification here";
+        let detected = detect_output_type(output, "random-command");
+        assert!(matches!(detected, OutputType::Generic));
+    }
+
+    #[test]
+    fn test_detect_output_type_generic_with_empty_lines() {
+        // Empty lines should not be flagged as ListOutput
+        let output = "  ";
+        // Empty output may be list but just check it doesn't panic
+        let _detected = detect_output_type(output, "echo");
+    }
+
+    #[test]
+    fn test_summarize_output_empty() {
+        let result = summarize_output("", "echo hello", true);
+        assert!(result.contains("[ok]"));
+        assert!(result.contains("0 lines"));
+    }
+
+    #[test]
+    fn test_summarize_output_failure() {
+        let result = summarize_output("error: something failed", "bad-command", false);
+        assert!(result.contains("[FAIL]"));
+        assert!(result.contains("Command:"));
+    }
+
+    #[test]
+    fn test_summarize_tests_basic() {
+        let output = "test result: ok. 5 passed, 0 failed";
+        let mut result = Vec::new();
+        summarize_tests(output, &mut result);
+        let full = result.join("\n");
+        assert!(full.contains("passed") || full.contains("Test Results"));
+    }
+
+    #[test]
+    fn test_summarize_build_basic() {
+        let output = "Compiling hello v1.0.0 (src/main.rs)\n    Finished dev [unoptimized]";
+        let mut result = Vec::new();
+        summarize_build(output, &mut result);
+        let full = result.join("\n");
+        assert!(full.contains("Build Summary") || !full.is_empty());
+    }
+
+    #[test]
+    fn test_summarize_logs_quick() {
+        let output = "2026-01-01 [info] app started\n2026-01-01 [warn] memory high\n2026-01-01 [error] crash";
+        let mut result = Vec::new();
+        summarize_logs_quick(output, &mut result);
+        let full = result.join("\n");
+        assert!(full.contains("errors"));
+        assert!(full.contains("warnings"));
+        assert!(full.contains("info"));
+    }
+
+    #[test]
+    fn test_summarize_list() {
+        let output = "alpha\nbeta\ngamma";
+        let mut result = Vec::new();
+        summarize_list(output, &mut result);
+        let full = result.join("\n");
+        assert!(full.contains("3 items"));
+    }
+
+    #[test]
+    fn test_summarize_json_valid() {
+        let output = "{\"name\": \"test\", \"version\": 1}";
+        let mut result = Vec::new();
+        summarize_json(output, &mut result);
+        let full = result.join("\n");
+        assert!(full.contains("Object with 2 keys"));
+    }
+
+    #[test]
+    fn test_summarize_json_array() {
+        let output = "[1, 2, 3, 4, 5]";
+        let mut result = Vec::new();
+        summarize_json(output, &mut result);
+        let full = result.join("\n");
+        assert!(full.contains("Array with 5 items"));
+    }
+
+    #[test]
+    fn test_summarize_generic() {
+        let output = "line1\nline2\nline3";
+        let mut result = Vec::new();
+        summarize_generic(output, &mut result);
+        let full = result.join("\n");
+        assert!(full.contains("Output:"));
+    }
+}

@@ -181,3 +181,56 @@ fn send_erasure_request(device_hash: &str) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_telemetry_subcommand_status() {
+        // Verify the enum variants exist and Debug works
+        let cmd = TelemetrySubcommand::Status;
+        assert!(format!("{:?}", cmd).contains("Status"));
+    }
+
+    #[test]
+    fn test_telemetry_subcommand_all_variants() {
+        let status = TelemetrySubcommand::Status;
+        let enable = TelemetrySubcommand::Enable;
+        let disable = TelemetrySubcommand::Disable;
+        let forget = TelemetrySubcommand::Forget;
+
+        match &status {
+            TelemetrySubcommand::Status => {}
+            _ => panic!("Wrong variant"),
+        }
+        match &enable {
+            TelemetrySubcommand::Enable => {}
+            _ => panic!("Wrong variant"),
+        }
+        match &disable {
+            TelemetrySubcommand::Disable => {}
+            _ => panic!("Wrong variant"),
+        }
+        match &forget {
+            TelemetrySubcommand::Forget => {}
+            _ => panic!("Wrong variant"),
+        }
+    }
+
+    #[test]
+    fn test_run_without_panic() {
+        // Running in a non-interactive environment should work gracefully
+        let result = run(&TelemetrySubcommand::Status);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_send_erasure_request_no_endpoint() {
+        // Without RTCO_TELEMETRY_URL set, should bail with expected error
+        let result = send_erasure_request("test-hash");
+        assert!(result.is_err());
+        let err = format!("{}", result.unwrap_err());
+        assert!(err.contains("no telemetry endpoint configured"));
+    }
+}

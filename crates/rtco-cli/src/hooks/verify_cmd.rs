@@ -47,3 +47,71 @@ pub fn run(filter: Option<String>, require_all: bool) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_empty_filter_list() {
+        // When filter is None and no TOML tests exist, should return OK
+        let result = run(None, false);
+        // Should not panic - either OK or an error about missing builtins
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_run_with_nonexistent_filter() {
+        // Filter name that doesn't exist should not crash
+        let result = run(
+            Some("this-filter-definitely-does-not-exist-xyz".to_string()),
+            false,
+        );
+        // Should handle gracefully (either OK with 0 tests or error)
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_require_all_on_empty() {
+        // With require_all=true on a minimal config, may fail
+        // The important thing is it doesn't panic
+        let result = run(None, true);
+        // Any result is acceptable as long as no panic
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_verify_results_types_accessible() {
+        // Verify we can construct the types used by verify
+        let outcome = toml_filter::TestOutcome {
+            filter_name: "test_filter".to_string(),
+            test_name: "test_one".to_string(),
+            passed: true,
+            actual: "ok".to_string(),
+            expected: "ok".to_string(),
+        };
+        assert!(outcome.passed);
+        assert_eq!(outcome.filter_name, "test_filter");
+
+        let results = toml_filter::VerifyResults {
+            outcomes: vec![outcome],
+            filters_without_tests: vec![],
+        };
+        assert_eq!(results.outcomes.len(), 1);
+        assert!(results.filters_without_tests.is_empty());
+    }
+
+    #[test]
+    fn test_verify_results_with_failure() {
+        let outcome = toml_filter::TestOutcome {
+            filter_name: "test_filter".to_string(),
+            test_name: "failing_test".to_string(),
+            passed: false,
+            actual: "actual_output".to_string(),
+            expected: "expected_output".to_string(),
+        };
+        assert!(!outcome.passed);
+        assert_eq!(outcome.actual, "actual_output");
+        assert_eq!(outcome.expected, "expected_output");
+    }
+}

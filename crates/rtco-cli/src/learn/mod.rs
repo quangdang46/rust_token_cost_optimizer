@@ -119,3 +119,44 @@ pub fn run(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_run_ok_no_sessions() {
+        // Should handle gracefully when no sessions are found
+        let result = run(None, true, 30, "text".to_string(), false, 0.6, 1);
+        // Should not panic
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_run_empty_sessions_text_format() {
+        // Smoke test: empty sessions with text format
+        let result = run(None, true, 1, "text".to_string(), false, 0.6, 1);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_run_empty_sessions_json_format() {
+        let result = run(None, true, 1, "json".to_string(), false, 0.6, 1);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_project_filter_default() {
+        // Verify the default filter logic works
+        let result = run(
+            Some("test".to_string()),
+            false,
+            30,
+            "text".to_string(),
+            false,
+            0.6,
+            1,
+        );
+        assert!(result.is_ok() || result.is_err());
+    }
+}

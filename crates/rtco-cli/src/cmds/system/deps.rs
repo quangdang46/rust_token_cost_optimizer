@@ -273,3 +273,88 @@ fn summarize_gomod_str(path: &Path) -> Result<String> {
     }
     Ok(out)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_run_empty_dir() {
+        // Creating a temp dir with no manifest files should handle gracefully
+        let dir = std::env::temp_dir().join("rtco_deps_test_empty");
+        std::fs::create_dir_all(&dir).unwrap_or_default();
+        let result = run(&dir, 0);
+        assert!(result.is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_summarize_package_json_basic() {
+        let dir = std::env::temp_dir().join("rtco_deps_test_pj");
+        std::fs::create_dir_all(&dir).unwrap_or_default();
+        let pj_path = dir.join("package.json");
+        std::fs::write(&pj_path, r#"{
+            "name": "test-pkg",
+            "version": "1.0.0",
+            "dependencies": {
+                "react": "^18.0.0",
+                "lodash": "^4.17.0"
+            },
+            "devDependencies": {
+                "typescript": "^5.0.0"
+            }
+        }"#).unwrap();
+        let result = run(&dir, 0);
+        assert!(result.is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_cargo_toml_deps() {
+        let dir = std::env::temp_dir().join("rtco_deps_test_cargo");
+        std::fs::create_dir_all(&dir).unwrap_or_default();
+        let cargo_path = dir.join("Cargo.toml");
+        std::fs::write(&cargo_path, r#"[package]
+name = "test-pkg"
+version = "0.1.0"
+
+[dependencies]
+serde = "1.0"
+regex = "1.5"
+
+[dev-dependencies]
+criterion = "0.5"
+"#).unwrap();
+        let result = run(&dir, 0);
+        assert!(result.is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_requirements_file() {
+        let dir = std::env::temp_dir().join("rtco_deps_test_req");
+        std::fs::create_dir_all(&dir).unwrap_or_default();
+        let req_path = dir.join("requirements.txt");
+        std::fs::write(&req_path, "requests==2.28.0\nflask==2.3.0\n").unwrap();
+        let result = run(&dir, 0);
+        assert!(result.is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_gomod() {
+        let dir = std::env::temp_dir().join("rtco_deps_test_go");
+        std::fs::create_dir_all(&dir).unwrap_or_default();
+        let gomod_path = dir.join("go.mod");
+        std::fs::write(&gomod_path, r#"module github.com/test/pkg
+go 1.21
+require (
+    github.com/pkg/errors v0.9.1
+    golang.org/x/text v0.14.0
+)
+"#).unwrap();
+        let result = run(&dir, 0);
+        assert!(result.is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

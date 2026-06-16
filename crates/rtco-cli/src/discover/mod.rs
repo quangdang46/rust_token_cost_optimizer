@@ -295,3 +295,25 @@ fn truncate_command(cmd: &str) -> String {
         _ => format!("{} {}", parts[0], parts[1]),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_subcmd() {
+        assert_eq!(extract_subcmd("git status"), "status");
+        assert_eq!(extract_subcmd("cargo test -- --nocapture"), "test");
+        assert_eq!(extract_subcmd("ls"), "");
+        assert_eq!(extract_subcmd(""), "");
+    }
+
+    #[test]
+    fn test_truncate_command() {
+        assert_eq!(truncate_command("git log -10"), "git log");
+        assert_eq!(truncate_command("cargo test"), "cargo test");
+        assert_eq!(truncate_command("ls"), "ls");
+        assert_eq!(truncate_command(""), "");
+        assert_eq!(truncate_command("  git status  "), "git status");
+    }
+}

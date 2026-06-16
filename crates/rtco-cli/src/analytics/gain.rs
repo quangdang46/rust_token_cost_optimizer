@@ -317,6 +317,19 @@ pub fn run(
     Ok(())
 }
 
+/// Compute cost-savings estimates from token counts.
+/// Uses a simple input/output cost model: $3/M input, $15/M output.
+#[allow(dead_code)]
+fn calculate_economics(input_tokens: usize, output_tokens: usize) -> (f64, f64) {
+    let assumed_cost_per_input_token = 3.0 / 1_000_000.0;
+    let assumed_cost_per_output_token = 15.0 / 1_000_000.0;
+    let input_cost = input_tokens as f64 * assumed_cost_per_input_token;
+    let output_cost = output_tokens as f64 * assumed_cost_per_output_token;
+    let total_savings = input_cost + output_cost;
+    let denominator = input_cost + output_cost + 1.0; // avoid div by zero
+    (total_savings, 100.0 * total_savings / denominator)
+}
+
 // ── Display helpers (TTY-aware) ── // added: entire section
 
 /// Format text with bold styling (TTY-aware). // added
@@ -761,4 +774,170 @@ fn confirm_reset() -> Result<bool> {
         .context("Failed to read confirmation")?;
 
     Ok(matches!(line.trim().to_lowercase().as_str(), "y" | "yes"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── print_daily_stats equivalent: test print_ascii_graph ──
+
+    #[test]
+    fn test_print_ascii_graph_empty() {
+        // Should not panic with empty data
+        let data: Vec<(String, usize)> = vec![];
+        print_ascii_graph(&data);
+    }
+
+    #[test]
+    fn test_print_ascii_graph_single_entry() {
+        let data = vec![("2026-01-01".to_string(), 100)];
+        // Should not panic
+        print_ascii_graph(&data);
+    }
+
+    #[test]
+    fn test_print_ascii_graph_multiple_entries() {
+        let data = vec![
+            ("2026-01-01".to_string(), 50),
+            ("2026-01-02".to_string(), 200),
+            ("2026-01-03".to_string(), 0),
+        ];
+        // Should not panic with multiple entries including zero
+        print_ascii_graph(&data);
+    }
+
+    // ── summary stats helpers ──
+
+    #[test]
+    fn test_truncate_for_column() {
+        assert_eq!(truncate_for_column("hello", 10), "hello     ");
+        assert_eq!(truncate_for_column("hello world", 5), "he...");
+        assert_eq!(truncate_for_column("hello", 3), "hel");
+        assert_eq!(truncate_for_column("hello", 0), "");
+    }
+
+    #[test]
+    fn test_shorten_path() {
+        let short = "/home/user/proj";
+        assert_eq!(shorten_path(short), short);
+
+        let long = "/home/user/projects/rust/myproject";
+        let result = shorten_path(long);
+        assert!(result.contains("/.../"));
+
+        let root_short = "/a/b";
+        assert_eq!(shorten_path(root_short), "/a/b");
+    }
+
+    #[test]
+    fn test_calculate_economics() {
+        use super::*;
+
+        let (savings, pct) = calculate_economics(1_000_000, 100_000);
+        assert!(savings > 0.0);
+        assert!(pct > 0.0);
+
+        // Zero tokens should not panic
+        let (savings, _) = calculate_economics(0, 0);
+        assert!(savings == 0.0);
+    }
+
+    // ── mini_bar ──
+
+    #[test]
+    fn test_mini_bar() {
+        let bar = mini_bar(50, 100, 10);
+        assert_eq!(bar.chars().filter(|&c| c == '█').count(), 5);
+        assert_eq!(bar.chars().filter(|&c| c == '░').count(), 5);
+
+        let zero_bar = mini_bar(0, 100, 10);
+        assert_eq!(zero_bar.chars().filter(|&c| c == '░').count(), 10);
+
+        let full_bar = mini_bar(100, 100, 10);
+        assert_eq!(full_bar.chars().filter(|&c| c == '█').count(), 10);
+    }
+
+    #[test]
+    fn test_mini_bar_zero_max() {
+        let bar = mini_bar(0, 0, 10);
+        assert!(bar.is_empty());
+    }
+
+    #[test]
+    fn test_mini_bar_zero_width() {
+        let bar = mini_bar(100, 100, 0);
+        assert!(bar.is_empty());
+    }
+
+    // ── resolve_project_scope ──
+
+    #[test]
+    fn test_resolve_project_scope_disabled() {
+        let result = resolve_project_scope(false).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_resolve_project_scope_enabled() {
+        // When --project is passed, should return Some with current dir
+        let result = resolve_project_scope(true).unwrap();
+        assert!(result.is_some());
+        let path = result.unwrap();
+        assert!(!path.is_empty());
+    }
+
+    // ── colorize_pct_cell ──
+
+    #[test]
+    fn test_colorize_pct_cell() {
+        let padded = format!("{:>6.1}%", 75.0);
+        let result = colorize_pct_cell(75.0, &padded);
+        assert_eq!(result, padded); // Same content (no ANSI in non-TTY test)
+
+        let result_low = colorize_pct_cell(20.0, &padded);
+        assert_eq!(result_low, padded);
+    }
+
+    // ── ExportData types ──
+
+    #[test]
+    fn test_export_summary_serializable() {
+        // Verify the struct is constructable and serializable
+        let summary = ExportSummary {
+            total_commands: 100,
+            total_input: 5000,
+            total_output: 3000,
+            total_saved: 2000,
+            avg_savings_pct: 50.0,
+            total_time_ms: 10000,
+            avg_time_ms: 100,
+        };
+        let json = serde_json::to_string(&summary).unwrap();
+        assert!(json.contains("\"total_commands\":100"));
+        assert!(json.contains("\"avg_savings_pct\":50.0"));
+    }
+
+    #[test]
+    fn test_serialize_empty_export_data() {
+        let export = ExportData {
+            summary: ExportSummary {
+                total_commands: 0,
+                total_input: 0,
+                total_output: 0,
+                total_saved: 0,
+                avg_savings_pct: 0.0,
+                total_time_ms: 0,
+                avg_time_ms: 0,
+            },
+            daily: None,
+            weekly: None,
+            monthly: None,
+        };
+        let json = serde_json::to_string(&export).unwrap();
+        assert!(json.contains("\"summary\""));
+        // Optional fields should be skipped
+        let v: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(!v.as_object().unwrap().contains_key("daily"));
+    }
 }
