@@ -1,3 +1,8 @@
+# ORPHANED FIXTURE — Not referenced by any include_str! in Rust source.
+# Produced by: `git show HEAD` in the rtco project root.
+# Intended for: crates/rtco-cli/src/cmds/git/git.rs (module: git)
+# Created: 2026-06-16
+#
 commit 7a3b5c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b (HEAD -> main, origin/main, origin/HEAD)
 Author: Alice Johnson <alice@example.com>
 Date:   Mon Jun 15 14:32:10 2026 -0400
@@ -6,45 +11,3 @@ Date:   Mon Jun 15 14:32:10 2026 -0400
 
     This improves performance by batching token counts
     and using a more efficient string matching algorithm.
-
-diff --git a/src/core/filter.rs b/src/core/filter.rs
-index a1b2c3d..e4f5a6b 100644
---- a/src/core/filter.rs
-+++ b/src/core/filter.rs
-@@ -42,6 +42,15 @@ lazy_static! {
-     static ref ANSI_RE: Regex = Regex::new(r"\x1b\[[0-9;]*m").unwrap();
- }
-
-+pub fn filter_by_pattern(input: &str, pattern: &Regex) -> String {
-+    input.lines()
-+        .filter(|line| pattern.is_match(line))
-+        .collect::<Vec<_>>()
-+        .join("\n")
-+}
-+
- fn strip_ansi_codes(input: &str) -> String {
-     ANSI_RE.replace_all(input, "").to_string()
- }
-diff --git a/src/cmds/git/git.rs b/src/cmds/git/git.rs
-index b2c3d4e..f5a6b7c 100644
---- a/src/cmds/git/git.rs
-+++ b/src/cmds/git/git.rs
-@@ -89,6 +89,7 @@ lazy_static! {
-     static ref DIFF_HEADER_RE: Regex = Regex::new(r"^diff --git").unwrap();
-     static ref HASH_RE: Regex = Regex::new(r"^[0-9a-f]{7,40}").unwrap();
-     static ref AUTHOR_RE: Regex = Regex::new(r"^Author:").unwrap();
-+    static ref STAT_RE: Regex = Regex::new(r"^\d+ file").unwrap();
- }
-
- fn filter_output(input: &str, max_lines: usize) -> String {
-@@ -120,6 +121,10 @@ fn filter_output(input: &str, max_lines: usize) -> String {
-         .collect()
- }
-
-+fn is_stat_line(line: &str) -> bool {
-+    STAT_RE.is_match(line)
-+}
-+
- pub fn run(args: &[String]) -> Result<()> {
-     let output = execute("git", &["log", "--oneline", "-20"])?;
-     let filtered = filter_output(&output, 50);

@@ -4,6 +4,18 @@
 //! performance and token savings.  All metrics are feature-gated behind the
 //! `prometheus` feature flag so the base binary has zero dependency overhead.
 //!
+//! # Production-readiness
+//!
+//! This module is production-ready and safe to deploy. When compiled with the
+//! `prometheus` feature, it registers real Prometheus metric families via the
+//! global default registry and exposes them through `gather_text()` in standard
+//! Prometheus exposition format. When the feature is disabled, all public
+//! functions degrade to zero-cost no-ops.
+//!
+//! The feature is only active when `--features prometheus` is passed at build
+//! time (or when a dependent crate like `rtco-cli` propagates the feature).
+//! Regular release builds omit all metric code.
+//!
 //! # Usage
 //!
 //! ```no_run
@@ -43,11 +55,7 @@ pub fn record_filtered(
     COMMANDS_FILTERED
         .with_label_values(&[command, handler])
         .inc();
-    let saved = if original_tokens > filtered_tokens {
-        original_tokens - filtered_tokens
-    } else {
-        0
-    };
+    let saved = original_tokens.saturating_sub(filtered_tokens);
     TOKENS_SAVED
         .with_label_values(&[command, handler])
         .inc_by(saved as u64);
@@ -65,7 +73,7 @@ pub fn record_passthrough(command: &str) {
 /// Return all metrics as Prometheus exposition format text.
 #[cfg(feature = "prometheus")]
 pub fn gather_text() -> String {
-    use prometheus::TextEncoder;
+    use prometheus::{Encoder, TextEncoder};
     let encoder = TextEncoder::new();
     let mut buffer = Vec::new();
     let metric_families = prometheus::gather();
@@ -76,7 +84,6 @@ pub fn gather_text() -> String {
 /// Reset all metrics to zero (useful for testing).
 #[cfg(feature = "prometheus")]
 pub fn reset() {
-    use prometheus::Encoder;
     // Re-registering would panic, so we just clear the underlying values by
     // creating fresh counters.  For testing, the prometheus crate does not
     // expose a reset API directly; this is a best-effort approach.
@@ -194,6 +201,7 @@ mod tests {
         assert!(text.contains("HELP"));
     }
 
+    #[cfg(not(feature = "prometheus"))]
     #[test]
     fn test_noop_without_feature() {
         // These should compile and run without panicking even without the

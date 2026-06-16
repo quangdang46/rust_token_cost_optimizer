@@ -179,9 +179,13 @@ pub fn filter_mypy_output(output: &str) -> String {
             result.push_str(&format!("Top codes: {}\n\n", codes_str.join(", ")));
         }
 
-        // Files sorted by error count (most errors first)
+        // Files sorted by error count (most errors first), then alphabetically for ties
         let mut files_sorted: Vec<_> = by_file.iter().collect();
-        files_sorted.sort_by_key(|b| std::cmp::Reverse(b.1.len()));
+        files_sorted.sort_by(|a, b| {
+            b.1.len()
+                .cmp(&a.1.len())
+                .then(a.0.cmp(b.0))
+        });
 
         for (file, file_errors) in &files_sorted {
             result.push_str(&format!("{} ({} errors)\n", file, file_errors.len()));

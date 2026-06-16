@@ -241,9 +241,9 @@ main() {
                         *) die "Symlink traversal blocked: $file -> $link_target (points outside extraction root)" ;;
                     esac
                 fi
-            done < <(find "$TMP" -maxdepth 3 -print0 2>/dev/null)
+            done < <(find "$TMP" -print0 2>/dev/null)
             local bin
-            bin=$(find "$TMP" -maxdepth 3 -name "$BINARY_NAME" -type f -perm -111 2>/dev/null | head -1)
+            bin=$(find "$TMP" -name "$BINARY_NAME" -type f -perm -111 2>/dev/null | head -1)
             [ -n "$bin" ] || die "Binary not found inside $archive"
             install_binary_atomic "$bin" "$DEST/$BINARY_NAME"
         else

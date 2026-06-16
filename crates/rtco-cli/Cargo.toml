@@ -20,7 +20,7 @@ name = "rtco-mcp"
 path = "src/bin/mcp_server.rs"
 
 [dependencies]
-rtco-core = { path = "../rtco-core", features = ["test-support"] }
+rtco-core = { path = "../rtco-core", features = ["test-support", "prometheus"] }
 clap = { version = "4", features = ["derive"] }
 anyhow = "1.0"
 ignore = "0.4"

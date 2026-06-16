@@ -128,26 +128,26 @@ mod tests {
     fn test_run_ok_no_sessions() {
         // Should handle gracefully when no sessions are found
         let result = run(None, true, 30, "text".to_string(), false, 0.6, 1);
-        // Should not panic
-        assert!(result.is_ok() || result.is_err());
+        // When no sessions exist the function returns Ok with a message
+        assert!(result.is_ok(), "expected Ok with no sessions: {:?}", result);
     }
 
     #[test]
     fn test_run_empty_sessions_text_format() {
-        // Smoke test: empty sessions with text format
+        // Smoke test: empty sessions with text format should succeed
         let result = run(None, true, 1, "text".to_string(), false, 0.6, 1);
-        assert!(result.is_ok() || result.is_err());
+        assert!(result.is_ok(), "expected Ok with text format: {:?}", result);
     }
 
     #[test]
     fn test_run_empty_sessions_json_format() {
         let result = run(None, true, 1, "json".to_string(), false, 0.6, 1);
-        assert!(result.is_ok() || result.is_err());
+        assert!(result.is_ok(), "expected Ok with json format: {:?}", result);
     }
 
     #[test]
     fn test_project_filter_default() {
-        // Verify the default filter logic works
+        // With a specific project name and low since-days, sessions likely don't exist
         let result = run(
             Some("test".to_string()),
             false,
@@ -157,6 +157,10 @@ mod tests {
             0.6,
             1,
         );
-        assert!(result.is_ok() || result.is_err());
+        assert!(
+            result.is_ok(),
+            "expected Ok with project filter: {:?}",
+            result
+        );
     }
 }

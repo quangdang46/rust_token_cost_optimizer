@@ -1,3 +1,9 @@
+# ORPHANED FIXTURE — Not referenced by any include_str! in Rust source.
+# Produced by: `npm test` in the rtco project root (simulated Jest run from package.json scripts.test).
+# Intended for: crates/rtco-cli/src/cmds/js/npm_cmd.rs (module: js/npm)
+# Created: 2026-06-16
+# Note: npm_test.txt is output of `npm test` which delegates to Jest.
+#
 > rtco@0.1.0 test /data/projects/rust_token_cost_optimizer
 > jest --passWithNoTests
 
@@ -6,59 +12,3 @@
     ✓ counts tokens for empty string (1 ms)
     ✓ counts tokens for single word (1 ms)
     ✓ counts tokens for multiple words
-    ✓ counts tokens with special characters (2 ms)
-    ✓ counts tokens for large text (5 ms)
-
- PASS   tests/parser/config.test.ts
-  ConfigParser
-    ✓ parses valid TOML config (2 ms)
-    ✓ rejects invalid TOML (1 ms)
-    ✓ applies default values (1 ms)
-    ✓ handles empty config (1 ms)
-
- FAIL   tests/filters/git.test.ts
-  GitFilter
-    ✕ filters git log output (12 ms)
-    ✕ handles empty input (1 ms)
-    ✕ filters git diff output (8 ms)
-
-  ● GitFilter › filters git log output
-
-    expect(received).toBe(expected)
-
-    Expected: "7a3b5c8 feat(core): add token counting"
-    Received: "7a3b5c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b feat(core): add token counting optimization for large outputs"
-
-      42 |   it('filters git log output', () => {
-      43 |     const result = gitFilter.filterLog(input);
-    > 44 |     expect(result).toBe(expected);
-         |                    ^
-      45 |   });
-      46 |
-      47 |   it('handles empty input', () => {
-
-  ● GitFilter › filters git diff output
-
-    expect(received).toBe(expected)
-
-    Expected: "diff --git a/src/core/filter.rs b/src/core/filter.rs"
-    Received: ""
-
-      51 |
-      52 |   it('filters git diff output', () => {
-    > 53 |     expect(gitFilter.filterDiff(diffInput)).toBe(expectedDiff);
-         |             ^
-      54 |   });
-      55 |
-      56 |   it('handles empty input', () => {
-
- PASS   tests/analytics/savings.test.ts
-  SavingsCalculator
-    ✓ calculates savings for filtered output (3 ms)
-    ✓ returns 0 for identical input/output (1 ms)
-    ✓ handles empty input (1 ms)
-
-Tests: 13 passed, 3 failed, 16 total
-Snapshots: 0 written, 0 total
-Time: 1.234 s
-Ran all test suites.

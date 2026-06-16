@@ -32,12 +32,16 @@ jobs:
       - name: Compress binary
         shell: bash
         run: |
-          BIN="${{ matrix.os == 'windows-latest' && 'target/release/rtco.exe' || 'target/release/rtco' }}"
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            7z a "rtco-${{ matrix.os }}.zip" "$BIN"
+            cd target/release && 7z a "../../rtco-${{ matrix.os }}.zip" "rtco.exe" && cd ../..
           else
             tar czf "rtco-${{ matrix.os }}.tar.gz" -C target/release rtco
           fi
+
+      - name: Generate SHA256 checksums
+        shell: bash
+        run: |
+          sha256sum rtco-*.tar.gz rtco-*.zip > rtco-SHA256SUMS.txt
 
       - name: Upload release asset
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb4bffb9c5be6f9f48d4b4f # v2
@@ -45,4 +49,5 @@ jobs:
           files: |
             rtco-*.tar.gz
             rtco-*.zip
+            rtco-SHA256SUMS.txt
           generate_release_notes: true

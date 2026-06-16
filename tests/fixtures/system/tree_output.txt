@@ -1,3 +1,9 @@
+# ORPHANED FIXTURE — Not referenced by any include_str! in Rust source.
+# Produced by: `tree -L 2` in the rtco project root.
+# Intended for: crates/rtco-cli/src/cmds/system/tree.rs (module: system/tree)
+# Created: 2026-06-16
+# Note: tree.rs has filter_tree_output and related tests but uses hardcoded strings, not this fixture.
+#
 .
 ├── Cargo.toml
 ├── Cargo.lock
@@ -6,89 +12,3 @@
 ├── rust-toolchain.toml
 ├── docs
 │   ├── ARCHITECTURE.md
-│   └── contributing
-│       ├── ARCHITECTURE.md
-│       └── TECHNICAL.md
-├── scripts
-│   ├── test-all.sh
-│   └── benchmark.sh
-├── src
-│   ├── main.rs
-│   ├── core
-│   │   ├── config.rs
-│   │   ├── tracking.rs
-│   │   ├── utils.rs
-│   │   ├── filter.rs
-│   │   └── display_helpers.rs
-│   ├── cmds
-│   │   ├── git
-│   │   │   ├── git.rs
-│   │   │   ├── gh_cmd.rs
-│   │   │   └── gt_cmd.rs
-│   │   ├── js
-│   │   │   ├── npm.rs
-│   │   │   ├── pnpm.rs
-│   │   │   ├── vitest.rs
-│   │   │   ├── tsc.rs
-│   │   │   ├── next.rs
-│   │   │   ├── prettier.rs
-│   │   │   ├── playwright.rs
-│   │   │   ├── prisma.rs
-│   │   │   └── lint.rs
-│   │   ├── python
-│   │   │   ├── ruff.rs
-│   │   │   ├── pytest.rs
-│   │   │   ├── mypy.rs
-│   │   │   └── pip.rs
-│   │   ├── go
-│   │   │   ├── go.rs
-│   │   │   └── golangci_lint.rs
-│   │   ├── dotnet
-│   │   │   ├── dotnet.rs
-│   │   │   ├── binlog.rs
-│   │   │   ├── trx.rs
-│   │   │   └── format_report.rs
-│   │   ├── cloud
-│   │   │   ├── aws.rs
-│   │   │   ├── container.rs
-│   │   │   ├── curl.rs
-│   │   │   ├── wget.rs
-│   │   │   └── psql.rs
-│   │   ├── system
-│   │   │   └── system_cmds.rs
-│   │   └── ruby
-│   │       ├── rake.rs
-│   │       ├── rspec.rs
-│   │       └── rubocop.rs
-│   ├── hooks
-│   │   ├── init.rs
-│   │   ├── rewrite_cmd.rs
-│   │   ├── hook_cmd.rs
-│   │   ├── hook_check.rs
-│   │   ├── verify_cmd.rs
-│   │   ├── trust.rs
-│   │   └── integrity.rs
-│   ├── analytics
-│   │   ├── gain.rs
-│   │   ├── cc_economics.rs
-│   │   ├── ccusage.rs
-│   │   └── session_cmd.rs
-│   ├── discover
-│   │   └── mod.rs
-│   └── filters
-│       └── mod.rs
-└── tests
-    ├── common
-    │   └── mod.rs
-    ├── fixtures
-    │   ├── git
-    │   ├── gh
-    │   ├── cargo
-    │   ├── js
-    │   ├── python
-    │   ├── ruby
-    │   ├── cloud
-    │   └── system
-    └── integration_test.rs
-
-22 directories, 65 files

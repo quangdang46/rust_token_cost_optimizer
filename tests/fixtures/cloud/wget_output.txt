@@ -1,8 +1,11 @@
+# ORPHANED FIXTURE — Not referenced by any include_str! in Rust source.
+# Produced by: `wget https://releases.ubuntu.com/24.04/ubuntu-24.04-desktop-amd64.iso` (simulated download output).
+# Intended for: crates/rtco-cli/src/cmds/cloud/ (module: cloud/wget)
+# Created: 2026-06-16
+# Note: No wget-specific command module exists under src/cmds/cloud/ using fixtures.
+#
 --2026-06-16 15:30:00--  https://releases.ubuntu.com/24.04/ubuntu-24.04-desktop-amd64.iso
 Resolving releases.ubuntu.com (releases.ubuntu.com)... 91.189.91.43, 91.189.91.44
 Connecting to releases.ubuntu.com (releases.ubuntu.com)|91.189.91.43|:443... connected.
 HTTP request sent, awaiting response... 200 OK
 Length: 5733457920 (5.3G) [application/x-iso9660-image]
-Saving to: 'ubuntu-24.04-desktop-amd64.iso'
-
-ubuntu-24.04-desktop-amd64.iso  30%[===================>                         ] 1.72G  12.5MB/s    eta 4m 32s

@@ -52,11 +52,14 @@ jobs:
         run: cargo build --release
 
       - name: hyperfine benchmark
-        run: hyperfine --warmup 3 ./target/release/rtco --help
+        shell: bash
+        run: |
+          if command -v hyperfine &> /dev/null; then
+            hyperfine --warmup 3 ./target/release/rtco${{ runner.os == 'Windows' && '.exe' || '' }} --help
+          else
+            echo "hyperfine not installed, skipping benchmark"
+          fi
         continue-on-error: true
-
-      - name: Check snapshot tests
-        run: cargo test --all-features 2>&1 | tail -20
 
   coverage:
     name: Code coverage

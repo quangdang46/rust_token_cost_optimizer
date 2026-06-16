@@ -1,3 +1,9 @@
+# ORPHANED FIXTURE — Not referenced by any include_str! in Rust source.
+# Produced by: `env` (simulated environment variable dump).
+# Intended for: crates/rtco-cli/src/cmds/system/ (module: system/env)
+# Created: 2026-06-16
+# Note: No env-specific command module exists under src/cmds/system/ using fixtures.
+#
 PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/home/alice/.cargo/bin
 HOME=/home/alice
 SHELL=/bin/zsh
@@ -6,13 +12,3 @@ LANG=en_US.UTF-8
 LC_ALL=en_US.UTF-8
 EDITOR=vim
 PAGER=less
-CARGO_HOME=/home/alice/.cargo
-RUSTUP_HOME=/home/alice/.rustup
-RTK_DB_PATH=/home/alice/.config/rtco/tracking.db
-TERM=xterm-256color
-COLORTERM=truecolor
-DISPLAY=:0
-LOGNAME=alice
-XDG_CONFIG_HOME=/home/alice/.config
-XDG_DATA_HOME=/home/alice/.local/share
-XDG_CACHE_HOME=/home/alice/.cache

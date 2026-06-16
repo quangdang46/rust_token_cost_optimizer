@@ -220,9 +220,9 @@ mod tests {
 
     #[test]
     fn test_run_without_panic() {
-        // Running in a non-interactive environment should work gracefully
+        // Running status does not require stdin; should always succeed
         let result = run(&TelemetrySubcommand::Status);
-        assert!(result.is_ok() || result.is_err());
+        assert!(result.is_ok(), "status command failed: {:?}", result);
     }
 
     #[test]

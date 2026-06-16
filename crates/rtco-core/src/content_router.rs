@@ -29,9 +29,28 @@ use std::collections::HashMap;
 // ContentType — routing strategy variants
 // ---------------------------------------------------------------------------
 
-/// High-level content categories used by the router to select a compression
-/// strategy.  These are deliberately coarser than [`detect::ContentType`] so
-/// that the routing decision stays simple.
+/// Routing-layer content categories used by the router to select a
+/// compression strategy.
+///
+/// This enum is deliberately coarser than
+/// [`content_detector::ContentType`][0] so that the routing decision stays
+/// simple.  The mapping from detection-level types to routing-level types
+/// is handled by [`map_detected_type()`][1].
+///
+/// [0]: ../content_detector/enum.ContentType.html
+/// [1]: fn.map_detected_type.html
+///
+/// # Relationship with [`content_detector::ContentType`][0]
+///
+/// The detector distinguishes between JSON arrays (`JsonArray`) and single
+/// JSON objects (which it classifies as `PlainText`).  Since this routing
+/// enum collapses them into a single `Json` variant, both JSON arrays and
+/// JSON objects *ought* to hit the same handler.  **However**, the detector
+/// currently classifies bare JSON objects (e.g. `{"key": "value"}`) as
+/// `PlainText` rather than `JsonArray`, which means they are routed to the
+/// `PlainText` handler instead of the `Json` handler.  This is a known gap
+/// that may need addressing if structured-object responses (common in API
+/// CLIs like `gh api`, `aws`, `curl`) need dedicated JSON compression.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContentType {
     /// JSON data (arrays or objects).

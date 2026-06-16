@@ -26,7 +26,7 @@ function checkRtco(): boolean {
 
 function tryRewrite(command: string): string | null {
   try {
-    const result = execFileSync("rtco", ["rewrite", JSON.stringify(command)], {
+    const result = execFileSync("rtco", ["rewrite", command], {
       encoding: "utf-8",
       timeout: 2000,
     }).trim();

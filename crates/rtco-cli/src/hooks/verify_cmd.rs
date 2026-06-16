@@ -56,8 +56,18 @@ mod tests {
     fn test_empty_filter_list() {
         // When filter is None and no TOML tests exist, should return OK
         let result = run(None, false);
-        // Should not panic - either OK or an error about missing builtins
-        assert!(result.is_ok() || result.is_err());
+        // Should not panic - either OK or an error about test failures
+        assert!(
+            result.is_ok()
+                || result
+                    .as_ref()
+                    .err()
+                    .unwrap()
+                    .to_string()
+                    .contains("test(s) failed"),
+            "unexpected error: {:?}",
+            result
+        );
     }
 
     #[test]
@@ -67,8 +77,12 @@ mod tests {
             Some("this-filter-definitely-does-not-exist-xyz".to_string()),
             false,
         );
-        // Should handle gracefully (either OK with 0 tests or error)
-        assert!(result.is_ok() || result.is_err());
+        // Should return OK (no tests found for a nonexistent filter is not an error)
+        assert!(
+            result.is_ok(),
+            "expected OK with nonexistent filter: {:?}",
+            result
+        );
     }
 
     #[test]
@@ -76,8 +90,18 @@ mod tests {
         // With require_all=true on a minimal config, may fail
         // The important thing is it doesn't panic
         let result = run(None, true);
-        // Any result is acceptable as long as no panic
-        assert!(result.is_ok() || result.is_err());
+        // require_all on a config with no tests may succeed or fail depending on whether
+        // filters are loaded — the point is it doesn't panic. Assert something concrete either way.
+        if let Err(e) = &result {
+            let msg = format!("{:#}", e);
+            assert!(
+                msg.contains("test(s) failed")
+                    || msg.contains("no inline tests")
+                    || msg.contains("filter(s) have no inline tests"),
+                "unexpected error: {}",
+                msg
+            );
+        }
     }
 
     #[test]

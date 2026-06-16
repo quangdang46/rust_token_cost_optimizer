@@ -14,6 +14,7 @@
 //! {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"rtco_compress","arguments":{"content":"..."}}}
 //! ```
 
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{self, BufRead, Write};
@@ -73,15 +74,6 @@ impl JsonRpcResponse {
                 message,
                 data: None,
             }),
-        }
-    }
-
-    fn notification() -> Self {
-        Self {
-            jsonrpc: "2.0",
-            id: serde_json::Value::Null,
-            result: None,
-            error: None,
         }
     }
 }
@@ -244,28 +236,13 @@ fn get_string_arg<'a>(
 // Main loop
 // ---------------------------------------------------------------------------
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let result_store: ResultStore = std::sync::Mutex::new(HashMap::new());
     let stdin = io::stdin();
     let stdout = io::stdout();
+    // Single-threaded: no atomic needed for a local counter in the main loop
     let mut result_counter: u64 = 0;
-
-    // Send server info notification on startup (optional, MCP spec allows it)
-    let server_info = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "server/info",
-        "params": {
-            "name": "rtco-mcp",
-            "version": env!("CARGO_PKG_VERSION"),
-            "description": "RTCO MCP Server — compress and analyze CLI output for LLM context efficiency"
-        }
-    });
-    {
-        let mut out = stdout.lock();
-        let line = serde_json::to_string(&server_info).unwrap_or_default();
-        writeln!(out, "{line}").ok();
-        out.flush().ok();
-    }
+    let mut out = stdout.lock();
 
     for line in stdin.lock().lines() {
         let line = match line {
@@ -288,13 +265,31 @@ fn main() {
                     -32700,
                     format!("Parse error: {e}"),
                 );
-                let out = serde_json::to_string(&err).unwrap_or_default();
-                println!("{out}");
+                let serialized = serde_json::to_string(&err)
+                    .context("Failed to serialize parse error response")?;
+                writeln!(out, "{serialized}")?;
+                out.flush()?;
                 continue;
             }
         };
 
         let response: JsonRpcResponse = match request.method.as_str() {
+            "initialize" => {
+                // Return server info as part of the initialize response (MCP spec)
+                JsonRpcResponse::success(
+                    request.id,
+                    serde_json::json!({
+                        "protocolVersion": "2024-11-05",
+                        "capabilities": {
+                            "tools": {}
+                        },
+                        "serverInfo": {
+                            "name": "rtco-mcp",
+                            "version": env!("CARGO_PKG_VERSION"),
+                        }
+                    }),
+                )
+            }
             "tools/list" => {
                 let result = serde_json::json!({ "tools": list_tools() });
                 JsonRpcResponse::success(request.id, result)
@@ -306,8 +301,10 @@ fn main() {
                     None => {
                         let err =
                             JsonRpcResponse::error(request.id, -32602, "Invalid params".into());
-                        let out = serde_json::to_string(&err).unwrap_or_default();
-                        println!("{out}");
+                        let serialized = serde_json::to_string(&err)
+                            .context("Failed to serialize invalid params error")?;
+                        writeln!(out, "{serialized}")?;
+                        out.flush()?;
                         continue;
                     }
                 };
@@ -317,8 +314,10 @@ fn main() {
                     None => {
                         let err =
                             JsonRpcResponse::error(request.id, -32602, "Missing tool name".into());
-                        let out = serde_json::to_string(&err).unwrap_or_default();
-                        println!("{out}");
+                        let serialized = serde_json::to_string(&err)
+                            .context("Failed to serialize missing tool name error")?;
+                        writeln!(out, "{serialized}")?;
+                        out.flush()?;
                         continue;
                     }
                 };
@@ -339,8 +338,10 @@ fn main() {
                                     -32602,
                                     "Missing 'content' argument".into(),
                                 );
-                                let out = serde_json::to_string(&err).unwrap_or_default();
-                                println!("{out}");
+                                let serialized = serde_json::to_string(&err)
+                                    .context("Failed to serialize missing content error")?;
+                                writeln!(out, "{serialized}")?;
+                                out.flush()?;
                                 continue;
                             }
                         };
@@ -367,8 +368,10 @@ fn main() {
                                     -32602,
                                     "Missing 'content' argument".into(),
                                 );
-                                let out = serde_json::to_string(&err).unwrap_or_default();
-                                println!("{out}");
+                                let serialized = serde_json::to_string(&err)
+                                    .context("Failed to serialize missing content error")?;
+                                writeln!(out, "{serialized}")?;
+                                out.flush()?;
                                 continue;
                             }
                         };
@@ -384,8 +387,10 @@ fn main() {
                                     -32602,
                                     "Missing 'id' argument".into(),
                                 );
-                                let out = serde_json::to_string(&err).unwrap_or_default();
-                                println!("{out}");
+                                let serialized = serde_json::to_string(&err)
+                                    .context("Failed to serialize missing id error")?;
+                                writeln!(out, "{serialized}")?;
+                                out.flush()?;
                                 continue;
                             }
                         };
@@ -406,15 +411,17 @@ fn main() {
                 }
             }
             "notifications/initialized" => {
-                // Acknowledge initialization silently
-                JsonRpcResponse::notification()
+                // MCP spec prohibits responding to notifications
+                continue;
             }
             "shutdown" => {
                 // Graceful shutdown — send empty response and exit
                 let ok = JsonRpcResponse::success(request.id, serde_json::json!(null));
-                let out = serde_json::to_string(&ok).unwrap_or_default();
-                println!("{out}");
-                return;
+                let serialized =
+                    serde_json::to_string(&ok).context("Failed to serialize shutdown response")?;
+                writeln!(out, "{serialized}")?;
+                out.flush()?;
+                return Ok(());
             }
             _ => JsonRpcResponse::error(
                 request.id,
@@ -423,7 +430,11 @@ fn main() {
             ),
         };
 
-        let out = serde_json::to_string(&response).unwrap_or_default();
-        println!("{out}");
+        let serialized =
+            serde_json::to_string(&response).context("Failed to serialize response")?;
+        writeln!(out, "{serialized}")?;
+        out.flush()?;
     }
+
+    Ok(())
 }

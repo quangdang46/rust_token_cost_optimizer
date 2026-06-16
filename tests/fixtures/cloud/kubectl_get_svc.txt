@@ -1,3 +1,9 @@
+# ORPHANED FIXTURE — Not referenced by any include_str! in Rust source.
+# Produced by: `kubectl get svc -A` (simulated Kubernetes services list).
+# Intended for: crates/rtco-cli/src/cmds/cloud/container.rs (module: cloud/container)
+# Created: 2026-06-16
+# Note: container.rs only uses docker_ps.txt, docker_images.txt, and kubectl_get_pods.txt. This svc fixture was never wired up.
+#
 NAMESPACE     NAME         TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
 default       api          ClusterIP      10.96.0.1        <none>        3000/TCP                     12h
 default       web          NodePort       10.96.0.2        <none>        80:30001/TCP                 12h
@@ -6,6 +12,3 @@ default       cache        ClusterIP      10.96.0.4        <none>        6379/TC
 default       monitoring   ClusterIP      10.96.0.5        <none>        9090/TCP                     12h
 default       dashboard    NodePort       10.96.0.6        <none>        3001:30002/TCP               12h
 default       queue        ClusterIP      10.96.0.7        <none>        5672/TCP,15672/TCP           12h
-default       storage      NodePort       10.96.0.8        <none>        9000:30003/TCP,9001:30004/TCP 12h
-default       vault        ClusterIP      10.96.0.9        <none>        8200/TCP                     12h
-kube-system   kube-dns     ClusterIP      10.96.0.10       <none>        53/UDP,53/TCP                7d
