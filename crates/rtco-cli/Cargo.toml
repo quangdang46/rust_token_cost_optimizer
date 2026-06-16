@@ -15,6 +15,10 @@ categories = ["command-line-utilities", "development-tools"]
 name = "rtco"
 path = "src/main.rs"
 
+[[bin]]
+name = "rtco-mcp"
+path = "src/bin/mcp_server.rs"
+
 [dependencies]
 rtco-core = { path = "../rtco-core", features = ["test-support"] }
 clap = { version = "4", features = ["derive"] }

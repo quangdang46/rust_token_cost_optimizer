@@ -9,6 +9,7 @@ license = "Apache 2.0"
 [features]
 default = []
 test-support = []
+prometheus = ["dep:prometheus"]
 
 [dependencies]
 anyhow = "1.0"
@@ -28,6 +29,7 @@ walkdir = "2"
 which = "8"
 aho-corasick = "1"
 blake3 = "1"
+prometheus = { version = "0.13", optional = true }
 
 [dev-dependencies]
 tempfile = "3"
