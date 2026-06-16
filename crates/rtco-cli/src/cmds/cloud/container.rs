@@ -75,12 +75,12 @@ fn docker_ps(_verbose: u8) -> Result<i32> {
     }
 
     let stdout = result.stdout;
-    let mut rtk = String::new();
+    let mut output = String::new();
 
     if stdout.trim().is_empty() {
-        rtk.push_str("[docker] 0 containers");
-        println!("{}", rtk);
-        timer.track("docker ps", "rtco docker ps", &raw, &rtk);
+        output.push_str("[docker] 0 containers");
+        println!("{}", output);
+        timer.track("docker ps", "rtco docker ps", &raw, &output);
         return Ok(0);
     }
 
@@ -91,20 +91,20 @@ fn docker_ps(_verbose: u8) -> Result<i32> {
         .filter_map(|line| format_container_line(line, true))
         .collect();
 
-    rtk.push_str(&format!("[docker] {} containers:\n", lines.len()));
+    output.push_str(&format!("[docker] {} containers:\n", lines.len()));
     for entry in lines.iter().take(MAX_CONTAINERS) {
-        rtk.push_str(entry);
+        output.push_str(entry);
     }
     if lines.len() > MAX_CONTAINERS {
-        rtk.push_str(&format!("  … +{} more\n", lines.len() - MAX_CONTAINERS));
+        output.push_str(&format!("  … +{} more\n", lines.len() - MAX_CONTAINERS));
         let full: String = lines.concat();
         if let Some(hint) = rtco_core::tee::force_tee_hint(&full, "docker-ps") {
-            rtk.push_str(&format!("{}\n", hint));
+            output.push_str(&format!("{}\n", hint));
         }
     }
 
-    print!("{}", rtk);
-    timer.track("docker ps", "rtco docker ps", &raw, &rtk);
+    print!("{}", output);
+    timer.track("docker ps", "rtco docker ps", &raw, &output);
     Ok(0)
 }
 
@@ -147,27 +147,27 @@ fn docker_ps_all(_verbose: u8) -> Result<i32> {
     const MAX_CONTAINERS: usize = 20;
     let truncated = running_lines.len() > MAX_CONTAINERS || stopped_lines.len() > MAX_CONTAINERS;
 
-    let mut rtk = String::new();
-    rtk.push_str(&format!("[docker] {} running:\n", running_lines.len()));
+    let mut output = String::new();
+    output.push_str(&format!("[docker] {} running:\n", running_lines.len()));
     for l in running_lines.iter().take(MAX_CONTAINERS) {
-        rtk.push_str(l);
+        output.push_str(l);
     }
     if running_lines.len() > MAX_CONTAINERS {
-        rtk.push_str(&format!(
+        output.push_str(&format!(
             "  … +{} more\n",
             running_lines.len() - MAX_CONTAINERS
         ));
     }
     if !stopped_lines.is_empty() {
-        rtk.push_str(&format!(
+        output.push_str(&format!(
             "[docker] {} stopped/exited:\n",
             stopped_lines.len()
         ));
         for l in stopped_lines.iter().take(MAX_CONTAINERS) {
-            rtk.push_str(l);
+            output.push_str(l);
         }
         if stopped_lines.len() > MAX_CONTAINERS {
-            rtk.push_str(&format!(
+            output.push_str(&format!(
                 "  … +{} more\n",
                 stopped_lines.len() - MAX_CONTAINERS
             ));
@@ -176,12 +176,12 @@ fn docker_ps_all(_verbose: u8) -> Result<i32> {
     if truncated {
         let full: String = running_lines.iter().chain(stopped_lines.iter()).cloned().collect();
         if let Some(hint) = rtco_core::tee::force_tee_hint(&full, "docker-ps-a") {
-            rtk.push_str(&format!("{}\n", hint));
+            output.push_str(&format!("{}\n", hint));
         }
     }
 
-    print!("{}", rtk);
-    timer.track("docker ps -a", "rtco docker ps -a", &raw, &rtk);
+    print!("{}", output);
+    timer.track("docker ps -a", "rtco docker ps -a", &raw, &output);
     Ok(0)
 }
 
@@ -236,12 +236,12 @@ fn docker_images(_verbose: u8) -> Result<i32> {
 
     let stdout = result.stdout;
     let lines: Vec<&str> = stdout.lines().collect();
-    let mut rtk = String::new();
+    let mut output = String::new();
 
     if lines.is_empty() {
-        rtk.push_str("[docker] 0 images");
-        println!("{}", rtk);
-        timer.track("docker images", "rtco docker images", &raw, &rtk);
+        output.push_str("[docker] 0 images");
+        println!("{}", output);
+        timer.track("docker images", "rtco docker images", &raw, &output);
         return Ok(0);
     }
 
@@ -266,7 +266,7 @@ fn docker_images(_verbose: u8) -> Result<i32> {
     } else {
         format!("{:.0}MB", total_size_mb)
     };
-    rtk.push_str(&format!(
+    output.push_str(&format!(
         "[docker] {} images ({})\n",
         lines.len(),
         total_display
@@ -284,30 +284,30 @@ fn docker_images(_verbose: u8) -> Result<i32> {
         })
         .collect();
 
-    let mut full_rtk = rtk.clone();
+    let mut full_output = output.clone();
     for l in &image_lines {
-        full_rtk.push_str(l);
+        full_output.push_str(l);
     }
 
     for l in image_lines.iter().take(MAX_IMAGES) {
-        rtk.push_str(l);
+        output.push_str(l);
     }
     if image_lines.len() > MAX_IMAGES {
-        rtk.push_str(&format!("  … +{} more\n", image_lines.len() - MAX_IMAGES));
-        if let Some(hint) = rtco_core::tee::force_tee_tail_hint(&full_rtk, "docker-images", MAX_IMAGES + 2) {
-            rtk.push_str(&format!("{}\n", hint));
+        output.push_str(&format!("  … +{} more\n", image_lines.len() - MAX_IMAGES));
+        if let Some(hint) = rtco_core::tee::force_tee_tail_hint(&full_output, "docker-images", MAX_IMAGES + 2) {
+            output.push_str(&format!("{}\n", hint));
         }
     }
 
-    print!("{}", rtk);
-    timer.track("docker images", "rtco docker images", &raw, &rtk);
+    print!("{}", output);
+    timer.track("docker images", "rtco docker images", &raw, &output);
     Ok(0)
 }
 
 fn docker_logs(args: &[String], _verbose: u8) -> Result<i32> {
     let container = args.first().map(|s| s.as_str()).unwrap_or("");
     if container.is_empty() {
-        println!("Usage: rtk docker logs <container>");
+        println!("Usage: output docker logs <container>");
         return Ok(0);
     }
 
@@ -480,7 +480,7 @@ fn format_kubectl_services(json: &Value) -> String {
 fn kubectl_logs(args: &[String], _verbose: u8) -> Result<i32> {
     let pod = args.first().map(|s| s.as_str()).unwrap_or("");
     if pod.is_empty() {
-        println!("Usage: rtk kubectl logs <pod>");
+        println!("Usage: output kubectl logs <pod>");
         return Ok(0);
     }
 
@@ -691,11 +691,11 @@ pub fn run_compose_ps(all: bool, verbose: u8) -> Result<i32> {
         eprintln!("raw docker compose ps:\n{}", raw);
     }
 
-    let rtk = format_compose_ps(&structured);
-    println!("{}", rtk);
+    let output = format_compose_ps(&structured);
+    println!("{}", output);
     let label = if all { "docker compose ps -a" } else { "docker compose ps" };
     let rtco_label = if all { "rtco docker compose ps -a" } else { "rtco docker compose ps" };
-    timer.track(label, rtco_label, &raw, &rtk);
+    timer.track(label, rtco_label, &raw, &output);
     Ok(0)
 }
 

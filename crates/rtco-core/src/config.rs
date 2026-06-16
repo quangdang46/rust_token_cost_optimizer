@@ -1,6 +1,6 @@
 //! Reads user settings from config.toml.
 
-use super::constants::{CONFIG_TOML, DEFAULT_HISTORY_DAYS, RTK_DATA_DIR};
+use super::constants::{CONFIG_TOML, DEFAULT_HISTORY_DAYS, RTCO_DATA_DIR};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -169,6 +169,86 @@ impl Default for CcrConfig {
     }
 }
 
+/// Configuration for an LLM model.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelConfig {
+    pub name: String,
+    /// Maximum context window size in tokens.
+    pub context_limit: usize,
+    /// Cost per token in USD (fractional).
+    pub cost_per_token: f64,
+}
+
+impl Default for ModelConfig {
+    fn default() -> Self {
+        Self {
+            name: "claude-sonnet-4-20250514".into(),
+            context_limit: 200_000,
+            cost_per_token: 0.000_003,
+        }
+    }
+}
+
+/// Load model definitions from an external models.toml file.
+///
+/// Returns a list of `ModelConfig`s with known pricing and context limits.
+/// Falls back to sensible built-in defaults when the file is missing.
+pub fn load_models() -> Vec<ModelConfig> {
+    let models_path = models_toml_path();
+    models_path
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|content| toml::from_str::<ModelsFile>(&content).ok())
+        .map(|f| f.model)
+        .unwrap_or_else(default_models)
+}
+
+#[derive(Debug, Deserialize)]
+struct ModelsFile {
+    #[serde(rename = "model")]
+    model: Vec<ModelConfig>,
+}
+
+fn models_toml_path() -> Option<std::path::PathBuf> {
+    dirs::config_dir().map(|d| d.join("rtco").join("models.toml"))
+}
+
+fn default_models() -> Vec<ModelConfig> {
+    vec![
+        ModelConfig {
+            name: "claude-sonnet-4-20250514".into(),
+            context_limit: 200_000,
+            cost_per_token: 0.000_003,
+        },
+        ModelConfig {
+            name: "claude-sonnet-4-20250514-100k".into(),
+            context_limit: 100_000,
+            cost_per_token: 0.000_003,
+        },
+        ModelConfig {
+            name: "claude-3-5-sonnet-20241022".into(),
+            context_limit: 200_000,
+            cost_per_token: 0.000_003,
+        },
+        ModelConfig {
+            name: "gpt-4o-2024-11-20".into(),
+            context_limit: 128_000,
+            cost_per_token: 0.000_002_5,
+        },
+        ModelConfig {
+            name: "gemini-2.5-pro".into(),
+            context_limit: 1_000_000,
+            cost_per_token: 0.000_001_25,
+        },
+    ]
+}
+
+/// Stub: placeholder for future economics integration.
+/// Will compute per-model savings in USD based on `ModelConfig`.
+pub fn compute_model_savings(_model: &ModelConfig, _tokens_saved: usize) -> f64 {
+    // TODO: wire into cc_economics for real cost projections
+    0.0
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 pub struct CompressorsConfig {
@@ -257,7 +337,7 @@ fn get_config_path() -> Result<PathBuf> {
         return Ok(PathBuf::from(custom));
     }
     let config_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
-    Ok(config_dir.join(RTK_DATA_DIR).join(CONFIG_TOML))
+    Ok(config_dir.join(RTCO_DATA_DIR).join(CONFIG_TOML))
 }
 
 pub fn show_config() -> Result<()> {

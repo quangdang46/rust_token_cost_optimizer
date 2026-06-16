@@ -90,19 +90,19 @@ Creates `~/.config/opencode/plugins/rtco.ts`. Uses the `tool.execute.before` hoo
 
 ```bash
 # Project-local (default)
-rtk init --agent pi
+rtco init --agent pi
 
 # Global — all projects
-rtk init --agent pi --global
+rtco init --agent pi --global
 ```
 
-Creates `.pi/extensions/rtk.ts` (local) or `~/.pi/agent/extensions/rtk.ts` (global). Pi auto-discovers extensions from both paths on startup.
+Creates `.pi/extensions/rtco.ts` (local) or `~/.pi/agent/extensions/rtco.ts` (global). Pi auto-discovers extensions from both paths on startup.
 
 Uninstall:
 
 ```bash
-rtk init --uninstall --agent pi
-rtk init --uninstall --agent pi --global
+rtco init --uninstall --agent pi
+rtco init --uninstall --agent pi --global
 ```
 
 Removes only the installed Pi extension file.
@@ -111,19 +111,19 @@ Removes only the installed Pi extension file.
 
 ```bash
 # Project-local (default)
-rtk init --agent pi
+rtco init --agent pi
 
 # Global — all projects
-rtk init --agent pi --global
+rtco init --agent pi --global
 ```
 
-Creates `.pi/extensions/rtk.ts` (local) or `~/.pi/agent/extensions/rtk.ts` (global). Pi auto-discovers extensions from both paths on startup.
+Creates `.pi/extensions/rtco.ts` (local) or `~/.pi/agent/extensions/rtco.ts` (global). Pi auto-discovers extensions from both paths on startup.
 
 Uninstall:
 
 ```bash
-rtk init --uninstall --agent pi
-rtk init --uninstall --agent pi --global
+rtco init --uninstall --agent pi
+rtco init --uninstall --agent pi --global
 ```
 
 Removes only the installed Pi extension file.

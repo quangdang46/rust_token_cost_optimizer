@@ -42,7 +42,7 @@ pub fn run(
     // Safety: if filter emptied a non-empty file, fall back to raw content
     if filtered.trim().is_empty() && !content.trim().is_empty() {
         eprintln!(
-            "rtk: warning: filter produced empty output for {} ({} bytes), showing raw content",
+            "rtco: warning: filter produced empty output for {} ({} bytes), showing raw content",
             file.display(),
             content.len()
         );
@@ -248,7 +248,7 @@ fn main() {{
         let output = std::process::Command::new(&bin)
             .args(["read", &f1.path().to_string_lossy(), &f2.path().to_string_lossy()])
             .output()
-            .expect("failed to run rtk read");
+            .expect("failed to run rtco read");
 
         assert!(output.status.success());
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -266,15 +266,15 @@ fn main() {{
         writeln!(f1, "valid content").unwrap();
 
         let output = std::process::Command::new(&bin)
-            .args(["read", &f1.path().to_string_lossy(), "/tmp/rtk_nonexistent_file.txt"])
+            .args(["read", &f1.path().to_string_lossy(), "/tmp/rtco_nonexistent_file.txt"])
             .output()
-            .expect("failed to run rtk read");
+            .expect("failed to run rtco read");
 
         assert!(!output.status.success(), "should exit non-zero on missing file");
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(stdout.contains("valid content"), "valid file should still be printed");
-        assert!(stderr.contains("rtk_nonexistent_file"), "should report missing file on stderr");
+        assert!(stderr.contains("rtco_nonexistent_file"), "should report missing file on stderr");
     }
 
     #[test]
@@ -287,7 +287,7 @@ fn main() {{
             .args(["read", "-", "-"])
             .stdin(std::process::Stdio::piped())
             .output()
-            .expect("failed to run rtk read");
+            .expect("failed to run rtco read");
 
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(

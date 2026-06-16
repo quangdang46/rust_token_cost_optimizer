@@ -265,7 +265,7 @@ enum Commands {
 
     /// Find files with compact tree output (accepts native find flags like -name, -type)
     Find {
-        /// All find arguments (supports both RTK and native find syntax)
+        /// All find arguments (supports both rtco and native find syntax)
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
@@ -362,7 +362,7 @@ enum Commands {
         #[arg(long = "claude-md", group = "mode")]
         claude_md: bool,
 
-        /// Hook only, no RTK.md
+        /// Hook only, no instructions.md
         #[arg(long = "hook-only", group = "mode")]
         hook_only: bool,
 
@@ -374,11 +374,11 @@ enum Commands {
         #[arg(long = "no-patch", group = "patch")]
         no_patch: bool,
 
-        /// Remove RTK artifacts for the selected assistant mode
+        /// Remove rtco artifacts for the selected assistant mode
         #[arg(long)]
         uninstall: bool,
 
-        /// Target Codex CLI (uses AGENTS.md + RTK.md, no Claude hook patching)
+        /// Target Codex CLI (uses AGENTS.md, no Claude hook patching)
         #[arg(long)]
         codex: bool,
 
@@ -1140,9 +1140,9 @@ enum GoCommands {
     Other(Vec<OsString>),
 }
 
-/// RTK-only subcommands that should never fall back to raw execution.
+/// rtco-only subcommands that should never fall back to raw execution.
 /// If Clap fails to parse these, show the Clap error directly.
-const RTK_META_COMMANDS: &[&str] = &[
+const RTCO_META_COMMANDS: &[&str] = &[
     "gain",
     "discover",
     "learn",
@@ -1171,7 +1171,7 @@ fn run_fallback(parse_error: clap::Error) -> Result<i32> {
 
     // RTK meta-commands should never fall back to raw execution.
     // e.g. `rtco gain --badtypo` should show Clap's error, not try to run `gain` from $PATH.
-    if RTK_META_COMMANDS.contains(&args[0].as_str()) {
+    if RTCO_META_COMMANDS.contains(&args[0].as_str()) {
         parse_error.exit();
     }
 
@@ -2324,8 +2324,8 @@ fn run_cli() -> Result<i32> {
             let timer = rtco_core::tracking::TimedExecution::start();
 
             // If a single quoted arg contains spaces, split it respecting quotes (#388).
-            // e.g. rtk proxy 'head -50 file.php' → cmd=head, args=["-50", "file.php"]
-            // e.g. rtk proxy 'git log --format="%H %s"' → cmd=git, args=["log", "--format=%H %s"]
+            // e.g. rtco proxy 'head -50 file.php' → cmd=head, args=["-50", "file.php"]
+            // e.g. rtco proxy 'git log --format="%H %s"' → cmd=git, args=["log", "--format=%H %s"]
             let (cmd_name, cmd_args): (String, Vec<String>) = if args.len() == 1 {
                 let full = args[0].to_string_lossy();
                 let parts = shell_split(&full);
@@ -2867,7 +2867,7 @@ mod tests {
     fn test_meta_commands_reject_bad_flags() {
         // RTK meta-commands should produce parse errors (not fall through to raw execution).
         // Skip "proxy" because it uses trailing_var_arg (accepts any args by design).
-        for cmd in RTK_META_COMMANDS {
+        for cmd in RTCO_META_COMMANDS {
             if matches!(*cmd, "proxy" | "run" | "rewrite" | "session") {
                 continue; // these use trailing_var_arg (accept any args by design)
             }

@@ -93,7 +93,7 @@ fn parse_find_args(args: &[String]) -> Result<FindArgs> {
     if has_native_find_flags(args) {
         parse_native_find_args(args)
     } else {
-        parse_rtk_find_args(args)
+        parse_rtco_find_args(args)
     }
 }
 
@@ -143,7 +143,7 @@ fn parse_native_find_args(args: &[String]) -> Result<FindArgs> {
 }
 
 /// Parse RTK syntax: `find <pattern> [path] [-m max] [-t type]`
-fn parse_rtk_find_args(args: &[String]) -> Result<FindArgs> {
+fn parse_rtco_find_args(args: &[String]) -> Result<FindArgs> {
     let mut parsed = FindArgs {
         pattern: args[0].clone(),
         ..FindArgs::default()
@@ -512,21 +512,21 @@ mod tests {
     // --- parse_find_args: RTK syntax ---
 
     #[test]
-    fn parse_rtk_syntax_pattern_only() {
+    fn parse_rtco_syntax_pattern_only() {
         let parsed = parse_find_args(&args(&["*.rs"])).unwrap();
         assert_eq!(parsed.pattern, "*.rs");
         assert_eq!(parsed.path, ".");
     }
 
     #[test]
-    fn parse_rtk_syntax_pattern_and_path() {
+    fn parse_rtco_syntax_pattern_and_path() {
         let parsed = parse_find_args(&args(&["*.rs", "src"])).unwrap();
         assert_eq!(parsed.pattern, "*.rs");
         assert_eq!(parsed.path, "src");
     }
 
     #[test]
-    fn parse_rtk_syntax_with_flags() {
+    fn parse_rtco_syntax_with_flags() {
         let parsed = parse_find_args(&args(&["*.rs", "src", "-m", "10", "-t", "d"])).unwrap();
         assert_eq!(parsed.pattern, "*.rs");
         assert_eq!(parsed.path, "src");

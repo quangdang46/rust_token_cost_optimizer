@@ -1385,7 +1385,7 @@ mod tests {
     fn test_filter_cargo_build_success() {
         let output = r#"   Compiling libc v0.2.153
    Compiling cfg-if v1.0.0
-   Compiling rtk v0.5.0
+   Compiling rtco v0.41.0
     Finished dev [unoptimized + debuginfo] target(s) in 15.23s
 "#;
         let result = filter_cargo_build(output);
@@ -1395,7 +1395,7 @@ mod tests {
 
     #[test]
     fn test_filter_cargo_build_errors() {
-        let output = r#"   Compiling rtk v0.5.0
+        let output = r#"   Compiling rtco v0.41.0
 error[E0308]: mismatched types
  --> src/main.rs:10:5
   |
@@ -1412,9 +1412,9 @@ error: aborting due to 1 previous error
 
     #[test]
     fn test_filter_cargo_test_all_pass() {
-        let output = r#"   Compiling rtk v0.5.0
+        let output = r#"   Compiling rtco v0.41.0
     Finished test [unoptimized + debuginfo] target(s) in 2.53s
-     Running target/debug/deps/rtk-abc123
+     Running target/debug/deps/rtco-abc123
 
 running 15 tests
 test utils::tests::test_truncate_short_string ... ok
@@ -1458,14 +1458,14 @@ test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
 
     #[test]
     fn test_filter_cargo_test_multi_suite_all_pass() {
-        let output = r#"   Compiling rtk v0.5.0
+        let output = r#"   Compiling rtco v0.41.0
     Finished test [unoptimized + debuginfo] target(s) in 2.53s
-     Running unittests src/lib.rs (target/debug/deps/rtk-abc123)
+     Running unittests src/lib.rs (target/debug/deps/rtco-abc123)
 
 running 50 tests
 test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
 
-     Running unittests src/main.rs (target/debug/deps/rtk-def456)
+     Running unittests src/main.rs (target/debug/deps/rtco-def456)
 
 running 30 tests
 test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
@@ -2142,7 +2142,7 @@ error: test run failed
 
     #[test]
     fn test_cargo_build_stream_success() {
-        let input = "   Compiling libc v0.2.153\n   Compiling cfg-if v1.0.0\n   Compiling rtk v0.5.0\n    Finished dev [unoptimized + debuginfo] target(s) in 15.23s\n";
+        let input = "   Compiling libc v0.2.153\n   Compiling cfg-if v1.0.0\n   Compiling rtco v0.41.0\n    Finished dev [unoptimized + debuginfo] target(s) in 15.23s\n";
         let mut f = BlockStreamFilter::new(CargoBuildHandler::new());
         let result = run_block_filter(&mut f, input, 0);
         assert!(result.contains("3 crates compiled"), "got: {}", result);
@@ -2152,7 +2152,7 @@ error: test run failed
 
     #[test]
     fn test_cargo_build_stream_errors() {
-        let input = r#"   Compiling rtk v0.5.0
+        let input = r#"   Compiling rtco v0.41.0
 error[E0308]: mismatched types
  --> src/main.rs:10:5
   |
@@ -2171,9 +2171,9 @@ error: aborting due to 1 previous error
 
     #[test]
     fn test_cargo_test_stream_all_pass() {
-        let input = r#"   Compiling rtk v0.5.0
+        let input = r#"   Compiling rtco v0.41.0
     Finished test [unoptimized + debuginfo] target(s) in 2.53s
-     Running target/debug/deps/rtk-abc123
+     Running target/debug/deps/rtco-abc123
 
 running 15 tests
 test utils::tests::test_truncate_short_string ... ok
@@ -2217,12 +2217,12 @@ test result: FAILED. 4 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
 
     #[test]
     fn test_cargo_test_stream_multi_suite() {
-        let input = r#"     Running unittests src/lib.rs (target/debug/deps/rtk-abc123)
+        let input = r#"     Running unittests src/lib.rs (target/debug/deps/rtco-abc123)
 
 running 50 tests
 test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
 
-     Running unittests src/main.rs (target/debug/deps/rtk-def456)
+     Running unittests src/main.rs (target/debug/deps/rtco-def456)
 
 running 30 tests
 test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
@@ -2264,7 +2264,7 @@ error: could not compile `rtk` (test "repro_compile_fail") due to 1 previous err
     fn test_token_savings_build_success() {
         let output = r#"   Compiling libc v0.2.153
    Compiling cfg-if v1.0.0
-   Compiling rtk v0.5.0
+   Compiling rtco v0.41.0
     Finished dev [unoptimized + debuginfo] target(s) in 15.23s
 "#;
         let result = filter_cargo_build(output);
@@ -2280,14 +2280,14 @@ error: could not compile `rtk` (test "repro_compile_fail") due to 1 previous err
 
     #[test]
     fn test_token_savings_test_filter() {
-        let output = r#"   Compiling rtk v0.5.0
+        let output = r#"   Compiling rtco v0.41.0
     Finished test [unoptimized + debuginfo] target(s) in 2.53s
-     Running unittests src/lib.rs (target/debug/deps/rtk-abc123)
+     Running unittests src/lib.rs (target/debug/deps/rtco-abc123)
 
 running 50 tests
 test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
 
-     Running unittests src/main.rs (target/debug/deps/rtk-def456)
+     Running unittests src/main.rs (target/debug/deps/rtco-def456)
 
 running 30 tests
 test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s

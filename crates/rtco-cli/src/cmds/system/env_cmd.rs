@@ -131,8 +131,8 @@ pub fn run(filter: Option<&str>, show_all: bool, verbose: u8) -> Result<()> {
         let _ = writeln!(output, "{}={}", k, v);
         output
     });
-    let rtk = format!("{} vars -> {} shown", total, shown);
-    timer.track("env", "rtco env", &raw, &rtk);
+    let result = format!("{} vars -> {} shown", total, shown);
+    timer.track("env", "rtco env", &raw, &result);
     Ok(())
 }
 

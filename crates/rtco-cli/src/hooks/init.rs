@@ -1381,7 +1381,7 @@ fn generate_project_filters_template(ctx: InitContext) -> Result<()> {
 fn generate_global_filters_template(ctx: InitContext) -> Result<()> {
     let InitContext { verbose, dry_run } = ctx;
     let config_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".config"));
-    let rtk_dir = config_dir.join(rtco_core::constants::RTK_DATA_DIR);
+    let rtk_dir = config_dir.join(rtco_core::constants::RTCO_DATA_DIR);
     let path = rtk_dir.join("filters.toml");
 
     if path.exists() {

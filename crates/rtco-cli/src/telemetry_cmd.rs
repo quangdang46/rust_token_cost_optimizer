@@ -54,8 +54,8 @@ fn run_status() -> Result<()> {
     }
 
     println!();
-    println!("Data controller: RTK AI Labs, contact@rtk-ai.app");
-    println!("Details: https://github.com/rtk-ai/rtk/blob/master/docs/TELEMETRY.md");
+    println!("Data controller: rtco AI Labs, contact@rtco-ai.app");
+    println!("Details: https://github.com/rtco-ai/rtco/blob/master/docs/TELEMETRY.md");
 
     Ok(())
 }
@@ -69,11 +69,11 @@ fn run_enable() -> Result<()> {
         );
     }
 
-    eprintln!("RTK collects anonymous usage metrics once per day to improve filters.");
+    eprintln!("rtco collects anonymous usage metrics once per day to improve filters.");
     eprintln!();
     eprintln!("  What:    command names (not arguments), token savings, OS, version");
-    eprintln!("  Who:     RTK AI Labs, contact@rtk-ai.app");
-    eprintln!("  Details: https://github.com/rtk-ai/rtk/blob/master/docs/TELEMETRY.md");
+    eprintln!("  Who:     rtco AI Labs, contact@rtco-ai.app");
+    eprintln!("  Details: https://github.com/rtco-ai/rtco/blob/master/docs/TELEMETRY.md");
     eprintln!();
     eprint!("Enable anonymous telemetry? [y/N] ");
 
@@ -92,7 +92,7 @@ fn run_enable() -> Result<()> {
     crate::hooks::init::save_telemetry_consent(accepted)?;
 
     if accepted {
-        println!("Telemetry enabled. Disable anytime: rtk telemetry disable");
+        println!("Telemetry enabled. Disable anytime: rtco telemetry disable");
     } else {
         println!("Telemetry not enabled.");
     }
@@ -131,12 +131,12 @@ fn run_forget() -> Result<()> {
     // Purge local tracking database (GDPR Art. 17 — right to erasure applies to local data too)
     let db_path = dirs::data_local_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join(rtco_core::constants::RTK_DATA_DIR)
+        .join(rtco_core::constants::RTCO_DATA_DIR)
         .join(rtco_core::constants::HISTORY_DB);
     if db_path.exists() {
         match std::fs::remove_file(&db_path) {
             Ok(()) => println!("Local tracking database deleted: {}", db_path.display()),
-            Err(e) => eprintln!("rtk: could not delete {}: {}", db_path.display(), e),
+            Err(e) => eprintln!("rtco: could not delete {}: {}", db_path.display(), e),
         }
     }
 
@@ -147,8 +147,8 @@ fn run_forget() -> Result<()> {
                 println!("Erasure request sent to server.");
             }
             Err(e) => {
-                eprintln!("rtk: could not reach server: {}", e);
-                eprintln!("  To complete erasure, email contact@rtk-ai.app");
+                eprintln!("rtco: could not reach server: {}", e);
+                eprintln!("  To complete erasure, email contact@rtco-ai.app");
                 eprintln!("  with your device hash: {}", hash);
             }
         }

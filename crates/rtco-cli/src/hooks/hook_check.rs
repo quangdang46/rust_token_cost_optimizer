@@ -4,7 +4,7 @@ use super::constants::{
     CLAUDE_DIR, CLAUDE_HOOK_COMMAND, HOOKS_SUBDIR, PRE_TOOL_USE_KEY, REWRITE_HOOK_FILE,
     SETTINGS_JSON,
 };
-use rtco_core::constants::RTK_DATA_DIR;
+use rtco_core::constants::RTCO_DATA_DIR;
 use std::path::PathBuf;
 
 const CURRENT_HOOK_VERSION: u8 = 3;
@@ -147,7 +147,7 @@ fn hook_installed_path() -> Option<PathBuf> {
 }
 
 fn warn_marker_path() -> Option<PathBuf> {
-    let data_dir = dirs::data_local_dir()?.join(RTK_DATA_DIR);
+    let data_dir = dirs::data_local_dir()?.join(RTCO_DATA_DIR);
     Some(data_dir.join(".hook_warn_last"))
 }
 

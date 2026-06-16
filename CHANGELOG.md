@@ -5,6 +5,73 @@ All notable changes to rtco (Rust Token Killer) will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.41.0](https://github.com/rtco-ai/rtco/compare/v0.40.0...v0.41.0) (2026-06-16)
+
+### Features
+
+* **headroom:** port token estimation engine with ApproximateEstimator, Tokenizer trait, and Registry ([ceabad0](https://github.com/rtco-ai/rtco/commit/ceabad0))
+* **headroom:** port line importance signals — ErrorWarningDetector (Aho-Corasick), SeparatorDetector, LengthDetector, TieredDetector ([ceabad0](https://github.com/rtco-ai/rtco/commit/ceabad0))
+* **headroom:** port CCR pipeline, compressor framework, anchor system, and cache aligner ([ceabad0](https://github.com/rtco-ai/rtco/commit/ceabad0))
+* **headroom:** port smart_crusher depth — anchors, constraints, error_keywords, field_detect, hashing, outliers, traits, tag_protector, upgrade planner (SmartCrusherConfig) ([89f20da](https://github.com/rtco-ai/rtco/commit/89f20da))
+* **headroom:** port Shannon entropy, SimHash, dedup filter, text_stats, content-aware token estimation ([cc4ba76](https://github.com/rtco-ai/rtco/commit/cc4ba76))
+* **workspace:** extract rtco-core library crate + workspace structure ([37dcb0c](https://github.com/rtco-ai/rtco/commit/37dcb0c))
+* **jvm:** add `rtco mvn` with Surefire/Failsafe XML test summarization (PASS/FAIL/SKIP + failure details) ([d8f1677](https://github.com/rtco-ai/rtco/commit/d8f1677))
+* **sqlite:** add `rtco sqlite3` filter with column/line/list mode table compression ([35535db](https://github.com/rtco-ai/rtco/commit/35535db))
+* **rewrite:** port upstream RTK improvements — SIGPIPE handler, args_utils, permission hardening ([c515279](https://github.com/rtco-ai/rtco/commit/c515279))
+* **tee:** add force_tee_hint() — truncated output saved to file with recovery hint ([ceabad0](https://github.com/rtco-ai/rtco/commit/ceabad0))
+* **hooks:** add Pi coding agent integration ([1da5793](https://github.com/rtco-ai/rtco/commit/1da5793))
+* **hooks:** add fnm (Fast Node Manager) filter and hook rewrite ([70b8902](https://github.com/rtco-ai/rtco/commit/70b8902))
+* **discover:** add fnm rewrite rule and filter ([70b8902](https://github.com/rtco-ai/rtco/commit/70b8902))
+* **git:** prefer short args, cleanup comments ([fb67bb6](https://github.com/rtco-ai/rtco/commit/fb67bb6))
+* **security:** Sprint 1 — infrastructure fixes: hook integrity, permission hardening, stale file removal ([b3b5c40](https://github.com/rtco-ai/rtco/commit/b3b5c40))
+* **tests:** Sprint 2 — critical test coverage: add #[cfg(test)] modules for verify_cmd, gain, telemetry, discover, learn, parser, deps, summary ([118eca0](https://github.com/rtco-ai/rtco/commit/118eca0))
+* **tests:** Sprint 3 — test fixtures for all filter modules (81 new fixture files across git, js, python, ruby, system, go, jvm) ([1d048a6](https://github.com/rtco-ai/rtco/commit/1d048a6))
+* **tests:** Sprint 4 — snapshot + token savings tests across all filter modules with >=60% savings assertions ([7a027e5](https://github.com/rtco-ai/rtco/commit/7a027e5))
+* **ci:** Sprint 5 — CI/CD pipeline automation, workflow cleanup, branch trigger migration ([8d54e76](https://github.com/rtco-ai/rtco/commit/8d54e76))
+* **bead-analysis:** add full gap analysis — 50 beads across 7 sprints ([cff7ef9](https://github.com/rtco-ai/rtco/commit/cff7ef9))
+* **tracking:** honor tracking.enabled config and redact sensitive args from database ([37f239a](https://github.com/rtco-ai/rtco/commit/37f239a))
+* **tee:** redact sensitive output and add per-command opt-out ([0f12931](https://github.com/rtco-ai/rtco/commit/0f12931))
+
+### Bug Fixes
+
+* **diff:** preserve POSIX/git contract for programmatic consumers (git apply, patch, shell loops) ([fb5bf71](https://github.com/rtco-ai/rtco/commit/fb5bf71))
+* **golangci-lint:** accept null source lines in JSON output ([22758a5](https://github.com/rtco-ai/rtco/commit/22758a5))
+* **hooks/rewrite:** restore php rewrite rule (Laravel/Symfony artisan) ([51a3731](https://github.com/rtco-ai/rtco/commit/51a3731))
+* **core:** surface truncated context inline so AI consumers get full diagnostics ([f557bb0](https://github.com/rtco-ai/rtco/commit/f557bb0))
+* **git:** drop -uall from compact status so output never exceeds raw ([7753e48](https://github.com/rtco-ai/rtco/commit/7753e48))
+* **git:** honor explicit -n N limit for git log on merge commits ([b3adcb1](https://github.com/rtco-ai/rtco/commit/b3adcb1))
+* **git:** don't count --max-lines truncation as savings ([70b8902](https://github.com/rtco-ai/rtco/commit/70b8902))
+* **grep:** parse single-file output containing colons ([8e04ac4](https://github.com/rtco-ai/rtco/commit/8e04ac4))
+* **grep:** NUL-separate file from line:content for robust parsing ([0e3a6f4](https://github.com/rtco-ai/rtco/commit/0e3a6f4))
+* **ls:** preserve permission info as octal when -l/-la is passed ([6c4dfc7](https://github.com/rtco-ai/rtco/commit/6c4dfc7))
+* **hook:** collapse bash line continuations before matching ([#1572](https://github.com/rtco-ai/rtco/issues/1572)) ([85ad9ef](https://github.com/rtco-ai/rtco/commit/85ad9ef))
+* **hook:** respect Claude Code deny/ask permission rules on rewrite ([a051a6f](https://github.com/rtco-ai/rtco/commit/a051a6f))
+* **hook:** require all segments to match allow rules ([#1213](https://github.com/rtco-ai/rtco/issues/1213)) ([40c9dbc](https://github.com/rtco-ai/rtco/commit/40c9dbc))
+* **rewrite:** only rewrite find when invocation fits compact-find grammar ([70b8902](https://github.com/rtco-ai/rtco/commit/70b8902))
+* **init:** respect CLAUDE_CONFIG_DIR for global paths ([70b8902](https://github.com/rtco-ai/rtco/commit/70b8902))
+* **init:** preserve settings.json symlink during atomic write ([70b8902](https://github.com/rtco-ai/rtco/commit/70b8902))
+* **tracking:** isolate parallel tests with with_db_path constructor ([6e6241f](https://github.com/rtco-ai/rtco/commit/6e6241f))
+* **tracking:** use std::env::temp_dir() for cross-platform compatibility ([e918661](https://github.com/rtco-ai/rtco/commit/e918661))
+* **ci:** correct include_str! fixture path from crate root to workspace root ([92a23ce](https://github.com/rtco-ai/rtco/commit/92a23ce))
+* **ci:** use include_str! for dotnet format test fixtures ([9f4a4df](https://github.com/rtco-ai/rtco/commit/9f4a4df))
+* **ci:** clean up CD workflow — remove release-please, stale upstream workflows, fix concurrency ([a61602f](https://github.com/rtco-ai/rtco/commit/a61602f))
+* **ci:** change branch triggers master→main ([2e6b687](https://github.com/rtco-ai/rtco/commit/2e6b687))
+* **aws:** redact secretsmanager get-secret-value payload from output ([bc936fd](https://github.com/rtco-ai/rtco/commit/bc936fd))
+* **install:** fix install.ps1 — strip UTF-8 BOM, force TLS 1.2, ASCII-ize headers for PS 5.1 ([f35ce19](https://github.com/rtco-ai/rtco/commit/f35ce19))
+* **license:** replace remaining MIT references with Apache 2.0 across all README files ([7954304](https://github.com/rtco-ai/rtco/commit/7954304))
+* remove stale files: translated READMEs (es/fr/ja/ko/zh), SECURITY, DISCLAIMER, FEATURES ([4a0a3f4](https://github.com/rtco-ai/rtco/commit/4a0a3f4))
+
+### Documentation
+
+* add ASCII art banner, Mermaid architecture diagram, filter pipeline section ([8f0d1b9](https://github.com/rtco-ai/rtco/commit/8f0d1b9))
+* rewrite README — minimal, concise, single-page with design philosophy ([092d73b](https://github.com/rtco-ai/rtco/commit/092d73b))
+* remove nested/translation READMEs, keep only root README ([ce9b234](https://github.com/rtco-ai/rtco/commit/ce9b234))
+
+### Refactor
+
+* comprehensive rtk→rtco rename: binary, package, env vars, hooks, docs, data dir ([8dbaa2e](https://github.com/rtco-ai/rtco/commit/8dbaa2e))
+* rename rtk_* identifiers to rtco_* across codebase ([2333da2](https://github.com/rtco-ai/rtco/commit/2333da2))
+
 ## [0.36.0](https://github.com/rtco-ai/rtco/compare/v0.35.0...v0.36.0) (2026-04-13)
 
 
@@ -95,59 +162,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **security:** default to ask when no permission rule matches ([#886](https://github.com/rtco-ai/rtco/issues/886)) ([41a6c6b](https://github.com/rtco-ai/rtco/commit/41a6c6bf6da78a4754794fdc6a1469df2e327920))
 * **tracking:** use std::env::temp_dir() for compatibility (instead of unix tmp) ([e918661](https://github.com/rtco-ai/rtco/commit/e918661440d7b50321f0535032f52c5e87aaf3cb))
 
-## [Unreleased]
-
-### Bug Fixes
-
-* **git:** remove `-u` short alias from `--ultra-compact` to fix `git push -u` upstream tracking ([#1086](https://github.com/rtco-ai/rtco/issues/1086))
-
-## [0.35.0](https://github.com/rtco-ai/rtco/compare/v0.34.3...v0.35.0) (2026-04-06)
-
-
-### Features
-
-* **aws:** expand CLI filters from 8 to 25 subcommands ([402c48e](https://github.com/rtco-ai/rtco/commit/402c48e66988e638a5b4f4dd193238fc1d0fe18f))
-
-
-### Bug Fixes
-
-* **cmd:** read/cat multiple file and consistent behavior ([3f58018](https://github.com/rtco-ai/rtco/commit/3f58018f4af1d7206457929cf80bb4534203c3ee))
-* **docs:** clean some docs + disclaimer ([deda44f](https://github.com/rtco-ai/rtco/commit/deda44f73607981f3d27ecc6341ce927aab34d37))
-* **gh:** pass through gh pr merge instead of canned response ([#938](https://github.com/rtco-ai/rtco/issues/938)) ([8465ca9](https://github.com/rtco-ai/rtco/commit/8465ca953fa9d70dcc971a941c19465d456eb7d4))
-* **gh:** pass through gh pr merge instead of canned response ([#938](https://github.com/rtco-ai/rtco/issues/938)) ([e1f2845](https://github.com/rtco-ai/rtco/commit/e1f2845df06a8d8b8325945dc4940ec5f530e4cc))
-* **git:** inherit stdin for commit and push to preserve SSH signing ([#733](https://github.com/rtco-ai/rtco/issues/733)) ([eefeae4](https://github.com/rtco-ai/rtco/commit/eefeae45656ff2607c3f519c8eae235e3f0fe411))
-* **git:** inherit stdin for commit and push to preserve SSH signing ([#733](https://github.com/rtco-ai/rtco/issues/733)) ([6cee6c6](https://github.com/rtco-ai/rtco/commit/6cee6c60b80f914ed9505e3925d85cadec43ab97))
-* **git:** preserve full diff hunk headers ([62f4452](https://github.com/rtco-ai/rtco/commit/62f445227679f3df293fe35e9b18cc5ab39d7963))
-* **git:** preserve full diff hunk headers ([09b3ff9](https://github.com/rtco-ai/rtco/commit/09b3ff9424e055f5fe25e535e5b60e077f8344f9))
-* **go:** avoid false build errors from download logs ([9c1cf2f](https://github.com/rtco-ai/rtco/commit/9c1cf2f403534fa7874638b1b983c2d7f918a185))
-* **go:** avoid false build errors from download logs ([d44fd3e](https://github.com/rtco-ai/rtco/commit/d44fd3e034208e3bcd59c2c46f7720eec4f10c98))
-* **go:** cover more build failure shapes ([2425ad6](https://github.com/rtco-ai/rtco/commit/2425ad68e5386d19e5ec9ff1ca151a6d2c9a56d3))
-* **go:** preserve failing test location context ([1481bc5](https://github.com/rtco-ai/rtco/commit/1481bc590924031456a6022510275c29c09e330e))
-* **go:** preserve failing test location context ([374fe64](https://github.com/rtco-ai/rtco/commit/374fe64cfbedcd676733973e81a63a6dfecbb1b7))
-* **go:** restore build error coverage ([1177c9c](https://github.com/rtco-ai/rtco/commit/1177c9c873ac63b6c0bcc9e1b664a705baa0ad7a))
-* **grep:** close subprocess stdin to prevent memory leak ([#897](https://github.com/rtco-ai/rtco/issues/897)) ([7217562](https://github.com/rtco-ai/rtco/commit/72175623551f40b581b4a7f6ed966c1e4a9c7358))
-* **grep:** close subprocess stdin to prevent memory leak ([#897](https://github.com/rtco-ai/rtco/issues/897)) ([09979cf](https://github.com/rtco-ai/rtco/commit/09979cf29701a1b775bcac761d24ec0e055d1bec))
-* **hook_check:** detect missing integrations ([9cf9ccc](https://github.com/rtco-ai/rtco/commit/9cf9ccc1ac39f8bba37e932c7d318a3aa7a34ae9))
-* **init:** remove opt-out instruction from telemetry message ([7571c8e](https://github.com/rtco-ai/rtco/commit/7571c8e101c41ee64c51e2bd64697f85f9142423))
-* **init:** remove telemetry info lines from init output ([7dbef2c](https://github.com/rtco-ai/rtco/commit/7dbef2ce00824d26f2057e4c3c76e429e2e23088))
-* **main:** kill zombie processes + path for rtco md ([d16fc6d](https://github.com/rtco-ai/rtco/commit/d16fc6dacbfec912c21522939b15b7bbd9719487))
-* **main:** kill zombie processes + path for rtco md + missing intergrations ([a919335](https://github.com/rtco-ai/rtco/commit/a919335519ed4a5259a212e56407cb312aa99bac))
-* **merge:** changelog conflicts ([d92c5d2](https://github.com/rtco-ai/rtco/commit/d92c5d264a49483c8d6079e04d946a79bc990a74))
-* **proxy:** kill child process on SIGINT/SIGTERM to prevent orphans ([d813919](https://github.com/rtco-ai/rtco/commit/d813919a24546e044e7844fc7ed05fef4ec24033))
-* **proxy:** kill child process on SIGINT/SIGTERM to prevent orphans ([3318510](https://github.com/rtco-ai/rtco/commit/33185101fc122d0c11a25a4e02ac9f3a7dc7e3bb))
-* **review:** address ChildGuard disarm, stdin dedup, hook masking ([d85fe33](https://github.com/rtco-ai/rtco/commit/d85fe3384b87c16fafd25ec7bcadbff6e69f3f1f))
-* **security:** default to ask when no permission rule matches ([#886](https://github.com/rtco-ai/rtco/issues/886)) ([158c745](https://github.com/rtco-ai/rtco/commit/158c74527f6591d372e40a78cd604d73a20649a9))
-* **security:** default to ask when no permission rule matches ([#886](https://github.com/rtco-ai/rtco/issues/886)) ([41a6c6b](https://github.com/rtco-ai/rtco/commit/41a6c6bf6da78a4754794fdc6a1469df2e327920))
-* **tracking:** use std::env::temp_dir() for compatibility (instead of unix tmp) ([e918661](https://github.com/rtco-ai/rtco/commit/e918661440d7b50321f0535032f52c5e87aaf3cb))
-
-## [Unreleased]
-
-### Features
-
-* **aws:** expand CLI filters from 8 to 25 subcommands — CloudWatch Logs, CloudFormation events, Lambda, IAM, DynamoDB (with type unwrapping), ECS tasks, EC2 security groups, S3API objects, S3 sync/cp, EKS, SQS, Secrets Manager ([#885](https://github.com/rtco-ai/rtco/pull/885))
-* **aws:** add shared runner `run_aws_filtered()` eliminating per-handler boilerplate
-* **tee:** add `force_tee_hint()` — truncated output saves full data to file with recovery hint
-
 ## [0.34.3](https://github.com/rtco-ai/rtco/compare/v0.34.2...v0.34.3) (2026-04-02)
 
 
@@ -212,14 +226,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * truncation accuracy + Copilot init + binary file detection ([966bcbe](https://github.com/rtco-ai/rtco/commit/966bcbe638be18bbaba4298df985804643f82c85))
 * **truncation:** accurate overflow counts and omission indicators ([58a9633](https://github.com/rtco-ai/rtco/commit/58a963347467613d48db05ad56bc8f1f3a06b65d))
 
-## [Unreleased]
-
-### Bug Fixes
-
-* **wc:** `wc` filter was never invoked by the hook — removed `"wc "` from `IGNORED_PREFIXES` and added registry entry so `wc` commands are rewritten to `rtco wc`
-* **diff:** correct truncation overflow count in condense_unified_diff ([#833](https://github.com/rtco-ai/rtco/pull/833)) ([5399f83](https://github.com/rtco-ai/rtco/commit/5399f83))
-* **git:** replace vague truncation markers with exact counts in log and grep output ([#833](https://github.com/rtco-ai/rtco/pull/833)) ([185fb97](https://github.com/rtco-ai/rtco/commit/185fb97))
-
 ## [0.33.1](https://github.com/rtco-ai/rtco/compare/v0.33.0...v0.33.1) (2026-03-25)
 
 
@@ -266,26 +272,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * **ruby:** use rails test for positional file args in rtco rake ([138e914](https://github.com/rtco-ai/rtco/commit/138e91411b4802e445a97429056cca73282d09e1))
 * update Discord invite link ([#711](https://github.com/rtco-ai/rtco/issues/711)) ([#786](https://github.com/rtco-ai/rtco/issues/786)) ([af56573](https://github.com/rtco-ai/rtco/commit/af56573ae2b234123e4685fd945980e644f40fa3))
 
-## [Unreleased]
-
-### Bug Fixes
-
-* **hook:** respect Claude Code deny/ask permission rules on rewrite — hook now checks settings.json before rewriting commands, preventing bypass of user-configured deny/ask permissions
-* **git:** replace symbol prefixes (`* branch`, `+ Staged:`, `~ Modified:`, `? Untracked:`) with plain lowercase labels (`branch:`, `staged:`, `modified:`, `untracked:`) in git status output
-* **ruby:** use `rails test` instead of `rake test` when positional file args are passed — `rake test` ignores positional files and only supports `TEST=path`
-
-### Features
-
-* **ruby:** add RSpec test runner filter with JSON parsing and text fallback (60%+ reduction)
-* **ruby:** add RuboCop linter filter with JSON parsing, grouped by cop/severity (60%+ reduction)
-* **ruby:** add Minitest filter for `rake test` / `rails test` with state machine parser (85-90% reduction)
-* **ruby:** add TOML filter for `bundle install/update` — strip `Using` lines (90%+ reduction)
-* **ruby:** add `ruby_exec()` shared utility for auto-detecting `bundle exec` when Gemfile exists
-* **ruby:** add discover/rewrite rules for rake, rails, rspec, rubocop, and bundle commands
-
-### Bug Fixes
-
-* **cargo:** preserve compile diagnostics when `cargo test` fails before any test suites run
 ## [0.31.0](https://github.com/rtco-ai/rtco/compare/v0.30.1...v0.31.0) (2026-03-19)
 
 
@@ -413,32 +399,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * curl JSON size guard ([#297](https://github.com/rtco-ai/rtco/issues/297)) + exclude_commands config ([#243](https://github.com/rtco-ai/rtco/issues/243)) ([#342](https://github.com/rtco-ai/rtco/issues/342)) ([a8d6106](https://github.com/rtco-ai/rtco/commit/a8d6106f736e049013ecb77f0f413167266dd40e))
 
-## [Unreleased]
-
-### Features
-
-* **toml-dsl:** declarative TOML filter engine — add command filters without writing Rust ([#299](https://github.com/rtco-ai/rtco/issues/299))
-  * 8 primitives: `strip_ansi`, `replace`, `match_output`, `strip/keep_lines_matching`, `truncate_lines_at`, `head/tail_lines`, `max_lines`, `on_empty`
-  * lookup chain: `.rtco/filters.toml` (project-local) → `~/.config/rtco/filters.toml` (user-global) → built-in filters
-  * `RTK_NO_TOML=1` bypass, `RTK_TOML_DEBUG=1` debug mode
-  * shadow warning when a TOML filter's match_command overlaps a Rust-handled command
-  * `rtco init` generates commented filter templates at both project and global level
-  * `rtco verify` command with `--require-all` for inline test validation
-  * 18 built-in filters: `tofu-plan/init/validate/fmt` ([#240](https://github.com/rtco-ai/rtco/issues/240)), `du` ([#284](https://github.com/rtco-ai/rtco/issues/284)), `fail2ban-client` ([#281](https://github.com/rtco-ai/rtco/issues/281)), `iptables` ([#282](https://github.com/rtco-ai/rtco/issues/282)), `mix-format/compile` ([#310](https://github.com/rtco-ai/rtco/issues/310)), `shopify-theme` ([#280](https://github.com/rtco-ai/rtco/issues/280)), `pio-run` ([#231](https://github.com/rtco-ai/rtco/issues/231)), `mvn-build` ([#338](https://github.com/rtco-ai/rtco/issues/338)), `pre-commit`, `helm`, `gcloud`, `ansible-playbook`
-* **hooks:** `exclude_commands` config — exclude specific commands from auto-rewrite ([#243](https://github.com/rtco-ai/rtco/issues/243))
-
-### Bug Fixes
-
-* **cargo clippy:** include actionable error details in compact output instead of summary-only counts ([#602](https://github.com/rtco-ai/rtco/issues/602))
-* **curl:** skip JSON schema replacement when schema is larger than original payload ([#297](https://github.com/rtco-ai/rtco/issues/297))
-* **init:** `rtco init -g --uninstall` now removes `<!-- rtco-instructions -->` block from CLAUDE.md ([#384](https://github.com/rtco-ai/rtco/issues/384))
-* **toml-dsl:** fix regex overmatch on `tofu-plan/init/validate/fmt` and `mix-format/compile` — add `(\s|$)` word boundary to prevent matching subcommands (e.g. `tofu planet`, `mix formats`) ([#349](https://github.com/rtco-ai/rtco/issues/349))
-* **toml-dsl:** remove 3 dead built-in filters (`docker-inspect`, `docker-compose-ps`, `pnpm-build`) — Clap routes these commands before `run_fallback`, so the TOML filters never fire ([#351](https://github.com/rtco-ai/rtco/issues/351))
-* **toml-dsl:** `uv-sync` — remove `Resolved` short-circuit; it fires before the package list is printed, hiding installed packages ([#386](https://github.com/rtco-ai/rtco/issues/386))
-* **toml-dsl:** `dotnet-build` — short-circuit only when both warning and error counts are zero; builds with warnings now pass through ([#386](https://github.com/rtco-ai/rtco/issues/386))
-* **toml-dsl:** `poetry-install` — support Poetry 2.x bullet syntax (`•`) and `No changes.` up-to-date message ([#386](https://github.com/rtco-ai/rtco/issues/386))
-* **toml-dsl:** `ping` — add Windows format support (`Pinging` header, `Reply from` per-packet lines) ([#386](https://github.com/rtco-ai/rtco/issues/386))
-
 ## [0.25.0](https://github.com/rtco-ai/rtco/compare/v0.24.0...v0.25.0) (2026-03-05)
 
 
@@ -450,43 +410,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 * **find:** accept native find flags (-name, -type, etc.) ([#211](https://github.com/rtco-ai/rtco/issues/211)) ([7ac5bc4](https://github.com/rtco-ai/rtco/commit/7ac5bc4bd3942841cc1abb53399025b4fcae10c9))
-
-## [Unreleased]
-
-### ⚠️ Migration Required
-
-**Hook must be updated after upgrading** (`rtco init --global`).
-
-The Claude Code hook is now a thin delegator: all rewrite logic lives in the
-`rtco rewrite` command (single source of truth). The old hook embedded the full
-if-else mapping inline — it still works after upgrading, but won't pick up new
-commands automatically.
-
-**Upgrade path:**
-```bash
-cargo install rtco          # upgrade binary
-rtco init --global          # replace old hook with thin delegator
-```
-
-Running `rtco init` without `--global` updates the project-level hook only.
-Users who skip this step keep the old hook working as before — no immediate
-breakage, but future rule additions won't take effect until they migrate.
-
-### Features
-
-* **rewrite**: add `rtco rewrite` command — single source of truth for hook rewrites ([#241](https://github.com/rtco-ai/rtco/pull/241))
-  - New `src/discover/registry.rs` handles all command → RTCO mapping
-  - Hook reduced to ~50 lines (thin delegator), no duplicate logic
-  - New commands automatically available in hook without hook file changes
-  - Supports compound commands (`&&`, `||`, `;`, `|`, `&`) and env prefixes
-* **discover**: extract rules/patterns into `src/discover/rules.rs` — adding a command now means editing one file only
-* **fix**: add `aws` and `psql` to rewrite registry (were missing despite modules existing since 0.24.0)
-
-### Tests
-
-* +48 regression tests covering all command categories: aws, psql, Python, Go, JS/TS,
-  compound operators, sudo/env prefixes, registry invariants (607 total, was 559)
-* +5 tests for uninstall `--claude-md` artifact cleanup (614 total)
 
 ## [0.24.0](https://github.com/rtco-ai/rtco/compare/v0.23.0...v0.24.0) (2026-03-04)
 
@@ -704,28 +627,6 @@ breakage, but future rule additions won't take effect until they migrate.
 
 * **init:** auto-patch settings.json for frictionless hook installation ([2db7197](https://github.com/rtco-ai/rtco/commit/2db7197e020857c02857c8ef836279c3fd660baf))
 
-## [Unreleased]
-
-### Added
-- **settings.json auto-patch** for frictionless hook installation
-  - Default `rtco init -g` now prompts to patch settings.json [y/N]
-  - `--auto-patch`: Patch immediately without prompting (CI/CD workflows)
-  - `--no-patch`: Skip patching, print manual instructions instead
-  - Automatic backup: creates `settings.json.bak` before modification
-  - Idempotent: detects existing hook, skips modification if present
-  - `rtco init --show` now displays settings.json status
-- **Uninstall command** for complete RTCO removal
-  - `rtco init -g --uninstall` removes hook, RTCO.md, CLAUDE.md reference, and settings.json entry
-  - Restores clean state for fresh installation or testing
-- **Improved error handling** with detailed context messages
-  - All error messages now include file paths and actionable hints
-  - UTF-8 validation for hook paths
-  - Disk space hints on write failures
-
-### Changed
-- Refactored `insert_hook_entry()` to use idiomatic Rust `entry()` API
-- Simplified `hook_already_present()` logic with iterator chains
-- Improved atomic write error messages for better debugging
 ## [0.10.0](https://github.com/rtco-ai/rtco/compare/v0.9.4...v0.10.0) (2026-02-07)
 
 
@@ -933,26 +834,6 @@ breakage, but future rule additions won't take effect until they migrate.
 
 * **ci:** correct rust-toolchain action name ([9526471](https://github.com/pszymkowiak/rtco/commit/9526471530b7d272f32aca38ace7548fd221547e))
 
-## [Unreleased]
-
-### Added
-- `prettier` command for format checking with package manager auto-detection (pnpm/yarn/npx)
-  - Shows only files needing formatting (~70% token reduction)
-  - Exit code preservation for CI/CD compatibility
-- `playwright` command for E2E test output filtering (~94% token reduction)
-  - Shows only test failures and slow tests
-  - Summary with pass/fail counts and timing
-- `lint` command with ESLint/Biome support and pnpm detection
-  - Groups violations by rule and file (~84% token reduction)
-  - Shows top violators for quick navigation
-- `tsc` command for TypeScript compiler output filtering
-  - Groups errors by file and error code (~83% token reduction)
-  - Shows top 10 affected files
-- `next` command for Next.js build/dev output filtering (87% token reduction)
-  - Extracts route count and bundle sizes
-  - Highlights warnings and oversized bundles
-- `prisma` command for Prisma CLI output filtering
-  - Removes ASCII art and verbose logs (~88% token reduction)
   - Supports generate, migrate (dev/status/deploy), and db push
 - `utils` module with common utilities (truncate, strip_ansi, execute_command)
   - Shared functionality for consistent output formatting

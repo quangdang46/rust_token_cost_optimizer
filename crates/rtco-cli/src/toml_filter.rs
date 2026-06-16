@@ -24,7 +24,7 @@ use regex::{Regex, RegexSet};
 ///   6. head/tail_lines      — keep first/last N lines
 ///   7. max_lines            — absolute line cap
 ///   8. on_empty             — message if result is empty
-use rtco_core::constants::{FILTERS_TOML, RTK_DATA_DIR};
+use rtco_core::constants::{FILTERS_TOML, RTCO_DATA_DIR};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 
@@ -154,7 +154,7 @@ pub struct CompiledFilter {
 }
 
 // ---------------------------------------------------------------------------
-// Results for `rtk verify`
+// Results for `rtco verify`
 // ---------------------------------------------------------------------------
 
 /// Outcome of running a single inline test.
@@ -218,7 +218,7 @@ impl TomlFilterRegistry {
 
         // Priority 2: user-global ~/.config/rtco/filters.toml
         if let Some(config_dir) = dirs::config_dir() {
-            let global_path = config_dir.join(RTK_DATA_DIR).join(FILTERS_TOML);
+            let global_path = config_dir.join(RTCO_DATA_DIR).join(FILTERS_TOML);
             if let Ok(content) = std::fs::read_to_string(&global_path) {
                 match Self::parse_and_compile(&content, "user-global") {
                     Ok(f) => filters.extend(f),
@@ -535,7 +535,7 @@ pub fn apply_filter(filter: &CompiledFilter, stdout: &str) -> String {
 }
 
 // ---------------------------------------------------------------------------
-// rtk verify — inline test execution
+// rtco verify — inline test execution
 // ---------------------------------------------------------------------------
 
 /// Run inline tests from loaded TOML files (builtin + project-local).

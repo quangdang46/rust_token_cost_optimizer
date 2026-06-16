@@ -1,6 +1,6 @@
 //! Optional usage ping so we know which commands people run most.
 
-use super::constants::RTK_DATA_DIR;
+use super::constants::RTCO_DATA_DIR;
 use crate::config;
 use crate::tracking;
 use sha2::{Digest, Sha256};
@@ -208,7 +208,7 @@ fn random_salt() -> String {
 pub fn salt_file_path() -> PathBuf {
     dirs::data_local_dir()
         .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join(crate::constants::RTK_DATA_DIR)
+        .join(crate::constants::RTCO_DATA_DIR)
         .join(".device_salt")
 }
 
@@ -434,7 +434,7 @@ fn install_method_from_path(path: &str) -> &'static str {
 pub fn telemetry_marker_path() -> PathBuf {
     let data_dir = dirs::data_local_dir()
         .unwrap_or_else(|| PathBuf::from("/tmp"))
-        .join(RTK_DATA_DIR);
+        .join(RTCO_DATA_DIR);
     let _ = std::fs::create_dir_all(&data_dir);
     data_dir.join(".telemetry_last_ping")
 }

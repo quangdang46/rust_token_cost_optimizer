@@ -943,7 +943,7 @@ dependencies = [
 
 [[package]]
 name = "rtco"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "aho-corasick",
  "anyhow",
@@ -975,7 +975,7 @@ dependencies = [
 
 [[package]]
 name = "rtco-core"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "aho-corasick",
  "anyhow",

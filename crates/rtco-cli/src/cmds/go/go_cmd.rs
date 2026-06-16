@@ -1240,13 +1240,13 @@ go: downloading golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2"#;
         assert!(is_go_build_error_line("undefined: missingFunc"));
         assert!(is_go_build_error_line("cannot find package \"foo/bar\""));
         assert!(is_go_build_error_line(
-            "found packages a (a.go) and b (b.go) in /tmp/rtk-go-build-probe-mix"
+            "found packages a (a.go) and b (b.go) in /tmp/rtco-go-build-probe-mix"
         ));
         assert!(is_go_build_error_line(
             "imports example.com/cycle/a: import cycle not allowed"
         ));
         assert!(is_go_build_error_line(
-            "package example.com/buildtag: build constraints exclude all Go files in /tmp/rtk-go-build-probe-buildtag"
+            "package example.com/buildtag: build constraints exclude all Go files in /tmp/rtco-go-build-probe-buildtag"
         ));
         assert!(is_go_build_error_line(
             "go.mod:3: invalid go version 'not-a-version': must match format 1.23.0"
@@ -1284,9 +1284,9 @@ go: downloading golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2"#;
     fn test_filter_go_build_preserves_non_file_error_shapes() {
         let output = r#"undefined: missingFunc
 cannot find package "foo/bar"
-found packages a (a.go) and b (b.go) in /tmp/rtk-go-build-probe-mix
+found packages a (a.go) and b (b.go) in /tmp/rtco-go-build-probe-mix
 imports example.com/cycle/a: import cycle not allowed
-package example.com/buildtag: build constraints exclude all Go files in /tmp/rtk-go-build-probe-buildtag
+package example.com/buildtag: build constraints exclude all Go files in /tmp/rtco-go-build-probe-buildtag
 runtime.main_main·f: function main is undeclared in the main package"#;
 
         let result = filter_go_build(output);

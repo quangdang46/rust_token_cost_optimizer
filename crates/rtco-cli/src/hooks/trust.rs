@@ -13,7 +13,7 @@
 
 use super::integrity;
 use anyhow::{Context, Result};
-use rtco_core::constants::{RTK_DATA_DIR, TRUSTED_FILTERS_JSON};
+use rtco_core::constants::{RTCO_DATA_DIR, TRUSTED_FILTERS_JSON};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -48,7 +48,7 @@ pub enum TrustStatus {
 
 fn store_path() -> Result<PathBuf> {
     let data_dir = dirs::data_local_dir().context("Cannot determine local data directory")?;
-    Ok(data_dir.join(RTK_DATA_DIR).join(TRUSTED_FILTERS_JSON))
+    Ok(data_dir.join(RTCO_DATA_DIR).join(TRUSTED_FILTERS_JSON))
 }
 
 fn read_store() -> Result<TrustStore> {

@@ -20,7 +20,7 @@
 //!    the slug is not on the blocklist, so a yet-to-be-classified sensitive
 //!    command still gets scrubbed.
 
-use super::constants::RTK_DATA_DIR;
+use super::constants::RTCO_DATA_DIR;
 use crate::config::Config;
 use crate::redact;
 use std::path::PathBuf;
@@ -113,7 +113,7 @@ fn get_tee_dir(config: &Config) -> Option<PathBuf> {
     }
 
     // Default: ~/.local/share/rtk/tee/
-    dirs::data_local_dir().map(|d| d.join(RTK_DATA_DIR).join("tee"))
+    dirs::data_local_dir().map(|d| d.join(RTCO_DATA_DIR).join("tee"))
 }
 
 /// Rotate old tee files: keep only the last `max_files`, delete oldest.
