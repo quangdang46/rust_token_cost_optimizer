@@ -3035,4 +3035,11 @@ upload: file10.txt to s3://bucket/file10.txt
         // Should report all 30 failures, not capped at MAX_ITEMS (20)
         assert!(result.text.contains("30 failed"));
     }
+
+    #[test]
+    fn test_filter_s3_ls_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/cloud/aws_s3_ls.txt");
+        let result = filter_s3_ls(raw);
+        insta::assert_snapshot!(result.text);
+    }
 }

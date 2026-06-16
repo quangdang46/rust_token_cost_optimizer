@@ -1,0 +1,6 @@
+---
+source: crates/rtco-cli/src/cmds/js/prisma_cmd.rs
+expression: output
+---
+Prisma Client generated
+  • Output: node_modules/@prisma/client

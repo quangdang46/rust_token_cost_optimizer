@@ -1021,4 +1021,11 @@ rspec ./spec/models/user_spec.rb:5 # User is valid
         let args = ["--format=json".to_string()];
         assert!(args.iter().any(|a| a.starts_with("--format=")));
     }
+
+    #[test]
+    fn test_filter_rspec_text_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/ruby/rspec_run.txt");
+        let output = filter_rspec_text(raw);
+        insta::assert_snapshot!(output);
+    }
 }

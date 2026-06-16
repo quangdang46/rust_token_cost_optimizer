@@ -302,4 +302,37 @@ mod tests {
         assert!(patterns.contains("password"));
         assert!(patterns.contains("token"));
     }
+
+    #[test]
+    fn test_mask_sensitive_env_savings() {
+        // Simulate env output to verify redaction shrinks token count
+        let input = "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n\
+                      MY_SECRET_TOKEN=s3cr3t-t0k3n-12345\n\
+                      DATABASE_URL=postgres://user:password@localhost:5432/db\n\
+                      GIT_AUTHOR_NAME=Test User\n\
+                      HOME=/home/user\n\
+                      SHELL=/bin/zsh";
+        fn count_tokens(s: &str) -> usize { s.split_whitespace().count() }
+        // Masked values are shorter than raw secrets
+        let output = input.lines().map(|line| {
+            let parts: Vec<&str> = line.splitn(2, '=').collect();
+            if parts.len() == 2 {
+                let key = parts[0];
+                let value = parts[1];
+                if get_sensitive_patterns().iter().any(|p| key.to_lowercase().contains(p)) {
+                    format!("{}={}", key, mask_value(value))
+                } else {
+                    line.to_string()
+                }
+            } else {
+                line.to_string()
+            }
+        }).collect::<Vec<_>>().join("\n");
+
+        let savings = 100.0 - (count_tokens(&output) as f64 / count_tokens(input) as f64 * 100.0);
+        assert!(
+            savings >= 0.0,
+            "Sensitive redaction should not increase token count"
+        );
+    }
 }

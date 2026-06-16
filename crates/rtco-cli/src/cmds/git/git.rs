@@ -3062,6 +3062,80 @@ To https://github.com/foo/bar.git
     }
 
     #[test]
+    fn test_git_log_snapshot() {
+        let input = include_str!("../../../../../tests/fixtures/git/git_log.txt");
+        let output = filter_log_output(input, 5, false, false);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_git_log_savings_from_fixture() {
+        let input = include_str!("../../../../../tests/fixtures/git/git_log.txt");
+        let output = filter_log_output(input, 5, false, false);
+        fn count_tokens(text: &str) -> usize {
+            text.split_whitespace().count()
+        }
+        let savings = 100.0 - (count_tokens(&output) as f64 / count_tokens(input) as f64 * 100.0);
+        assert!(
+            savings >= 60.0,
+            "Git log filter: expected >=60% savings, got {:.1}%",
+            savings
+        );
+    }
+
+    #[test]
+    fn test_git_branch_snapshot() {
+        let input = include_str!("../../../../../tests/fixtures/git/git_branch.txt");
+        let output = filter_branch_output(input);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_git_branch_savings() {
+        let input = include_str!("../../../../../tests/fixtures/git/git_branch.txt");
+        let output = filter_branch_output(input);
+        fn count_tokens(text: &str) -> usize {
+            text.split_whitespace().count()
+        }
+        let savings = 100.0 - (count_tokens(&output) as f64 / count_tokens(input) as f64 * 100.0);
+        assert!(
+            savings >= 0.0,
+            "Git branch filter: expected non-negative savings, got {:.1}%",
+            savings
+        );
+    }
+
+    #[test]
+    fn test_git_status_snapshot() {
+        let input = include_str!("../../../../../tests/fixtures/git/git_status.txt");
+        let output = filter_status_with_args(input);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_git_status_compact_snapshot() {
+        // Test porcelain format which is the compact path
+        let porcelain = "## main...origin/main\n M modified.rs\nA  added.rs\n?? untracked.txt";
+        let output = format_status_output(porcelain);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_git_status_savings() {
+        let input = include_str!("../../../../../tests/fixtures/git/git_status.txt");
+        let output = filter_status_with_args(input);
+        fn count_tokens(text: &str) -> usize {
+            text.split_whitespace().count()
+        }
+        let savings = 100.0 - (count_tokens(&output) as f64 / count_tokens(input) as f64 * 100.0);
+        assert!(
+            savings >= 40.0,
+            "Git status filter: expected >=40% savings, got {:.1}%",
+            savings
+        );
+    }
+
+    #[test]
     fn test_push_filter_token_savings_on_verbose_output() {
         let input = "\
 Enumerating objects: 142, done.

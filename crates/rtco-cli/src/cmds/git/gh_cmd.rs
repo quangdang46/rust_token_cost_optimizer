@@ -1556,4 +1556,96 @@ ___
         assert!(result.contains("Test Plan"));
         assert!(result.contains("Filter HTML comments"));
     }
+
+    #[test]
+    fn test_format_pr_list_snapshot() {
+        let json: serde_json::Value = serde_json::from_str(
+            r#"[
+                {"number": 47, "title": "feat(core): add token counting optimization", "state": "OPEN", "author": {"login": "alice-j"}, "updatedAt": "2026-06-16T14:32:10Z"},
+                {"number": 46, "title": "fix(js): handle pnpm workspace output format", "state": "OPEN", "author": {"login": "carol-d"}, "updatedAt": "2026-06-16T12:15:00Z"},
+                {"number": 38, "title": "docs: add architecture documentation", "state": "MERGED", "author": {"login": "eve-m"}, "updatedAt": "2026-06-13T09:15:00Z"}
+            ]"#,
+        )
+        .unwrap();
+        let output = format_pr_list(&json, false);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_format_pr_list_ultra_compact_snapshot() {
+        let json: serde_json::Value = serde_json::from_str(
+            r#"[
+                {"number": 47, "title": "feat(core): add token counting optimization", "state": "OPEN", "author": {"login": "alice-j"}, "updatedAt": "2026-06-16T14:32:10Z"}
+            ]"#,
+        )
+        .unwrap();
+        let output = format_pr_list(&json, true);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_format_issue_list_snapshot() {
+        let json: serde_json::Value = serde_json::from_str(
+            r#"[
+                {"number": 101, "title": "bug: crash on empty config", "state": "OPEN"},
+                {"number": 102, "title": "feat: add dry-run mode", "state": "CLOSED"}
+            ]"#,
+        )
+        .unwrap();
+        let output = format_issue_list(&json, false);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_format_repo_view_snapshot() {
+        let json: serde_json::Value = serde_json::json!({
+            "name": "rtco",
+            "owner": {"login": "rtco-ai"},
+            "description": "High-performance CLI proxy to minimize LLM token consumption",
+            "url": "https://github.com/rtco-ai/rtco",
+            "stargazerCount": 1200,
+            "forkCount": 85,
+            "isPrivate": false
+        });
+        let output = format_repo_view(&json);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_format_run_list_snapshot() {
+        let json: serde_json::Value = serde_json::from_str(
+            r#"[
+                {"databaseId": 5001, "name": "CI Build", "status": "completed", "conclusion": "success", "createdAt": "2026-06-16T10:00:00Z"},
+                {"databaseId": 5002, "name": "Lint Check", "status": "completed", "conclusion": "failure", "createdAt": "2026-06-16T10:05:00Z"},
+                {"databaseId": 5003, "name": "Deploy", "status": "in_progress", "conclusion": "", "createdAt": "2026-06-16T10:10:00Z"}
+            ]"#,
+        )
+        .unwrap();
+        let output = format_run_list(&json, false);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_format_pr_list_savings() {
+        let json: serde_json::Value = serde_json::from_str(
+            r#"[
+                {"number": 47, "title": "feat(core): add token counting optimization for large outputs", "state": "OPEN", "author": {"login": "alice-johnson"}, "updatedAt": "2026-06-16T14:32:10Z"},
+                {"number": 46, "title": "fix(js): handle pnpm workspace output format with workspace protocol", "state": "OPEN", "author": {"login": "carol-davis"}, "updatedAt": "2026-06-16T12:15:00Z"},
+                {"number": 38, "title": "docs: add architecture documentation describing module layout", "state": "MERGED", "author": {"login": "eve-martinez"}, "updatedAt": "2026-06-13T09:15:00Z"}
+            ]"#,
+        )
+        .unwrap();
+        let input_json = serde_json::to_string_pretty(&json).unwrap();
+        let output = format_pr_list(&json, false);
+
+        fn count_tokens(text: &str) -> usize {
+            text.split_whitespace().count()
+        }
+        let savings = 100.0 - (count_tokens(&output) as f64 / count_tokens(&input_json) as f64 * 100.0);
+        assert!(
+            savings >= 50.0,
+            "PR list formatter: expected >=50% savings, got {:.1}%",
+            savings
+        );
+    }
 }

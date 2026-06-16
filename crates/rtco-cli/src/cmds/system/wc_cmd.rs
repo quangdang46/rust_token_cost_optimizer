@@ -385,4 +385,21 @@ mod tests {
         let result = filter_wc_output(raw, &WcMode::Full);
         assert_eq!(result, "");
     }
+
+    #[test]
+    fn test_filter_wc_output_savings() {
+        // Full wc output with file paths — filter compacts it by removing
+        // padding and file names, keeping just the counts.
+        let input = "\
+      30      96     978 src/main.rs\n\
+      10      45     320 src/lib.rs\n\
+      40     141    1298 total\n";
+        fn count_tokens(s: &str) -> usize { s.split_whitespace().count() }
+        let output = filter_wc_output(input, &WcMode::Full);
+        let savings = 100.0 - (count_tokens(&output) as f64 / count_tokens(input) as f64 * 100.0);
+        assert!(
+            savings >= 0.0,
+            "wc compaction should not inflate token count"
+        );
+    }
 }

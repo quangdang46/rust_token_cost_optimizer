@@ -1,0 +1,27 @@
+---
+source: crates/rtco-cli/src/cmds/python/mypy_cmd.rs
+expression: output
+---
+mypy: 12 errors in 4 files
+═══════════════════════════════════════
+Top codes: attr-defined (2x), misc (1x), no-untyped-def (1x)
+
+src/app.py (4 errors)
+  L5: Library stubs not installed for "flask"
+  L8: Incompatible types in assignment (expression has type "Optional[str]", variable has type "str")
+  L15: Function is missing a return type annotation
+  L22: [attr-defined] "User" has no attribute "email_verified"
+
+src/utils/db.py (3 errors)
+  L4: Name "Connection" is not defined
+  L10: Argument "host" to "connect" has incompatible type "int"; expected "str"
+  L18: Returning Any from function declared to return "str"
+
+src/models/user.py (3 errors)
+  L20: Signature of "save" incompatible with supertype "BaseModel"
+  L35: [misc] Cannot assign to a method
+  L42: [no-untyped-def] Function "User.__str__" is missing a return type annotation
+
+src/utils/format.py (2 errors)
+  L7: [attr-defined] Module has no attribute "format_date"
+  L12: List comprehension has incompatible type "int"; expected "str"

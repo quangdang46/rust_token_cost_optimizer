@@ -1,0 +1,15 @@
+---
+source: crates/rtco-cli/src/cmds/system/log_cmd.rs
+expression: output
+---
+Log Summary
+   [error] 2 errors (2 unique)
+   [warn] 1 warnings (1 unique)
+   [info] 14 info messages
+
+[ERRORS]
+   2026-06-16 15:30:48.234 [ERROR] Failed to execute `kubectl get pods`: command not found
+   2026-06-16 15:30:48.235 [ERROR] kubectl is not installed. Please install kubectl first.
+
+[WARNINGS]
+   2026-06-16 15:30:47.120 [WARN]  Filter warning for `cargo test`: failed to parse test output, usi...

@@ -1,0 +1,5 @@
+---
+source: crates/rtco-cli/src/cmds/cloud/container.rs
+expression: output
+---
+[compose] Build:

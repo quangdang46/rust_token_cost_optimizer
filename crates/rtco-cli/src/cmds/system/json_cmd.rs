@@ -361,4 +361,28 @@ mod tests {
     fn test_compact_truncates_mixed_ascii_multibyte_string() {
         assert_value_truncated(&("a".repeat(76) + &"日本語".repeat(5)));
     }
+
+    #[test]
+    fn test_filter_json_compact_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/system/json_pretty.txt");
+        let output = filter_json_compact(raw, 5).unwrap_or_default();
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_filter_json_compact_savings() {
+        let raw = include_str!("../../../../../tests/fixtures/system/json_pretty.txt");
+        fn count_tokens(s: &str) -> usize { s.split_whitespace().count() }
+        let raw_tokens = count_tokens(raw);
+        if let Ok(output) = filter_json_compact(raw, 5) {
+            let out_tokens = count_tokens(&output);
+            if raw_tokens > 0 {
+                let savings = 100.0 - (out_tokens as f64 / raw_tokens as f64 * 100.0);
+                assert!(
+                    savings >= 0.0,
+                    "JSON compaction should not increase token count"
+                );
+            }
+        }
+    }
 }

@@ -1,0 +1,15 @@
+---
+source: crates/rtco-cli/src/cmds/python/pytest_cmd.rs
+expression: output
+---
+Pytest: 23 passed, 1 failed
+═══════════════════════════════════════
+
+Failures:
+1. [FAIL] test_db_connection
+     >       assert conn is not None
+     E       AssertionError: assert None is not None
+     tests/test_db.py:12: AssertionError
+
+2. [FAIL] tests/test_db.py::test_db_connection
+     AssertionError: assert None is not None

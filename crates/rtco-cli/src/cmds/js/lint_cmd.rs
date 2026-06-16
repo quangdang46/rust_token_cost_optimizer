@@ -775,4 +775,18 @@ mod tests {
             byte_savings
         );
     }
+
+    #[test]
+    fn test_filter_eslint_json_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/js/lint_output.txt");
+        let output = filter_eslint_json(raw);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_filter_generic_lint_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/js/lint_output.txt");
+        let output = filter_generic_lint(raw);
+        insta::assert_snapshot!(output);
+    }
 }

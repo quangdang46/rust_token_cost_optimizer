@@ -1,0 +1,18 @@
+---
+source: crates/rtco-cli/src/cmds/js/prettier_cmd.rs
+expression: output
+---
+Prettier: 20 files need formatting
+═══════════════════════════════════════
+1. src/app/page.tsx
+2. src/components/Button.tsx
+3. src/lib/api.ts
+4. src/utils/format.ts
+5. src/server/db.ts
+6. src/types/index.ts
+7. src/styles/globals.css
+8. src/pages/_app.tsx
+9. src/pages/index.tsx
+10. src/pages/api/auth.ts
+
+... +10 more files

@@ -360,4 +360,11 @@ Found 1 error in 1 file
             );
         }
     }
+
+    #[test]
+    fn test_filter_mypy_output_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/python/mypy_check.txt");
+        let output = filter_mypy_output(raw);
+        insta::assert_snapshot!(output);
+    }
 }

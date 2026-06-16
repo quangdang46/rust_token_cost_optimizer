@@ -1,0 +1,5 @@
+---
+source: crates/rtco-cli/src/cmds/ruby/rubocop_cmd.rs
+expression: output
+---
+RuboCop: 24 files inspected, 7 offenses detected, 1 offense auto-correctable

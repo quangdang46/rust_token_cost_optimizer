@@ -225,4 +225,11 @@ All matched files use Prettier code style!
             byte_savings
         );
     }
+
+    #[test]
+    fn test_filter_prettier_check_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/js/prettier_check.txt");
+        let output = filter_prettier_output(raw);
+        insta::assert_snapshot!(output);
+    }
 }

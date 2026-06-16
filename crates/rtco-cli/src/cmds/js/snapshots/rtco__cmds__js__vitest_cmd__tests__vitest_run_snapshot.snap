@@ -1,0 +1,7 @@
+---
+source: crates/rtco-cli/src/cmds/js/vitest_cmd.rs
+expression: output
+---
+PASS (12) FAIL (2)
+
+Time: 142ms

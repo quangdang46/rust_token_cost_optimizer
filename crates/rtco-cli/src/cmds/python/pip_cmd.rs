@@ -276,4 +276,11 @@ mod tests {
         assert!(result.contains("pytest"));
         assert!(result.contains("7.4.0 → 8.0.0"));
     }
+
+    #[test]
+    fn test_filter_pip_list_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/python/pip_list.txt");
+        let output = filter_pip_list(raw);
+        insta::assert_snapshot!(output);
+    }
 }

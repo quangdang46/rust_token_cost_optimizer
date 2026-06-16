@@ -523,4 +523,11 @@ import { PrismaClient } from '@prisma/client'
             byte_savings
         );
     }
+
+    #[test]
+    fn test_filter_prisma_generate_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/js/prisma_generate.txt");
+        let output = filter_prisma_generate(raw);
+        insta::assert_snapshot!(output);
+    }
 }

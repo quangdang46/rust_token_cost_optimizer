@@ -1,0 +1,7 @@
+---
+source: crates/rtco-cli/src/cmds/rust/cargo_cmd.rs
+expression: output
+---
+cargo build: 1 errors, 0 warnings (2 crates)
+═══════════════════════════════════════
+error: test failed, to rerun pass `--bin rtco`

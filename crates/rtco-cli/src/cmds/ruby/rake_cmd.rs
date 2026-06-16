@@ -530,4 +530,11 @@ NoMethodError: undefined method `blah'
         assert!(!looks_like_test_path("--verbose"));
         assert!(!looks_like_test_path("12345"));
     }
+
+    #[test]
+    fn test_filter_minitest_output_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/ruby/rake_output.txt");
+        let output = filter_minitest_output(raw);
+        insta::assert_snapshot!(output);
+    }
 }

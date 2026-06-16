@@ -1,0 +1,8 @@
+---
+source: crates/rtco-cli/src/cmds/git/git.rs
+expression: output
+---
+* main...origin/main
+ M modified.rs
+A  added.rs
+?? untracked.txt

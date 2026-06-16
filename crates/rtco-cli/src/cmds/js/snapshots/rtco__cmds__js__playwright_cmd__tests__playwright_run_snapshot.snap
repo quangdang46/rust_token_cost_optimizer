@@ -1,0 +1,10 @@
+---
+source: crates/rtco-cli/src/cmds/js/playwright_cmd.rs
+expression: output
+---
+PASS (6) FAIL (2)
+
+1. ✗ 6 [firefox] › dashboard.spec.ts
+2. ✗ 8 [webkit] › navigation.spec.ts
+
+Time: 2100ms

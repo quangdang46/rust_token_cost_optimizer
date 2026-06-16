@@ -1,0 +1,30 @@
+---
+source: crates/rtco-cli/src/cmds/js/lint_cmd.rs
+expression: output
+---
+ESLint output (JSON parse failed: expected value at line 1 column 1)
+/data/projects/webapp/src/app/page.tsx
+  1:1   warning  Missing file extension for "./components/Button"  import/extensions
+  5:10  error  'Button' is defined but never used                  @typescript-eslint/no-unused-vars
+  8:12  error  'user' is assigned a value but never used           @typescript-eslint/no-unused-vars
+
+/data/projects/webapp/src/components/Button.tsx
+  3:5   error  Props type should be defined in a separate file     @typescript-eslint/typedef
+  15:5  error  'event' is declared but its value never read        @typescript-eslint/no-unused-vars
+  22:3  error  Missing return type on function                     @typescript-eslint/explicit-function-return-type
+
+/data/projects/webapp/src/lib/api.ts
+  5:1   error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  12:1  error  Prefer async/await over Promise chains              @typescript-eslint/prefer-async-await
+  23:1  error  'id' is possibly undefined                          @typescript-eslint/no-unnecessary-condition
+
+/data/projects/webapp/src/utils/format.ts
+  1:1   error  Prefer default export                               import/prefer-default-export
+  8:3   error  Assignment to function parameter 'date'             no-param-reassign
+
+/data/projects/webapp/src/server/db.ts
+  4:1   error  'pool' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  12:1  error  Database URL is hardcoded                           no-process-env
+
+✖ 12 problems (11 errors, 1 warning)
+  0 errors and 0 warnings potentially fixable with the `--fix` option.

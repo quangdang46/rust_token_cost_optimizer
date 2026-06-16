@@ -1,0 +1,9 @@
+---
+source: crates/rtco-cli/src/cmds/git/gh_cmd.rs
+expression: output
+---
+rtco-ai/rtco
+  [public]
+  High-performance CLI proxy to minimize LLM token consumption
+  1200 stars | 85 forks
+  https://github.com/rtco-ai/rtco

@@ -433,4 +433,15 @@ Scope: all 6 workspace projects
             byte_savings
         );
     }
+
+    #[test]
+    fn test_vitest_run_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/js/vitest_run.txt");
+        let result = VitestParser::parse(raw);
+        if result.is_ok() {
+            let data = result.unwrap();
+            let output = data.format(FormatMode::from_verbosity(0));
+            insta::assert_snapshot!(output);
+        }
+    }
 }

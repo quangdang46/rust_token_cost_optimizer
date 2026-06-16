@@ -1,0 +1,9 @@
+---
+source: crates/rtco-cli/src/cmds/cloud/container.rs
+expression: output
+---
+[compose] Logs:
+Log Summary
+   [error] 0 errors (0 unique)
+   [warn] 0 warnings (0 unique)
+   [info] 0 info messages

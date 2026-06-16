@@ -2316,6 +2316,27 @@ test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
     }
 
     #[test]
+    fn test_cargo_test_snapshot() {
+        let input = include_str!("../../../../../tests/fixtures/cargo/cargo_test.txt");
+        let output = filter_cargo_test(input);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_cargo_build_snapshot() {
+        let input = include_str!("../../../../../tests/fixtures/cargo/cargo_test.txt");
+        let output = filter_cargo_build(input);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_cargo_build_compile_errors_from_fixture() {
+        let input = "error[E0308]: mismatched types\n --> src/main.rs:10:5\n  |\n10|     \"hello\"\n  |     ^^^^^^^ expected `i32`, found `&str`\n\nerror: aborting due to 1 previous error\n";
+        let output = filter_cargo_build(input);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
     fn test_token_savings_nextest_all_pass() {
         let output = r#"   Compiling rtk v0.15.2
     Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s

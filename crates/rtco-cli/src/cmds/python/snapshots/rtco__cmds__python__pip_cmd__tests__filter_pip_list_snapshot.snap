@@ -1,0 +1,5 @@
+---
+source: crates/rtco-cli/src/cmds/python/pip_cmd.rs
+expression: output
+---
+pip list (JSON parse failed: expected value at line 1 column 1)

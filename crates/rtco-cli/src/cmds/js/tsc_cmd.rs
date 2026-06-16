@@ -379,4 +379,11 @@ src/app.tsx(20,5): error TS2345: Argument of type 'number' is not assignable.
             byte_savings
         );
     }
+
+    #[test]
+    fn test_filter_tsc_output_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/js/tsc_output.txt");
+        let output = filter_tsc_output(raw);
+        insta::assert_snapshot!(output);
+    }
 }

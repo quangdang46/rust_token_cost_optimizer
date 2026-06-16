@@ -1,0 +1,5 @@
+---
+source: crates/rtco-cli/src/cmds/ruby/rake_cmd.rs
+expression: output
+---
+rake test: no tests ran

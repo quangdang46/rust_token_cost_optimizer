@@ -1,0 +1,18 @@
+---
+source: crates/rtco-cli/src/cmds/rust/cargo_cmd.rs
+expression: output
+---
+FAILURES (2):
+═══════════════════════════════════════
+1. ---- test_git_show_output stdout ----
+Error: "rtco: filter warning: failed to parse commit message"
+thread 'test_git_show_output' panicked at src/cmds/git/git.rs:312:5:
+assertion `left == right` fa...
+2.     test_git_show_output
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

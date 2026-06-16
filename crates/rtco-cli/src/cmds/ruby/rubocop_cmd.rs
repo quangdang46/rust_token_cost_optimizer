@@ -635,4 +635,11 @@ mod tests {
             result
         );
     }
+
+    #[test]
+    fn test_filter_rubocop_text_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/ruby/rubocop_check.txt");
+        let output = filter_rubocop_text(raw);
+        insta::assert_snapshot!(output);
+    }
 }

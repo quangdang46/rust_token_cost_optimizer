@@ -703,6 +703,13 @@ mod tests {
     }
 
     #[test]
+    fn test_compact_ls_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/system/ls_la.txt");
+        let (entries, _summary, _parsed_count) = compact_ls(raw, false, false);
+        insta::assert_snapshot!(entries);
+    }
+
+    #[test]
     fn test_compact_chinese_locale_fallback() {
         let input = "total 8\n\
                       drwxr-xr-x  2 user staff  64  1月  1 12:00 src\n\

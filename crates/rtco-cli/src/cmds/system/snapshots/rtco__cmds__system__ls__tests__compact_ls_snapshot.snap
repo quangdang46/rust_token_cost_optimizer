@@ -1,0 +1,17 @@
+---
+source: crates/rtco-cli/src/cmds/system/ls.rs
+expression: entries
+---
+docs//
+scripts//
+src//
+tests//
+target//
+.git//
+Cargo.toml  1.0K
+LICENSE  11.1K
+README.md  3.4K
+rust-toolchain.toml  512B
+Cargo.lock  24.0K
+.gitignore  128B
+.claude/  64B

@@ -706,4 +706,11 @@ dependencies: resolved 500, installed 485
             byte_savings
         );
     }
+
+    #[test]
+    fn test_filter_pnpm_install_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/js/pnpm_install.txt");
+        let output = filter_pnpm_install(raw);
+        insta::assert_snapshot!(output);
+    }
 }

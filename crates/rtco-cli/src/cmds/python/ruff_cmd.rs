@@ -455,4 +455,11 @@ Would reformat: tests/test_utils.py
         );
         assert_eq!(compact_path("relative/file.py"), "file.py");
     }
+
+    #[test]
+    fn test_filter_ruff_check_json_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/python/ruff_check.txt");
+        let output = filter_ruff_check_json(raw);
+        insta::assert_snapshot!(output);
+    }
 }

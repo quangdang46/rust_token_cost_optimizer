@@ -517,4 +517,11 @@ collected 3 items
             result
         );
     }
+
+    #[test]
+    fn test_filter_pytest_output_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/python/pytest_run.txt");
+        let output = filter_pytest_output(raw);
+        insta::assert_snapshot!(output);
+    }
 }

@@ -1,0 +1,7 @@
+---
+source: crates/rtco-cli/src/cmds/git/gh_cmd.rs
+expression: output
+---
+Issues
+  [open] #101 bug: crash on empty config
+  [closed] #102 feat: add dry-run mode

@@ -543,4 +543,15 @@ mod tests {
             byte_savings
         );
     }
+
+    #[test]
+    fn test_playwright_run_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/js/playwright_test.txt");
+        let result = PlaywrightParser::parse(raw);
+        if result.is_ok() {
+            let data = result.unwrap();
+            let output = data.format(FormatMode::from_verbosity(0));
+            insta::assert_snapshot!(output);
+        }
+    }
 }

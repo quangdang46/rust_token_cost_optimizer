@@ -1,0 +1,9 @@
+---
+source: crates/rtco-cli/src/cmds/git/git.rs
+expression: output
+---
+commit 7a3b5c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b
+  Author: Alice Johnson <alice@example.com>
+  Date:   Mon Jun 15 14:32:10 2026 -0400
+  feat(core): add token counting optimization for large outputs
+  [+109 lines omitted]

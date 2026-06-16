@@ -1,0 +1,9 @@
+---
+source: crates/rtco-cli/src/cmds/js/next_cmd.rs
+expression: output
+---
+Next.js Build
+═══════════════════════════════════════
+2 routes (1 static, 0 dynamic)
+
+Errors: 0 | Warnings: 0

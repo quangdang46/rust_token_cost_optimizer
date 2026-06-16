@@ -290,4 +290,11 @@ Route (app)                    Size     First Load JS
             byte_savings
         );
     }
+
+    #[test]
+    fn test_filter_next_build_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/js/next_build.txt");
+        let output = filter_next_build(raw);
+        insta::assert_snapshot!(output);
+    }
 }

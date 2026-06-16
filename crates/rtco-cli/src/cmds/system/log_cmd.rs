@@ -274,4 +274,27 @@ mod tests {
         // Should not panic even with very long multi-byte messages
         assert!(result.contains("ERRORS"));
     }
+
+    #[test]
+    fn test_analyze_logs_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/system/log_output.txt");
+        let output = analyze_logs(raw);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_analyze_logs_savings() {
+        let raw = include_str!("../../../../../tests/fixtures/system/log_output.txt");
+        fn count_tokens(s: &str) -> usize { s.split_whitespace().count() }
+        let raw_tokens = count_tokens(raw);
+        let output = analyze_logs(raw);
+        let out_tokens = count_tokens(&output);
+        if raw_tokens > 0 {
+            let savings = 100.0 - (out_tokens as f64 / raw_tokens as f64 * 100.0);
+            assert!(
+                savings >= 0.0,
+                "Log analysis should not inflate token count"
+            );
+        }
+    }
 }

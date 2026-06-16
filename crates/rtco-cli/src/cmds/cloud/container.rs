@@ -1080,4 +1080,25 @@ api-1  | Connected to database";
         let savings = 100.0 - (output_tokens as f64 / input_tokens as f64 * 100.0);
         assert!(savings >= 60.0, "kubectl services: expected >= 60% savings, got {:.1}% (raw={}, out={})", savings, input_tokens, output_tokens);
     }
+
+    #[test]
+    fn test_format_compose_ps_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/cloud/docker_ps.txt");
+        let output = format_compose_ps(raw);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_format_compose_logs_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/cloud/kubectl_get_pods.txt");
+        let output = format_compose_logs(raw);
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn test_format_compose_build_snapshot() {
+        let raw = include_str!("../../../../../tests/fixtures/cloud/docker_images.txt");
+        let output = format_compose_build(raw);
+        insta::assert_snapshot!(output);
+    }
 }
