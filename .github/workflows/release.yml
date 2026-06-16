@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    name: Release (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: dtolnay/rust-toolchain@439ef2cbf7e3b10ad94c3c85ab46c093991d489f # stable
+
+      - uses: Swatinem/rust-cache@f0deed1e71ed3d0f95c215b34c3d2a2550e2674f # v2.7.7
+
+      - name: cargo build --release
+        run: cargo build --release
+
+      - name: Compress binary
+        shell: bash
+        run: |
+          BIN="${{ matrix.os == 'windows-latest' && 'target/release/rtco.exe' || 'target/release/rtco' }}"
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            7z a "rtco-${{ matrix.os }}.zip" "$BIN"
+          else
+            tar czf "rtco-${{ matrix.os }}.tar.gz" -C target/release rtco
+          fi
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb4bffb9c5be6f9f48d4b4f # v2
+        with:
+          files: |
+            rtco-*.tar.gz
+            rtco-*.zip
+          generate_release_notes: true
