@@ -1,5 +1,6 @@
 ---
 source: crates/rtco-cli/src/cmds/python/mypy_cmd.rs
+assertion_line: 368
 expression: output
 ---
 mypy: 12 errors in 4 files
