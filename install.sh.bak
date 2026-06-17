@@ -226,7 +226,7 @@ main() {
             while IFS= read -r -d '' file; do
                 # Reject paths that are absolute and outside TMP
                 case "$file" in
-                    "$TMP"|"$TMP"/*) ;;
+                    0/*) ;;
                     *) die "Path traversal blocked: $file is outside extraction root" ;;
                 esac
                 # Reject paths containing parent directory references
