@@ -69,11 +69,24 @@ git push origin "$VERSION"
 # 3. CI automatically builds binaries and creates the GitHub Release
 ```
 
-The release workflow uses `softprops/action-gh-release` to upload artifacts
-and `cargo build --release` to produce stripped, LTO-optimized binaries.
-Release notes are auto-generated from commits since the last tag.
+### Manual release (when CI runners are unavailable)
+
+If GitHub Actions runners are not allocating (e.g. free tier minutes exhausted),
+create the release manually with `gh` CLI:
+
+```bash
+# Build locally
+cargo build --release
+
+# Create tarball
+tar czf "rtco-$VERSION-$(uname -sm | tr ' ' '-').tar.gz" -C target/release rtco rtco-mcp
+shasum -a 256 "rtco-$VERSION-$(uname -sm | tr ' ' '-').tar.gz" > rtco-SHA256SUMS.txt
+
+# Create release (requires gh CLI with repo scope)
+gh release create "$VERSION" --title "rtco $VERSION" --notes "Release notes here" ./*.tar.gz ./*.txt
+```
 
 ### Prerequisites
 
 - `GITHUB_TOKEN` with `contents:write` scope (default for GitHub Actions)
-- A tag pushed to the remote matching `v*`
+- An active GitHub Actions runner allocation (check billing at Settings > Billing & plans)
