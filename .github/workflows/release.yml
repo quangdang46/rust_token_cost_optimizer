@@ -36,13 +36,32 @@ jobs:
       - name: cargo build --release
         run: cargo build --release
 
+      - name: Detect platform
+        id: platform
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            Linux)  os="linux" ;;
+            macOS)  os="macos" ;;
+            Windows) os="windows" ;;
+          esac
+          case "$(uname -m)" in
+            x86_64|amd64) arch="x86_64" ;;
+            aarch64|arm64) arch="aarch64" ;;
+          esac
+          echo "value=${os}-${arch}" >> "$GITHUB_OUTPUT"
+          echo "ext=${{ runner.os == 'Windows' && 'zip' || 'tar.gz' }}" >> "$GITHUB_OUTPUT"
+
       - name: Compress binary
         shell: bash
         run: |
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cd target/release && 7z a "../../rtco-${{ matrix.os }}.zip" "rtco.exe" && cd ../..
+          VERSION="${GITHUB_REF_NAME#v}"
+          PLATFORM="${{ steps.platform.outputs.value }}"
+          EXT="${{ steps.platform.outputs.ext }}"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cd target/release && 7z a "../../rtco-${VERSION}-${PLATFORM}.${EXT}" "rtco.exe" && cd ../..
           else
-            tar czf "rtco-${{ matrix.os }}.tar.gz" -C target/release rtco
+            tar czf "rtco-${VERSION}-${PLATFORM}.${EXT}" -C target/release rtco
           fi
 
       - name: Generate SHA256 checksums
