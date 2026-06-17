@@ -55,7 +55,7 @@ jobs:
       - name: Compress binary
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ github.event.inputs.tag || github.ref_name }}"
           PLATFORM="${{ steps.platform.outputs.value }}"
           EXT="${{ steps.platform.outputs.ext }}"
           if [[ "${{ runner.os }}" == "Windows" ]]; then
