@@ -5,11 +5,11 @@ Usage:
   irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" | iex
 
 To pin a version or pass flags through `irm | iex`:
-  & ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1'))) -Version v0.40.0 -EasyMode
+  & ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1'))) -Version v0.41.0 -EasyMode
 
 Or download once and run directly:
   irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" -OutFile install.ps1
-  .\install.ps1 -Version v0.40.0 -EasyMode -Verify
+  .\install.ps1 -Version v0.41.0 -EasyMode -Verify
 
 Flags:
   -Dest <path>       Install location. Default: $env:USERPROFILE\.local\bin
