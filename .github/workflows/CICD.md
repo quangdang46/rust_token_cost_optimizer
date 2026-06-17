@@ -61,8 +61,8 @@ GitHub Release with the artifacts and auto-generated release notes.
 # 1. Ensure main is up to date and all CI checks pass
 git checkout main && git pull
 
-# 2. Tag the release (semver, e.g. v0.41.0)
-VERSION="v0.41.0"
+# 2. Tag the release (semver, e.g. v0.1.0)
+VERSION="v0.1.0"
 git tag -a "$VERSION" -m "Release $VERSION"
 git push origin "$VERSION"
 

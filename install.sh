@@ -6,7 +6,7 @@
 #
 # Pin a version or pass flags by downloading once, then running directly:
 #   curl -fsSL "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh" -o install.sh
-#   bash install.sh --version v0.41.0 --easy-mode --verify
+#   bash install.sh --version v0.1.0 --easy-mode --verify
 
 set -euo pipefail
 umask 022

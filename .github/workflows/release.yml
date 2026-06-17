@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release (e.g. v0.41.0)"
+        description: "Tag to release (e.g. v0.1.0)"
         required: true
 
 permissions:
@@ -25,13 +25,13 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
-      - uses: dtolnay/rust-toolchain@439ef2cbf7e3b10ad94c3c85ab46c093991d489f # stable
+      - uses: dtolnay/rust-toolchain@stable
 
-      - uses: Swatinem/rust-cache@f0deed1e71ed3d0f95c215b34c3d2a2550e2674f # v2.7.7
+      - uses: Swatinem/rust-cache@v2
 
       - name: cargo build --release
         run: cargo build --release
@@ -57,7 +57,7 @@ jobs:
           fi
 
       - name: Upload release asset
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb4bffb9c5be6f9f48d4b4f # v2
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             rtco-*.tar.gz
