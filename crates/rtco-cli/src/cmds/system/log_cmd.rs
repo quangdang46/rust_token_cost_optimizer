@@ -135,7 +135,7 @@ fn analyze_logs(content: &str) -> String {
 
         // Sort by count
         let mut error_list: Vec<_> = error_counts.iter().collect();
-        error_list.sort_by(|a, b| b.1.cmp(a.1));
+        error_list.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
 
         const MAX_LOG_ERRORS: usize = CAP_WARNINGS;
         for (normalized, count) in error_list.iter().take(MAX_LOG_ERRORS) {
@@ -177,7 +177,7 @@ fn analyze_logs(content: &str) -> String {
         result.push("[WARNINGS]".to_string());
 
         let mut warn_list: Vec<_> = warn_counts.iter().collect();
-        warn_list.sort_by(|a, b| b.1.cmp(a.1));
+        warn_list.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
 
         // warnings are lower severity than errors — show fewer.
         const MAX_LOG_WARNS: usize = reduced(CAP_WARNINGS, 5);

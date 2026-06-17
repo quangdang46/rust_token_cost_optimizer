@@ -8,8 +8,8 @@ Log Summary
    [info] 14 info messages
 
 [ERRORS]
-   2026-06-16 15:30:48.235 [ERROR] kubectl is not installed. Please install kubectl first.
    2026-06-16 15:30:48.234 [ERROR] Failed to execute `kubectl get pods`: command not found
+   2026-06-16 15:30:48.235 [ERROR] kubectl is not installed. Please install kubectl first.
 
 [WARNINGS]
    2026-06-16 15:30:47.120 [WARN]  Filter warning for `cargo test`: failed to parse test output, usi...

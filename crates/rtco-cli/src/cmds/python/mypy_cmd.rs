@@ -168,7 +168,7 @@ pub fn filter_mypy_output(output: &str) -> String {
 
         // Top error codes summary (only when 2+ distinct codes)
         let mut code_counts: Vec<_> = by_code.iter().collect();
-        code_counts.sort_by(|a, b| b.1.cmp(a.1));
+        code_counts.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
 
         if code_counts.len() > 1 {
             let codes_str: Vec<String> = code_counts

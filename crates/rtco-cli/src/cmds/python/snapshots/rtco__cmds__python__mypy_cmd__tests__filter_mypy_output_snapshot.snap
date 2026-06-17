@@ -4,7 +4,7 @@ expression: output
 ---
 mypy: 12 errors in 4 files
 ═══════════════════════════════════════
-Top codes: attr-defined (2x), no-untyped-def (1x), misc (1x)
+Top codes: attr-defined (2x), misc (1x), no-untyped-def (1x)
 
 src/app.py (4 errors)
   L5: Library stubs not installed for "flask"
