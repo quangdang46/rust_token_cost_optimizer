@@ -41,7 +41,13 @@ jobs:
       - name: Generate SHA256 checksums
         shell: bash
         run: |
-          sha256sum rtco-*.tar.gz rtco-*.zip > rtco-SHA256SUMS.txt
+          if command -v sha256sum &> /dev/null; then
+            sha256sum rtco-*.tar.gz rtco-*.zip > rtco-SHA256SUMS.txt
+          elif command -v shasum &> /dev/null; then
+            shasum -a 256 rtco-*.tar.gz rtco-*.zip > rtco-SHA256SUMS.txt
+          else
+            echo "No SHA256 tool found" && exit 1
+          fi
 
       - name: Upload release asset
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb4bffb9c5be6f9f48d4b4f # v2

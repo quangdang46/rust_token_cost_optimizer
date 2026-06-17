@@ -1,8 +1,8 @@
 # CI/CD Flows
 
-## CI (ci.yml)
+## CI
 
-Trigger: push or pull_request to `main`
+Triggers: push to `main` or pull_request targeting `main`
 
 ```
      ┌──────────────────┐
@@ -24,15 +24,56 @@ Trigger: push or pull_request to `main`
      ┌────────▼─────────┐
      │  cargo test      │
      │  --all-features  │
-     └──────────────────┘
+     └────────┬─────────┘
+          ┌───┴───┐
+     ┌────▼────┐  │
+     │ coverage│  │
+     └─────────┘  │
+          ┌───────▼────────┐
+          │  cargo build   │
+          │  (integration  │
+          │   tests)       │
+          └───────┬────────┘
+          ┌───────▼────────┐
+          │  cargo test    │
+          │  -- --ignored  │
+          └───────┬────────┘
+          ┌───────▼────────┐
+          │  cargo build   │
+          │  --release     │
+          └───────┬────────┘
+          ┌───────▼────────────┐
+          │  hyperfine bench   │
+          │  (optional)        │
+          └────────────────────┘
 ```
 
-## CD (cd.yml)
+## Release
 
-Trigger: push to `main` (or workflow_dispatch)
+Trigger: tag push matching `v*`
 
-Runs the same quality checks as CI on push to main.
+Builds release binaries for Linux, macOS, and Windows, then creates a
+GitHub Release with the artifacts and auto-generated release notes.
 
-## Manual release
+### How to release
 
-Not configured for this fork. Use `cargo build --release` locally to build binaries.
+```bash
+# 1. Ensure main is up to date and all CI checks pass
+git checkout main && git pull
+
+# 2. Tag the release (semver, e.g. v0.41.0)
+VERSION="v0.41.0"
+git tag -a "$VERSION" -m "Release $VERSION"
+git push origin "$VERSION"
+
+# 3. CI automatically builds binaries and creates the GitHub Release
+```
+
+The release workflow uses `softprops/action-gh-release` to upload artifacts
+and `cargo build --release` to produce stripped, LTO-optimized binaries.
+Release notes are auto-generated from commits since the last tag.
+
+### Prerequisites
+
+- `GITHUB_TOKEN` with `contents:write` scope (default for GitHub Actions)
+- A tag pushed to the remote matching `v*`
