@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.2.0...v0.2.1) (2026-06-19)
+
+### Documentation
+* **changelog:** move prematurely listed [Unreleased] entries into v0.2.0 section
+* **version:** bump workspace and crate versions from 0.2.0 to 0.2.1
+
+## [0.2.0](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.1.1...v0.2.0) (2026-06-18)
+
 ### Features
 * **cli:** add `rtco mcp` subcommand to expose `rtco_compress`, `rtco_analyze`, and `rtco_retrieve` as MCP tools over JSON-RPC stdio. Shares code with the standalone `rtco-mcp` binary.
 * **cli:** add `rtco init --mcp` / `rtco init --hooks` / `rtco init --uninstall --mcp` to register (or strip) the `rtco` MCP server entry in 10 provider config files: Claude Code, Cursor, Cline, Windsurf, VS Code Copilot, OpenCode, Codex CLI, Gemini CLI, Amazon Q, and Warp.
@@ -20,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 * **install:** default behavior is unchanged when no new flag is passed — opt-in only.
+
 
 ## [0.1.1](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.1.0...v0.1.1) (2026-06-18)
 
