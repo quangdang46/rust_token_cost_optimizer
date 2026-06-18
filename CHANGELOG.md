@@ -5,6 +5,12 @@ All notable changes to rtco (Rust Token Killer) will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.1.0...v0.1.1) (2026-06-18)
+
+### Bug Fixes
+* **ci:** add missing TEE_ENV_LOCK guard to flaky Windows test
+* **hooks:** rename rtk hooks to rtco, add AGENTS.md, add OpenCode plugin
+
 ## [0.41.0](https://github.com/rtco-ai/rtco/compare/v0.40.0...v0.41.0) (2026-06-16)
 
 ### Features
