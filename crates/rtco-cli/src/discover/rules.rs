@@ -1,4 +1,4 @@
-use super::report::RtkStatus;
+use super::report::RtcoStatus;
 
 pub struct RtkRule {
     pub pattern: &'static str,
@@ -7,7 +7,7 @@ pub struct RtkRule {
     pub category: &'static str,
     pub savings_pct: f64,
     pub subcmd_savings: &'static [(&'static str, f64)],
-    pub subcmd_status: &'static [(&'static str, RtkStatus)],
+    pub subcmd_status: &'static [(&'static str, RtcoStatus)],
 }
 
 pub const RULES: &[RtkRule] = &[
@@ -50,7 +50,7 @@ pub const RULES: &[RtkRule] = &[
         category: "Cargo",
         savings_pct: 80.0,
         subcmd_savings: &[("test", 90.0), ("check", 80.0)],
-        subcmd_status: &[("fmt", RtkStatus::Passthrough)],
+        subcmd_status: &[("fmt", RtcoStatus::Passthrough)],
     },
     RtkRule {
         pattern: r"^pnpm\s+(exec|i|install|list|ls|outdated|run|run-script)",

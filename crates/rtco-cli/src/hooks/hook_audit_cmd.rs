@@ -246,7 +246,7 @@ mod tests {
         let raw_log = r#"2026-02-16T14:30:01Z | rewrite | git status | rtk git status
 2026-02-16T14:30:02Z | skip:no_match | echo hello | -
 2026-02-16T14:30:03Z | rewrite | cargo test | rtk cargo test
-2026-02-16T14:30:04Z | skip:already_rtk | rtk git log | -
+2026-02-16T14:30:04Z | skip:already_rtco | rtk git log | -
 2026-02-16T14:30:05Z | rewrite | git log --oneline -10 | rtk git log --oneline -10
 2026-02-16T14:30:06Z | rewrite | gh pr view 42 | rtk gh pr view 42
 2026-02-16T14:30:07Z | skip:no_match | mkdir -p foo | -

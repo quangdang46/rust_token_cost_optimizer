@@ -10,10 +10,10 @@ use super::rules::{IGNORED_EXACT, IGNORED_PREFIXES, RULES};
 #[derive(Debug, PartialEq)]
 pub enum Classification {
     Supported {
-        rtk_equivalent: &'static str,
+        rtco_equivalent: &'static str,
         category: &'static str,
         estimated_savings_pct: f64,
-        status: super::report::RtkStatus,
+        status: super::report::RtcoStatus,
     },
     Unsupported {
         base_command: String,
@@ -161,7 +161,7 @@ pub fn classify_command(cmd: &str) -> Classification {
                     .iter()
                     .find(|(s, _)| *s == subcmd)
                     .map(|(_, st)| *st)
-                    .unwrap_or(super::report::RtkStatus::Existing);
+                    .unwrap_or(super::report::RtcoStatus::Existing);
 
                 // Check if this subcommand has custom savings
                 let savings = rule
@@ -173,14 +173,14 @@ pub fn classify_command(cmd: &str) -> Classification {
 
                 (savings, status)
             } else {
-                (rule.savings_pct, super::report::RtkStatus::Existing)
+                (rule.savings_pct, super::report::RtcoStatus::Existing)
             }
         } else {
-            (rule.savings_pct, super::report::RtkStatus::Existing)
+            (rule.savings_pct, super::report::RtcoStatus::Existing)
         };
 
         Classification::Supported {
-            rtk_equivalent: rule.rtco_cmd,
+            rtco_equivalent: rule.rtco_cmd,
             category: rule.category,
             estimated_savings_pct: savings,
             status,
@@ -383,14 +383,14 @@ fn strip_absolute_path(cmd: &str) -> String {
     }
 }
 
-pub fn prefix_contains_rtk_disabled(prefix_part: &str) -> bool {
+pub fn prefix_contains_rtco_disabled(prefix_part: &str) -> bool {
     prefix_part.contains("RTK_DISABLED=")
 }
 
 /// Check if a command has RTK_DISABLED= prefix in its env prefix portion.
-pub fn cmd_has_rtk_disabled_prefix(cmd: &str) -> bool {
+pub fn cmd_has_rtco_disabled_prefix(cmd: &str) -> bool {
     let (prefix_part, _) = strip_disabled_prefix(cmd);
-    prefix_contains_rtk_disabled(prefix_part)
+    prefix_contains_rtco_disabled(prefix_part)
 }
 
 /// Strip RTK_DISABLED=X and other env prefixes, returns `(env_prefix, actual_command)`.
@@ -502,17 +502,16 @@ pub fn rewrite_command(
     let normalized_prefixes = normalize_transparent_prefixes(transparent_prefixes);
 
     // Simple (non-compound) already-RTK command — return as-is.
-    // For compound commands that start with "rtk" (e.g. "rtco git add . && cargo test"),
+    // For compound commands that start with "rtco" (e.g. "rtco git add . && cargo test"),
     // fall through to rewrite_compound so the remaining segments get rewritten.
     let has_compound = trimmed.contains("&&")
         || trimmed.contains("||")
         || trimmed.contains(';')
         || trimmed.contains('|')
         || trimmed.contains(" & ");
-    let is_rtk_style = trimmed.starts_with("rtk ") && !trimmed.starts_with("rtco ");
     let is_rtco_style = trimmed.starts_with("rtco ");
-    let is_bare_rtk = trimmed == "rtk";
-    if !has_compound && (is_rtk_style || is_rtco_style || is_bare_rtk) {
+    let is_bare_rtco = trimmed == "rtco";
+    if !has_compound && (is_rtco_style || is_bare_rtco) {
         return Some(trimmed.to_string());
     }
 
@@ -802,20 +801,22 @@ fn rewrite_segment_inner(
     }
 
     // Use classify_command for correct ignore/prefix handling
-    let rtk_equivalent = match classify_command(cmd_part) {
-        Classification::Supported { rtk_equivalent, .. } => {
+    let rtco_equivalent = match classify_command(cmd_part) {
+        Classification::Supported {
+            rtco_equivalent, ..
+        } => {
             let stripped = ENV_PREFIX.replace(cmd_part, "");
             let cmd_clean = stripped.trim();
             if is_excluded(cmd_clean, excluded) {
                 return None;
             }
-            rtk_equivalent
+            rtco_equivalent
         }
         _ => return None,
     };
 
     // Find the matching rule (rtco_cmd values are unique across all rules)
-    let rule = RULES.iter().find(|r| r.rtco_cmd == rtk_equivalent)?;
+    let rule = RULES.iter().find(|r| r.rtco_cmd == rtco_equivalent)?;
 
     if let Some(parts) = parse_golangci_run_parts(cmd_part) {
         let rewritten = if parts.global_segment.is_empty() {
@@ -1056,7 +1057,7 @@ fn strip_word_prefix<'a>(cmd: &'a str, prefix: &str) -> Option<&'a str> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::report::RtkStatus;
+    use super::super::report::RtcoStatus;
     use super::*;
 
     fn rewrite_command_no_prefixes(cmd: &str, excluded: &[String]) -> Option<String> {
@@ -1068,10 +1069,10 @@ mod tests {
         assert_eq!(
             classify_command("git status"),
             Classification::Supported {
-                rtk_equivalent: "rtco git",
+                rtco_equivalent: "rtco git",
                 category: "Git",
                 estimated_savings_pct: 70.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1081,10 +1082,10 @@ mod tests {
         assert_eq!(
             classify_command("yadm status"),
             Classification::Supported {
-                rtk_equivalent: "rtco git",
+                rtco_equivalent: "rtco git",
                 category: "Git",
                 estimated_savings_pct: 70.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1094,10 +1095,10 @@ mod tests {
         assert_eq!(
             classify_command("yadm diff"),
             Classification::Supported {
-                rtk_equivalent: "rtco git",
+                rtco_equivalent: "rtco git",
                 category: "Git",
                 estimated_savings_pct: 80.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1115,10 +1116,10 @@ mod tests {
         assert_eq!(
             classify_command("git diff --cached"),
             Classification::Supported {
-                rtk_equivalent: "rtco git",
+                rtco_equivalent: "rtco git",
                 category: "Git",
                 estimated_savings_pct: 80.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1128,10 +1129,10 @@ mod tests {
         assert_eq!(
             classify_command("cargo test filter::"),
             Classification::Supported {
-                rtk_equivalent: "rtco cargo",
+                rtco_equivalent: "rtco cargo",
                 category: "Cargo",
                 estimated_savings_pct: 90.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1141,10 +1142,10 @@ mod tests {
         assert_eq!(
             classify_command("npx tsc --noEmit"),
             Classification::Supported {
-                rtk_equivalent: "rtco tsc",
+                rtco_equivalent: "rtco tsc",
                 category: "Build",
                 estimated_savings_pct: 83.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1154,10 +1155,10 @@ mod tests {
         assert_eq!(
             classify_command("cat src/main.rs"),
             Classification::Supported {
-                rtk_equivalent: "rtco read",
+                rtco_equivalent: "rtco read",
                 category: "Files",
                 estimated_savings_pct: 60.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1214,10 +1215,10 @@ mod tests {
         assert_eq!(
             classify_command("GIT_SSH_COMMAND=ssh git push"),
             Classification::Supported {
-                rtk_equivalent: "rtco git",
+                rtco_equivalent: "rtco git",
                 category: "Git",
                 estimated_savings_pct: 70.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1227,10 +1228,10 @@ mod tests {
         assert_eq!(
             classify_command("sudo docker ps"),
             Classification::Supported {
-                rtk_equivalent: "rtco docker",
+                rtco_equivalent: "rtco docker",
                 category: "Infra",
                 estimated_savings_pct: 85.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1240,10 +1241,10 @@ mod tests {
         assert_eq!(
             classify_command("cargo check"),
             Classification::Supported {
-                rtk_equivalent: "rtco cargo",
+                rtco_equivalent: "rtco cargo",
                 category: "Cargo",
                 estimated_savings_pct: 80.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1253,10 +1254,10 @@ mod tests {
         assert_eq!(
             classify_command("cargo check --all-targets"),
             Classification::Supported {
-                rtk_equivalent: "rtco cargo",
+                rtco_equivalent: "rtco cargo",
                 category: "Cargo",
                 estimated_savings_pct: 80.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1266,10 +1267,10 @@ mod tests {
         assert_eq!(
             classify_command("cargo fmt"),
             Classification::Supported {
-                rtk_equivalent: "rtco cargo",
+                rtco_equivalent: "rtco cargo",
                 category: "Cargo",
                 estimated_savings_pct: 80.0,
-                status: RtkStatus::Passthrough,
+                status: RtcoStatus::Passthrough,
             }
         );
     }
@@ -1279,10 +1280,10 @@ mod tests {
         assert_eq!(
             classify_command("cargo clippy --all-targets"),
             Classification::Supported {
-                rtk_equivalent: "rtco cargo",
+                rtco_equivalent: "rtco cargo",
                 category: "Cargo",
                 estimated_savings_pct: 80.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1322,10 +1323,10 @@ mod tests {
         assert_eq!(
             classify_command("find . -name foo"),
             Classification::Supported {
-                rtk_equivalent: "rtco find",
+                rtco_equivalent: "rtco find",
                 category: "Files",
                 estimated_savings_pct: 70.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1381,10 +1382,10 @@ mod tests {
         assert_eq!(
             classify_command("mypy src/"),
             Classification::Supported {
-                rtk_equivalent: "rtco mypy",
+                rtco_equivalent: "rtco mypy",
                 category: "Build",
                 estimated_savings_pct: 80.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1394,10 +1395,10 @@ mod tests {
         assert_eq!(
             classify_command("python3 -m mypy --strict"),
             Classification::Supported {
-                rtk_equivalent: "rtco mypy",
+                rtco_equivalent: "rtco mypy",
                 category: "Build",
                 estimated_savings_pct: 80.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -1453,7 +1454,7 @@ mod tests {
             matches!(
                 result,
                 Classification::Supported {
-                    rtk_equivalent: "rtco git",
+                    rtco_equivalent: "rtco git",
                     ..
                 }
             ),
@@ -1492,7 +1493,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rewrite_already_rtk() {
+    fn test_rewrite_already_rtco() {
         assert_eq!(
             rewrite_command_no_prefixes("rtco git status", &[]),
             Some("rtco git status".into())
@@ -1848,10 +1849,10 @@ mod tests {
         assert_eq!(
             classify_command(r#"GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no" git push"#),
             Classification::Supported {
-                rtk_equivalent: "rtco git",
+                rtco_equivalent: "rtco git",
                 category: "Git",
                 estimated_savings_pct: 70.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -2083,7 +2084,7 @@ mod tests {
         assert!(matches!(
             classify_command("gh release list"),
             Classification::Supported {
-                rtk_equivalent: "rtco gh",
+                rtco_equivalent: "rtco gh",
                 ..
             }
         ));
@@ -2094,7 +2095,7 @@ mod tests {
         assert!(matches!(
             classify_command("glab mr list"),
             Classification::Supported {
-                rtk_equivalent: "rtco glab",
+                rtco_equivalent: "rtco glab",
                 ..
             }
         ));
@@ -2105,7 +2106,7 @@ mod tests {
         assert!(matches!(
             classify_command("glab ci list"),
             Classification::Supported {
-                rtk_equivalent: "rtco glab",
+                rtco_equivalent: "rtco glab",
                 ..
             }
         ));
@@ -2116,7 +2117,7 @@ mod tests {
         assert!(matches!(
             classify_command("glab release list"),
             Classification::Supported {
-                rtk_equivalent: "rtco glab",
+                rtco_equivalent: "rtco glab",
                 ..
             }
         ));
@@ -2143,7 +2144,7 @@ mod tests {
         assert!(matches!(
             classify_command("cargo install rtk"),
             Classification::Supported {
-                rtk_equivalent: "rtco cargo",
+                rtco_equivalent: "rtco cargo",
                 ..
             }
         ));
@@ -2154,7 +2155,7 @@ mod tests {
         assert!(matches!(
             classify_command("docker run --rm ubuntu bash"),
             Classification::Supported {
-                rtk_equivalent: "rtco docker",
+                rtco_equivalent: "rtco docker",
                 ..
             }
         ));
@@ -2165,7 +2166,7 @@ mod tests {
         assert!(matches!(
             classify_command("docker exec -it mycontainer bash"),
             Classification::Supported {
-                rtk_equivalent: "rtco docker",
+                rtco_equivalent: "rtco docker",
                 ..
             }
         ));
@@ -2176,7 +2177,7 @@ mod tests {
         assert!(matches!(
             classify_command("docker build -t myimage ."),
             Classification::Supported {
-                rtk_equivalent: "rtco docker",
+                rtco_equivalent: "rtco docker",
                 ..
             }
         ));
@@ -2187,7 +2188,7 @@ mod tests {
         assert!(matches!(
             classify_command("kubectl describe pod mypod"),
             Classification::Supported {
-                rtk_equivalent: "rtco kubectl",
+                rtco_equivalent: "rtco kubectl",
                 ..
             }
         ));
@@ -2198,7 +2199,7 @@ mod tests {
         assert!(matches!(
             classify_command("kubectl apply -f deploy.yaml"),
             Classification::Supported {
-                rtk_equivalent: "rtco kubectl",
+                rtco_equivalent: "rtco kubectl",
                 ..
             }
         ));
@@ -2209,7 +2210,7 @@ mod tests {
         assert!(matches!(
             classify_command("tree src/"),
             Classification::Supported {
-                rtk_equivalent: "rtco tree",
+                rtco_equivalent: "rtco tree",
                 ..
             }
         ));
@@ -2220,7 +2221,7 @@ mod tests {
         assert!(matches!(
             classify_command("diff file1.txt file2.txt"),
             Classification::Supported {
-                rtk_equivalent: "rtco diff",
+                rtco_equivalent: "rtco diff",
                 ..
             }
         ));
@@ -2279,10 +2280,10 @@ mod tests {
         assert!(matches!(
             classify_command("swift test"),
             Classification::Supported {
-                rtk_equivalent: "rtco swift",
+                rtco_equivalent: "rtco swift",
                 category: "Build",
                 estimated_savings_pct: 90.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         ));
     }
@@ -2352,7 +2353,7 @@ mod tests {
         assert!(matches!(
             classify_command("aws s3 ls"),
             Classification::Supported {
-                rtk_equivalent: "rtco aws",
+                rtco_equivalent: "rtco aws",
                 ..
             }
         ));
@@ -2363,7 +2364,7 @@ mod tests {
         assert!(matches!(
             classify_command("aws ec2 describe-instances"),
             Classification::Supported {
-                rtk_equivalent: "rtco aws",
+                rtco_equivalent: "rtco aws",
                 ..
             }
         ));
@@ -2374,7 +2375,7 @@ mod tests {
         assert!(matches!(
             classify_command("psql -U postgres"),
             Classification::Supported {
-                rtk_equivalent: "rtco psql",
+                rtco_equivalent: "rtco psql",
                 ..
             }
         ));
@@ -2385,7 +2386,7 @@ mod tests {
         assert!(matches!(
             classify_command("psql postgres://localhost/mydb"),
             Classification::Supported {
-                rtk_equivalent: "rtco psql",
+                rtco_equivalent: "rtco psql",
                 ..
             }
         ));
@@ -2422,7 +2423,7 @@ mod tests {
         assert!(matches!(
             classify_command("ruff check ."),
             Classification::Supported {
-                rtk_equivalent: "rtco ruff",
+                rtco_equivalent: "rtco ruff",
                 ..
             }
         ));
@@ -2433,7 +2434,7 @@ mod tests {
         assert!(matches!(
             classify_command("ruff format src/"),
             Classification::Supported {
-                rtk_equivalent: "rtco ruff",
+                rtco_equivalent: "rtco ruff",
                 ..
             }
         ));
@@ -2444,7 +2445,7 @@ mod tests {
         assert!(matches!(
             classify_command("pytest tests/"),
             Classification::Supported {
-                rtk_equivalent: "rtco pytest",
+                rtco_equivalent: "rtco pytest",
                 ..
             }
         ));
@@ -2455,7 +2456,7 @@ mod tests {
         assert!(matches!(
             classify_command("python -m pytest tests/"),
             Classification::Supported {
-                rtk_equivalent: "rtco pytest",
+                rtco_equivalent: "rtco pytest",
                 ..
             }
         ));
@@ -2466,7 +2467,7 @@ mod tests {
         assert!(matches!(
             classify_command("pip list"),
             Classification::Supported {
-                rtk_equivalent: "rtco pip",
+                rtco_equivalent: "rtco pip",
                 ..
             }
         ));
@@ -2477,7 +2478,7 @@ mod tests {
         assert!(matches!(
             classify_command("uv pip list"),
             Classification::Supported {
-                rtk_equivalent: "rtco pip",
+                rtco_equivalent: "rtco pip",
                 ..
             }
         ));
@@ -2546,7 +2547,7 @@ mod tests {
         assert!(matches!(
             classify_command("go test ./..."),
             Classification::Supported {
-                rtk_equivalent: "rtco go",
+                rtco_equivalent: "rtco go",
                 ..
             }
         ));
@@ -2557,7 +2558,7 @@ mod tests {
         assert!(matches!(
             classify_command("go build ./..."),
             Classification::Supported {
-                rtk_equivalent: "rtco go",
+                rtco_equivalent: "rtco go",
                 ..
             }
         ));
@@ -2568,7 +2569,7 @@ mod tests {
         assert!(matches!(
             classify_command("go vet ./..."),
             Classification::Supported {
-                rtk_equivalent: "rtco go",
+                rtco_equivalent: "rtco go",
                 ..
             }
         ));
@@ -2579,7 +2580,7 @@ mod tests {
         assert!(matches!(
             classify_command("golangci-lint run"),
             Classification::Supported {
-                rtk_equivalent: "rtco golangci-lint run",
+                rtco_equivalent: "rtco golangci-lint run",
                 ..
             }
         ));
@@ -2590,7 +2591,7 @@ mod tests {
         assert!(matches!(
             classify_command("golangci-lint -v run ./..."),
             Classification::Supported {
-                rtk_equivalent: "rtco golangci-lint run",
+                rtco_equivalent: "rtco golangci-lint run",
                 ..
             }
         ));
@@ -2601,7 +2602,7 @@ mod tests {
         assert!(matches!(
             classify_command("golangci-lint --color never run ./..."),
             Classification::Supported {
-                rtk_equivalent: "rtco golangci-lint run",
+                rtco_equivalent: "rtco golangci-lint run",
                 ..
             }
         ));
@@ -2612,7 +2613,7 @@ mod tests {
         assert!(matches!(
             classify_command("golangci-lint --color=never run ./..."),
             Classification::Supported {
-                rtk_equivalent: "rtco golangci-lint run",
+                rtco_equivalent: "rtco golangci-lint run",
                 ..
             }
         ));
@@ -2623,7 +2624,7 @@ mod tests {
         assert!(matches!(
             classify_command("golangci-lint --config=foo.yml run ./..."),
             Classification::Supported {
-                rtk_equivalent: "rtco golangci-lint run",
+                rtco_equivalent: "rtco golangci-lint run",
                 ..
             }
         ));
@@ -2634,7 +2635,7 @@ mod tests {
         assert!(!matches!(
             classify_command("golangci-lint"),
             Classification::Supported {
-                rtk_equivalent: "rtco golangci-lint run",
+                rtco_equivalent: "rtco golangci-lint run",
                 ..
             }
         ));
@@ -2645,7 +2646,7 @@ mod tests {
         assert!(!matches!(
             classify_command("golangci-lint version"),
             Classification::Supported {
-                rtk_equivalent: "rtco golangci-lint run",
+                rtco_equivalent: "rtco golangci-lint run",
                 ..
             }
         ));
@@ -2796,7 +2797,7 @@ mod tests {
                 matches!(
                     classify_command(command),
                     Classification::Supported {
-                        rtk_equivalent: "rtco lint",
+                        rtco_equivalent: "rtco lint",
                         ..
                     }
                 ),
@@ -2900,7 +2901,7 @@ mod tests {
                 matches!(
                     classify_command(command),
                     Classification::Supported {
-                        rtk_equivalent: "rtco jest",
+                        rtco_equivalent: "rtco jest",
                         ..
                     }
                 ),
@@ -2993,7 +2994,7 @@ mod tests {
                 matches!(
                     classify_command(command),
                     Classification::Supported {
-                        rtk_equivalent: "rtco vitest",
+                        rtco_equivalent: "rtco vitest",
                         ..
                     }
                 ),
@@ -3071,7 +3072,7 @@ mod tests {
                 matches!(
                     classify_command(format!("{command} migrate dev").as_str()),
                     Classification::Supported {
-                        rtk_equivalent: "rtco prisma",
+                        rtco_equivalent: "rtco prisma",
                         ..
                     }
                 ),
@@ -3201,7 +3202,7 @@ mod tests {
         assert!(matches!(
             classify_command("./gradlew assembleDebug"),
             Classification::Supported {
-                rtk_equivalent: "rtco gradlew",
+                rtco_equivalent: "rtco gradlew",
                 ..
             }
         ));
@@ -3212,7 +3213,7 @@ mod tests {
         assert!(matches!(
             classify_command("gradlew build"),
             Classification::Supported {
-                rtk_equivalent: "rtco gradlew",
+                rtco_equivalent: "rtco gradlew",
                 ..
             }
         ));
@@ -3223,7 +3224,7 @@ mod tests {
         assert!(matches!(
             classify_command("gradlew.bat clean"),
             Classification::Supported {
-                rtk_equivalent: "rtco gradlew",
+                rtco_equivalent: "rtco gradlew",
                 ..
             }
         ));
@@ -3234,7 +3235,7 @@ mod tests {
         assert!(matches!(
             classify_command("gradle build"),
             Classification::Supported {
-                rtk_equivalent: "rtco gradlew",
+                rtco_equivalent: "rtco gradlew",
                 ..
             }
         ));
@@ -3277,10 +3278,10 @@ mod tests {
         assert_eq!(
             classify_command("./gradlew test"),
             Classification::Supported {
-                rtk_equivalent: "rtco gradlew",
+                rtco_equivalent: "rtco gradlew",
                 category: "Build",
                 estimated_savings_pct: 90.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -3838,16 +3839,16 @@ mod tests {
 
     #[test]
     fn test_cmd_has_rtk_disabled_prefix() {
-        assert!(cmd_has_rtk_disabled_prefix("RTK_DISABLED=1 git status"));
-        assert!(cmd_has_rtk_disabled_prefix(
+        assert!(cmd_has_rtco_disabled_prefix("RTK_DISABLED=1 git status"));
+        assert!(cmd_has_rtco_disabled_prefix(
             "FOO=1 RTK_DISABLED=1 cargo test"
         ));
-        assert!(cmd_has_rtk_disabled_prefix(
+        assert!(cmd_has_rtco_disabled_prefix(
             "RTK_DISABLED=true git log --oneline"
         ));
-        assert!(!cmd_has_rtk_disabled_prefix("git status"));
-        assert!(!cmd_has_rtk_disabled_prefix("rtco git status"));
-        assert!(!cmd_has_rtk_disabled_prefix("SOME_VAR=1 git status"));
+        assert!(!cmd_has_rtco_disabled_prefix("git status"));
+        assert!(!cmd_has_rtco_disabled_prefix("rtco git status"));
+        assert!(!cmd_has_rtco_disabled_prefix("SOME_VAR=1 git status"));
     }
 
     #[test]
@@ -3870,10 +3871,10 @@ mod tests {
         assert_eq!(
             classify_command("/usr/bin/grep -rni pattern"),
             Classification::Supported {
-                rtk_equivalent: "rtco grep",
+                rtco_equivalent: "rtco grep",
                 category: "Files",
                 estimated_savings_pct: 75.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -3883,10 +3884,10 @@ mod tests {
         assert_eq!(
             classify_command("/bin/ls -la"),
             Classification::Supported {
-                rtk_equivalent: "rtco ls",
+                rtco_equivalent: "rtco ls",
                 category: "Files",
                 estimated_savings_pct: 65.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -3896,10 +3897,10 @@ mod tests {
         assert_eq!(
             classify_command("/usr/local/bin/git status"),
             Classification::Supported {
-                rtk_equivalent: "rtco git",
+                rtco_equivalent: "rtco git",
                 category: "Git",
                 estimated_savings_pct: 70.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -3910,10 +3911,10 @@ mod tests {
         assert_eq!(
             classify_command("/usr/bin/find ."),
             Classification::Supported {
-                rtk_equivalent: "rtco find",
+                rtco_equivalent: "rtco find",
                 category: "Files",
                 estimated_savings_pct: 70.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -3933,10 +3934,10 @@ mod tests {
         assert_eq!(
             classify_command("git -C /tmp status"),
             Classification::Supported {
-                rtk_equivalent: "rtco git",
+                rtco_equivalent: "rtco git",
                 category: "Git",
                 estimated_savings_pct: 70.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -3946,10 +3947,10 @@ mod tests {
         assert_eq!(
             classify_command("git --no-pager log -5"),
             Classification::Supported {
-                rtk_equivalent: "rtco git",
+                rtco_equivalent: "rtco git",
                 category: "Git",
                 estimated_savings_pct: 70.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -3959,10 +3960,10 @@ mod tests {
         assert_eq!(
             classify_command("git --git-dir /tmp/.git status"),
             Classification::Supported {
-                rtk_equivalent: "rtco git",
+                rtco_equivalent: "rtco git",
                 category: "Git",
                 estimated_savings_pct: 70.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -4025,10 +4026,10 @@ mod tests {
         assert_eq!(
             classify_command("wc -l src/main.rs"),
             Classification::Supported {
-                rtk_equivalent: "rtco wc",
+                rtco_equivalent: "rtco wc",
                 category: "Files",
                 estimated_savings_pct: 60.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -4038,10 +4039,10 @@ mod tests {
         assert_eq!(
             classify_command("wc src/*.rs"),
             Classification::Supported {
-                rtk_equivalent: "rtco wc",
+                rtco_equivalent: "rtco wc",
                 category: "Files",
                 estimated_savings_pct: 60.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }
@@ -4067,10 +4068,10 @@ mod tests {
         assert_eq!(
             classify_command("git log $(git rev-parse HEAD~1)"),
             Classification::Supported {
-                rtk_equivalent: "rtco git",
+                rtco_equivalent: "rtco git",
                 category: "Git",
                 estimated_savings_pct: 70.0,
-                status: RtkStatus::Existing,
+                status: RtcoStatus::Existing,
             }
         );
     }

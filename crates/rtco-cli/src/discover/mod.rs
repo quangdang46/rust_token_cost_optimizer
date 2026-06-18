@@ -16,11 +16,11 @@ use registry::{
 };
 use report::{DiscoverReport, SupportedEntry, UnsupportedEntry};
 
-use crate::discover::registry::prefix_contains_rtk_disabled;
+use crate::discover::registry::prefix_contains_rtco_disabled;
 
 /// Aggregation bucket for supported commands.
 struct SupportedBucket {
-    rtk_equivalent: &'static str,
+    rtco_equivalent: &'static str,
     category: &'static str,
     count: usize,
     /// Total estimated tokens *saved* (post-filter). Used for the "Est. Savings" column.
@@ -73,10 +73,10 @@ pub fn run(
     }
 
     let mut total_commands: usize = 0;
-    let mut already_rtk: usize = 0;
+    let mut already_rtco: usize = 0;
     let mut parse_errors: usize = 0;
-    let mut rtk_disabled_count: usize = 0;
-    let mut rtk_disabled_cmds: HashMap<String, usize> = HashMap::new();
+    let mut rtco_disabled_count: usize = 0;
+    let mut rtco_disabled_cmds: HashMap<String, usize> = HashMap::new();
     let mut supported_map: HashMap<&'static str, SupportedBucket> = HashMap::new();
     let mut unsupported_map: HashMap<String, UnsupportedBucket> = HashMap::new();
 
@@ -99,13 +99,13 @@ pub fn run(
 
                 // Detect RTCO_DISABLED= bypass before classification
                 let (env_prefix, actual_cmd) = strip_disabled_prefix(part);
-                if prefix_contains_rtk_disabled(env_prefix) {
+                if prefix_contains_rtco_disabled(env_prefix) {
                     // Only count if the underlying command is one RTK supports
                     match classify_command(actual_cmd) {
                         Classification::Supported { .. } => {
-                            rtk_disabled_count += 1;
+                            rtco_disabled_count += 1;
                             let display = truncate_command(actual_cmd);
-                            *rtk_disabled_cmds.entry(display).or_insert(0) += 1;
+                            *rtco_disabled_cmds.entry(display).or_insert(0) += 1;
                         }
                         _ => {
                             // RTCO_DISABLED on unsupported/ignored command — not interesting
@@ -116,14 +116,14 @@ pub fn run(
 
                 match classify_command(part) {
                     Classification::Supported {
-                        rtk_equivalent,
+                        rtco_equivalent,
                         category,
                         estimated_savings_pct,
                         status,
                     } => {
-                        let bucket = supported_map.entry(rtk_equivalent).or_insert_with(|| {
+                        let bucket = supported_map.entry(rtco_equivalent).or_insert_with(|| {
                             SupportedBucket {
-                                rtk_equivalent,
+                                rtco_equivalent,
                                 category,
                                 count: 0,
                                 total_output_tokens: 0,
@@ -171,7 +171,7 @@ pub fn run(
                     Classification::Ignored => {
                         // Check if it starts with "rtco "
                         if part.trim().starts_with("rtco ") {
-                            already_rtk += 1;
+                            already_rtco += 1;
                         }
                         // Otherwise just skip
                     }
@@ -195,16 +195,16 @@ pub fn run(
                         let cmd = name[..colon_pos].to_string();
                         let status_str = &name[colon_pos + 1..];
                         let status = match status_str {
-                            "Passthrough" => report::RtkStatus::Passthrough,
-                            "NotSupported" => report::RtkStatus::NotSupported,
-                            _ => report::RtkStatus::Existing,
+                            "Passthrough" => report::RtcoStatus::Passthrough,
+                            "NotSupported" => report::RtcoStatus::NotSupported,
+                            _ => report::RtcoStatus::Existing,
                         };
                         (cmd, status)
                     } else {
-                        (name, report::RtkStatus::Existing)
+                        (name, report::RtcoStatus::Existing)
                     }
                 })
-                .unwrap_or_else(|| (String::new(), report::RtkStatus::Existing));
+                .unwrap_or_else(|| (String::new(), report::RtcoStatus::Existing));
 
             // Derive the effective savings rate from accumulated totals rather than
             // using the first-seen sub-command's rate. This gives a weighted average
@@ -218,11 +218,11 @@ pub fn run(
             SupportedEntry {
                 command: command_with_status,
                 count: bucket.count,
-                rtk_equivalent: bucket.rtk_equivalent,
+                rtco_equivalent: bucket.rtco_equivalent,
                 category: bucket.category,
                 estimated_savings_tokens: bucket.total_output_tokens,
                 estimated_savings_pct: effective_savings_pct,
-                rtk_status: status,
+                rtco_status: status,
             }
         })
         .collect();
@@ -243,8 +243,8 @@ pub fn run(
     unsupported.sort_by_key(|b| std::cmp::Reverse(b.count));
 
     // Build RTCO_DISABLED examples sorted by frequency (top 5)
-    let rtk_disabled_examples: Vec<String> = {
-        let mut sorted: Vec<_> = rtk_disabled_cmds.into_iter().collect();
+    let rtco_disabled_examples: Vec<String> = {
+        let mut sorted: Vec<_> = rtco_disabled_cmds.into_iter().collect();
         sorted.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
         sorted
             .into_iter()
@@ -256,13 +256,13 @@ pub fn run(
     let report = DiscoverReport {
         sessions_scanned: sessions.len(),
         total_commands,
-        already_rtk,
+        already_rtco,
         since_days,
         supported,
         unsupported,
         parse_errors,
-        rtk_disabled_count,
-        rtk_disabled_examples,
+        rtco_disabled_count,
+        rtco_disabled_examples,
         agent_status: report::AgentIntegrationStatus::detect(),
     };
 

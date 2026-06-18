@@ -29,7 +29,7 @@ pub struct ExtractedCommand {
 ///
 /// Note: Cursor Agent transcripts use a text-only format without structured
 /// tool_use/tool_result blocks, so command extraction is not possible.
-/// Use `rtk gain` to track savings for Cursor sessions instead.
+/// Use `rtco gain` to track savings for Cursor sessions instead.
 pub trait SessionProvider {
     fn discover_sessions(
         &self,
@@ -371,7 +371,7 @@ mod tests {
         // Claude Code replaces both '/' and '.' with '-'.
         // A cwd like /Users/first.last must produce the same slug as
         // Claude's projects directory (-Users-first-last), otherwise
-        // `rtk discover` finds zero sessions for that project.
+        // `rtco discover` finds zero sessions for that project.
         assert_eq!(
             ClaudeProvider::encode_project_path("/Users/first.last/my-project"),
             "-Users-first-last-my-project"
@@ -416,8 +416,8 @@ mod tests {
 
     #[test]
     fn test_match_project_filter() {
-        let encoded = ClaudeProvider::encode_project_path("/Users/foo/Sites/rtk");
-        assert!(encoded.contains("rtk"));
+        let encoded = ClaudeProvider::encode_project_path("/Users/foo/Sites/rtco");
+        assert!(encoded.contains("rtco"));
         assert!(encoded.contains("Sites"));
     }
 
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     fn test_discover_sessions_applies_project_filter() {
         let projects_dir = tempfile::tempdir().unwrap();
-        let matching_project = projects_dir.path().join("-Users-test-rtk");
+        let matching_project = projects_dir.path().join("-Users-test-rtco");
         let other_project = projects_dir.path().join("-Users-test-other");
         std::fs::create_dir_all(&matching_project).unwrap();
         std::fs::create_dir_all(&other_project).unwrap();
@@ -448,7 +448,7 @@ mod tests {
 
         let sessions = ClaudeProvider::discover_sessions_in_projects_dir(
             projects_dir.path(),
-            Some("rtk"),
+            Some("rtco"),
             None,
         )
         .unwrap();
