@@ -19,7 +19,21 @@ Flags:
   -Verify            Run `rtco --version` after install
   -Quiet             Suppress info logs
   -Uninstall         Remove the binary and any easy-mode PATH entry
+                     (also calls `rtco init --uninstall --mcp --hooks` if the binary is on PATH)
+  -WithMcp           After install, register the rtco MCP server in every detected provider
+                     (claude, cursor, cline, windsurf, copilot, opencode, codex, gemini, amazonq, warp)
+  -NoMcp             Skip the MCP auto-config step
+  -WithHooks         After install, register rtco hooks in every detected provider
+  -NoHooks           Skip the hooks auto-config step
+  -Provider <list>   Comma-separated provider list, e.g. claude,cursor
+  -AllProviders      Probe every known provider regardless of -Provider
+  -DryRun            Print the actions that would be taken; do not modify provider configs
   -Help              Show this help and exit
+
+Example:
+  irm https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1 | iex
+  # pipe the above into:
+  #   -WithMcp -WithHooks -AllProviders
 #>
 
 [CmdletBinding()]
@@ -31,6 +45,13 @@ param(
     [switch] $Verify,
     [switch] $Quiet,
     [switch] $Uninstall,
+    [switch] $WithMcp,
+    [switch] $NoMcp,
+    [switch] $WithHooks,
+    [switch] $NoHooks,
+    [string] $Provider = "",
+    [switch] $AllProviders,
+    [switch] $DryRun,
     [switch] $Help
 )
 
@@ -90,6 +111,19 @@ function Get-Platform {
 
 function Invoke-Uninstall {
     $target = Join-Path $Dest $BinaryFile
+    # Best-effort: clean MCP entries and hooks before removing the binary.
+    # Failures here are warnings, not fatal.
+    $bin = Get-Command $BinaryName -ErrorAction SilentlyContinue
+    if ($bin) {
+        Write-Info "Cleaning MCP/hooks for known providers…"
+        try {
+            & $bin init --uninstall --mcp --hooks --all-providers | Out-Null
+        } catch {
+            Write-Warn "Could not clean provider configs: $_"
+        }
+    } else {
+        Write-Warn "$BinaryName not on PATH; skipping provider cleanup"
+    }
     if (Test-Path $target) {
         Remove-Item -LiteralPath $target -Force
         Write-Ok "removed $target"
@@ -106,6 +140,45 @@ function Invoke-Uninstall {
     exit 0
 }
 if ($Uninstall) { Invoke-Uninstall }
+
+# === Post-install configuration ===
+# Build the `rtco init` arg vector from -WithMcp / -WithHooks /
+# -Provider / -AllProviders / -DryRun flags, then invoke the
+# just-installed binary. Best-effort.
+function Invoke-PostInstallConfig {
+    # Decide whether to run. Default to opt-out unless explicit.
+    $doMcp = [bool] $WithMcp
+    $doHooks = [bool] $WithHooks
+    if (-not $WithMcp -and -not $NoMcp -and -not $AllProviders -and [string]::IsNullOrEmpty($Provider)) {
+        $doMcp = $false
+    }
+    if (-not $WithHooks -and -not $NoHooks -and -not $AllProviders -and [string]::IsNullOrEmpty($Provider)) {
+        $doHooks = $false
+    }
+    if (-not $doMcp -and -not $doHooks) { return }
+
+    $bin = Join-Path $Dest $BinaryFile
+    if (-not (Test-Path $bin)) {
+        Write-Warn "$bin not found; skipping post-install configuration"
+        return
+    }
+
+    $args = @('init')
+    if ($doMcp)    { $args += '--mcp' }
+    if ($doHooks)  { $args += '--hooks' }
+    if (-not [string]::IsNullOrEmpty($Provider)) { $args += @('--provider', $Provider) }
+    if ($AllProviders) { $args += '--all-providers' }
+    if ($DryRun)        { $args += '--dry-run' }
+
+    Write-Info "Configuring providers: rtco $($args -join ' ')"
+    if ($DryRun) { return }
+    try {
+        & $bin @args | Out-Host
+    } catch {
+        Write-Warn "Provider configuration returned non-zero: $_"
+        Write-Warn "Retry manually with: rtco init --mcp"
+    }
+}
 
 function Resolve-Version {
     if ($script:Version) {
@@ -230,6 +303,10 @@ try {
     Update-UserPath
 
     if ($Verify) { & (Join-Path $Dest $BinaryFile) --version | Out-Host }
+
+    # Best-effort post-install provider configuration. Skipped silently
+    # unless the user passed -WithMcp / -WithHooks / -AllProviders.
+    Invoke-PostInstallConfig
 
     Write-Host ""
     Write-Host "[OK] $BinaryName installed -> $(Join-Path $Dest $BinaryFile)" -ForegroundColor Green
