@@ -203,7 +203,7 @@ fn has_golangci_format_flag(args: &[OsString]) -> bool {
     })
 }
 
-/// Known `go tool` subcommands that RTK provides filtered output for.
+/// Known `go tool` subcommands that RTCO provides filtered output for.
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum GoTool {
     GolangciLint,
@@ -1122,7 +1122,7 @@ mod tests {
 
     #[test]
     fn test_filter_go_test_panic_still_saves_meaningful_bytes() {
-        // Failures legitimately inflate output but RTK should still strip the
+        // Failures legitimately inflate output but RTCO should still strip the
         // verbose NDJSON envelope. Bytes are the right metric here because the
         // raw stream packs long JSON keys (e.g. `"Package":"github.com/..."`)
         // into single whitespace tokens, which deflates a token-based ratio.
@@ -1142,7 +1142,7 @@ mod tests {
 
     #[test]
     fn test_filter_go_test_all_pass_remains_compact() {
-        // Passing-only output must stay tiny (≥60% token savings, the RTK promise).
+        // Passing-only output must stay tiny (≥60% token savings, the RTCO promise).
         let input = include_str!("../../../../../tests/fixtures/go_test_pass_json.txt");
         let result = filter_go_test_json(input);
 

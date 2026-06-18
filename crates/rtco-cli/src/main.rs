@@ -567,7 +567,7 @@ enum Commands {
         args: Vec<String>,
     },
 
-    /// Discover missed RTK savings from Claude Code history
+    /// Discover missed RTCO savings from Claude Code history
     Discover {
         /// Filter by project path (substring match)
         #[arg(short, long)]
@@ -586,7 +586,7 @@ enum Commands {
         format: String,
     },
 
-    /// Show RTK adoption across Claude Code sessions
+    /// Show RTCO adoption across Claude Code sessions
     Session {},
 
     /// Manage telemetry consent and data (RGPD/GDPR)
@@ -761,10 +761,10 @@ enum Commands {
         since: u64,
     },
 
-    /// Rewrite a raw command to its RTK equivalent (single source of truth for hooks)
+    /// Rewrite a raw command to its RTCO equivalent (single source of truth for hooks)
     ///
     /// Exits 0 and prints the rewritten command if supported.
-    /// Exits 1 with no output if the command has no RTK equivalent.
+    /// Exits 1 with no output if the command has no RTCO equivalent.
     ///
     /// Used by Claude Code, Gemini CLI, and other LLM hooks:
     ///   REWRITTEN=$(rtco rewrite "$CMD") || exit 0
@@ -1169,7 +1169,7 @@ fn run_fallback(parse_error: clap::Error) -> Result<i32> {
         parse_error.exit();
     }
 
-    // RTK meta-commands should never fall back to raw execution.
+    // RTCO meta-commands should never fall back to raw execution.
     // e.g. `rtco gain --badtypo` should show Clap's error, not try to run `gain` from $PATH.
     if RTCO_META_COMMANDS.contains(&args[0].as_str()) {
         parse_error.exit();
@@ -1388,7 +1388,7 @@ fn validate_pnpm_filters(filters: &[String], command: &PnpmCommands) -> Option<S
     }
 }
 
-/// Migrate legacy `rtk` data directory to `rtco` on first run.
+/// Migrate legacy rtk data directory to rtco on first run.
 /// Moves ~/.local/share/rtk -> ~/.local/share/rtco (and config equivalent).
 /// Silent no-op if already migrated, source absent, or destination exists.
 fn migrate_data_dir_once() {
@@ -2865,7 +2865,7 @@ mod tests {
 
     #[test]
     fn test_meta_commands_reject_bad_flags() {
-        // RTK meta-commands should produce parse errors (not fall through to raw execution).
+        // RTCO meta-commands should produce parse errors (not fall through to raw execution).
         // Skip "proxy" because it uses trailing_var_arg (accepts any args by design).
         for cmd in RTCO_META_COMMANDS {
             if matches!(*cmd, "proxy" | "run" | "rewrite" | "session") {

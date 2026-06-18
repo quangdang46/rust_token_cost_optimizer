@@ -25,7 +25,7 @@ fn glob_match_inner(pat: &[u8], name: &[u8]) -> bool {
     }
 }
 
-/// Parsed arguments from either native find or RTK find syntax.
+/// Parsed arguments from either native find or RTCO find syntax.
 #[derive(Debug)]
 struct FindArgs {
     pattern: String,
@@ -62,7 +62,7 @@ fn has_native_find_flags(args: &[String]) -> bool {
         .any(|a| a == "-name" || a == "-type" || a == "-maxdepth" || a == "-iname")
 }
 
-/// Native find flags that RTK cannot handle correctly.
+/// Native find flags that RTCO cannot handle correctly.
 /// These involve compound predicates, actions, or semantics we don't support.
 const UNSUPPORTED_FIND_FLAGS: &[&str] = &[
     "-not", "!", "-or", "-o", "-and", "-a", "-exec", "-execdir", "-delete", "-print0", "-newer",
@@ -75,10 +75,10 @@ fn has_unsupported_find_flags(args: &[String]) -> bool {
         .any(|a| UNSUPPORTED_FIND_FLAGS.contains(&a.as_str()))
 }
 
-/// Parse arguments from raw args vec, supporting both native find and RTK syntax.
+/// Parse arguments from raw args vec, supporting both native find and RTCO syntax.
 ///
 /// Native find syntax: `find . -name "*.rs" -type f -maxdepth 3`
-/// RTK syntax: `find *.rs [path] [-m max] [-t type]`
+/// RTCO syntax: `find *.rs [path] [-m max] [-t type]`
 fn parse_find_args(args: &[String]) -> Result<FindArgs> {
     if args.is_empty() {
         return Ok(FindArgs::default());
@@ -142,7 +142,7 @@ fn parse_native_find_args(args: &[String]) -> Result<FindArgs> {
     Ok(parsed)
 }
 
-/// Parse RTK syntax: `find <pattern> [path] [-m max] [-t type]`
+/// Parse RTCO syntax: `find <pattern> [path] [-m max] [-t type]`
 fn parse_rtco_find_args(args: &[String]) -> Result<FindArgs> {
     let mut parsed = FindArgs {
         pattern: args[0].clone(),
@@ -509,7 +509,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // --- parse_find_args: RTK syntax ---
+    // --- parse_find_args: RTCO syntax ---
 
     #[test]
     fn parse_rtco_syntax_pattern_only() {

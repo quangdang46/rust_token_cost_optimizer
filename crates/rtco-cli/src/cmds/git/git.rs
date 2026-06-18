@@ -40,7 +40,7 @@ fn git_cmd(global_args: &[String]) -> Command {
 
 /// Create a git Command for internal parsing that must be locale-stable.
 ///
-/// We only use this for non-user-facing parses where RTK depends on git's
+/// We only use this for non-user-facing parses where RTCO depends on git's
 /// English status phrases. User-visible passthrough output keeps the user's
 /// locale.
 fn git_cmd_c_locale(global_args: &[String]) -> Command {
@@ -144,7 +144,7 @@ fn run_diff(
         .iter()
         .any(|arg| arg == "--stat" || arg == "--numstat" || arg == "--shortstat");
 
-    // Check if user wants compact diff (default RTK behavior)
+    // Check if user wants compact diff (default RTCO behavior)
     let wants_compact = !args.iter().any(|arg| arg == "--no-compact");
 
     // rtk#1918 / #1869 / #1081: when stdout is redirected/piped or a
@@ -161,7 +161,7 @@ fn run_diff(
         cmd.arg("diff");
         for arg in args {
             if arg == "--no-compact" {
-                continue; // RTK flag, not a git flag
+                continue; // RTCO flag, not a git flag
             }
             cmd.arg(arg);
         }
@@ -190,7 +190,7 @@ fn run_diff(
         return Ok(result.exit_code);
     }
 
-    // Default RTK behavior: stat first, then compacted diff
+    // Default RTCO behavior: stat first, then compacted diff
     let mut cmd = git_cmd(global_args);
     cmd.arg("diff").arg("--stat");
 
@@ -229,7 +229,7 @@ fn run_diff(
 
     let diff_result = exec_capture(&mut diff_cmd).context("Failed to run git diff")?;
 
-    // Split RTK-side compression (real savings) from user --max-lines
+    // Split RTCO-side compression (real savings) from user --max-lines
     // truncation (display-only, no savings — issue #1561).
     let mut tracked_output = result.stdout.clone();
     if !diff_result.stdout.is_empty() {
@@ -342,7 +342,7 @@ fn run_show(
     let diff_result = exec_capture(&mut diff_cmd).context("Failed to run git show (diff)")?;
     let diff_text = diff_result.stdout.trim();
 
-    // Same split as `run_diff`: track RTK compression as savings, treat
+    // Same split as `run_diff`: track RTCO compression as savings, treat
     // user `--max-lines` as display-only truncation (issue #1561).
     let mut tracked_output = summary_result.stdout.clone();
     if !diff_text.is_empty() {
@@ -369,8 +369,8 @@ fn is_blob_show_arg(arg: &str) -> bool {
     !arg.starts_with('-') && arg.contains(':')
 }
 
-/// RTK's standard line budget for compact diff output, used for both
-/// `rtk git diff` and `rtk git show`. Anything beyond this is real RTK
+/// RTCO's standard line budget for compact diff output, used for both
+/// `rtco git diff` and `rtco git show`. Anything beyond this is real RTCO
 /// compression (and counts as token savings). A user-supplied
 /// `--max-lines` is applied separately as display-only truncation via
 /// [`truncate_to_lines`] so it is not counted as savings. Issue #1561.

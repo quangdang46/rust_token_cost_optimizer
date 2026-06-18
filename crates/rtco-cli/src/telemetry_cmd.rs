@@ -173,7 +173,7 @@ fn send_erasure_request(device_hash: &str) -> Result<()> {
     let mut req = ureq::post(&url).set("Content-Type", "application/json");
 
     if let Some(token) = option_env!("RTCO_TELEMETRY_TOKEN") {
-        req = req.set("X-RTK-Token", token);
+        req = req.set("X-RTCO-Token", token);
     }
 
     req.timeout(std::time::Duration::from_secs(5))

@@ -1,4 +1,4 @@
-//! Matches shell commands against known RTK rewrite rules to decide how to handle them.
+//! Matches shell commands against known RTCO rewrite rules to decide how to handle them.
 
 use lazy_static::lazy_static;
 use regex::{Regex, RegexSet};
@@ -67,7 +67,7 @@ lazy_static! {
     // Issue #1362: each capture expects a SINGLE file argument (`\S+$`). Multi-file
     // invocations like `head -3 a b c` fail to match so the segment is passed through
     // to the native `head`/`tail` binary — which already handles multi-file with
-    // `==> name <==` banners that `rtk read --max-lines` cannot reproduce.
+    // `==> name <==` banners that `rtco read --max-lines` cannot reproduce.
     static ref HEAD_N: Regex = Regex::new(r"^head\s+-(\d+)\s+(\S+)$").unwrap();
     static ref HEAD_LINES: Regex = Regex::new(r"^head\s+--lines=(\d+)\s+(\S+)$").unwrap();
     static ref TAIL_N: Regex = Regex::new(r"^tail\s+-(\d+)\s+(\S+)$").unwrap();
@@ -445,7 +445,7 @@ lazy_static! {
     /// Matches a bash line-continuation: a backslash immediately followed by
     /// `\n` or `\r\n`, *plus* any horizontal whitespace on the line before AND
     /// after the break. This is what bash already collapses to a single space
-    /// before executing the command — rtk's hook matcher needs to do the same
+    /// before executing the command — rtco's hook matcher needs to do the same
     /// so commands authored across multiple lines still hit the rewrite rules.
     /// Consuming the trailing whitespace prevents double spaces in cases like
     /// `git diff \<NL>HEAD~1`.
@@ -501,7 +501,7 @@ pub fn rewrite_command(
     let compiled = compile_exclude_patterns(excluded);
     let normalized_prefixes = normalize_transparent_prefixes(transparent_prefixes);
 
-    // Simple (non-compound) already-RTK command — return as-is.
+    // Simple (non-compound) already-RTCO command — return as-is.
     // For compound commands that start with "rtco" (e.g. "rtco git add . && cargo test"),
     // fall through to rewrite_compound so the remaining segments get rewritten.
     let has_compound = trimmed.contains("&&")
@@ -671,7 +671,7 @@ fn compile_exclude_patterns(patterns: &[String]) -> Vec<ExcludePattern> {
             let trimmed = pattern.trim();
             if trimmed.is_empty() || trimmed == "^" {
                 eprintln!(
-                    "rtk: warning: ignoring trivial exclude_commands pattern '{}'",
+                    "rtco: warning: ignoring trivial exclude_commands pattern '{}'",
                     pattern
                 );
                 return None;
@@ -685,7 +685,7 @@ fn compile_exclude_patterns(patterns: &[String]) -> Vec<ExcludePattern> {
                 Ok(re) => ExcludePattern::Regex(re),
                 Err(e) => {
                     eprintln!(
-                        "rtk: warning: invalid exclude_commands pattern '{}': {}",
+                        "rtco: warning: invalid exclude_commands pattern '{}': {}",
                         pattern, e
                     );
                     ExcludePattern::Prefix(trimmed.to_string())
@@ -745,7 +745,7 @@ fn rewrite_segment_inner(
         // #508: warn on stderr so agents learn to stop overusing it
         if env_prefix.contains("RTK_DISABLED=") {
             eprintln!(
-                "[rtk] RTK_DISABLED=1 detected — skipping filter for this command. \
+                "[rtco] RTK_DISABLED=1 detected — skipping filter for this command. \
                  Remove RTK_DISABLED=1 to restore token savings."
             );
             return None;
@@ -781,7 +781,9 @@ fn rewrite_segment_inner(
     // e.g. "git status 2>&1" → match "git status", re-append " 2>&1"
     let (cmd_part, redirect_suffix) = strip_trailing_redirects(trimmed);
 
-    // Already RTK/RTCO — pass through unchanged
+    // Already RTCO (or the legacy `rtk` binary) — pass through unchanged.
+    // The `rtk` check is intentional: keeps backward compat with shell history
+    // and aliases that still invoke the old binary name.
     if cmd_part.starts_with("rtk ") || cmd_part.starts_with("rtco ") || cmd_part == "rtk" {
         return None;
     }
@@ -791,8 +793,8 @@ fn rewrite_segment_inner(
     }
 
     // Most cat flags (-v, -A, -e, -t, -s, -b, --show-all, etc.) have different
-    // semantics than rtk read or no equivalent at all. Only `-n` (line numbers)
-    // maps correctly to `rtk read -n`. Skip rewrite for any other flag.
+    // semantics than rtco read or no equivalent at all. Only `-n` (line numbers)
+    // maps correctly to `rtco read -n`. Skip rewrite for any other flag.
     if let Some(cmd_args) = cmd_part.strip_prefix("cat ") {
         let args = cmd_args.trim_start();
         if args.starts_with('-') && !args.starts_with("-n ") && !args.starts_with("-n\t") {
@@ -842,11 +844,11 @@ fn rewrite_segment_inner(
         }
     }
 
-    // #664: RTK `find` supports only a small subset of native `find` semantics.
-    // Outside that subset, `rtk find` either errors loudly (-not/-exec/-delete)
+    // #664: RTCO `find` supports only a small subset of native `find` semantics.
+    // Outside that subset, `rtco find` either errors loudly (-not/-exec/-delete)
     // or silently returns wrong results (multiple start paths, duplicate
     // predicates, -mindepth/-path, -type l, ...). Default-deny: only rewrite
-    // invocations that fit RTK's compact-find grammar. Otherwise let native
+    // invocations that fit RTCO's compact-find grammar. Otherwise let native
     // `find` run unchanged. This is a hook-layer transparency guard, not a
     // safety sandbox — destructive actions the user typed (-exec rm, -delete)
     // still execute via native find.
@@ -873,7 +875,7 @@ fn contains_glob_metachar(s: &str) -> bool {
     s.contains('*') || s.contains('?') || s.contains('[')
 }
 
-// #664: RTK `find` only reproduces a narrow slice of native `find` semantics.
+// #664: RTCO `find` only reproduces a narrow slice of native `find` semantics.
 // Outside that slice it either errors loudly (-not/-exec/-delete/...) or
 // silently returns wrong output (multiple start paths, duplicate predicates,
 // -mindepth/-path, -type l, -maxdepth alone, file/missing start paths, ...).
@@ -891,7 +893,7 @@ fn is_supported_simple_find(cmd_part: &str) -> bool {
     }
 
     // Disambiguate by glob in args[0]:
-    //   glob → Shape B (RTK alias `find PATTERN [PATH] [-m N] [-t f|d]`)
+    //   glob → Shape B (RTCO alias `find PATTERN [PATH] [-m N] [-t f|d]`)
     //   else → Shape A (native simple `find [PATH] (FLAG VALUE)+`)
     if contains_glob_metachar(&args[0]) {
         is_supported_rtk_alias(&args)
@@ -908,7 +910,7 @@ fn is_supported_native_simple(args: &[String]) -> bool {
     // Optional single start path (non-flag, non-grouping).
     // Must be an existing directory at rewrite time — file roots, missing
     // paths, and unexpanded `~`/`$VAR` are declined to prevent silent-wrong
-    // outputs (rtk strips the file root to empty; missing path → "0 for ...").
+    // outputs (rtco strips the file root to empty; missing path → "0 for ...").
     if !args[i].starts_with('-') {
         if matches!(args[i].as_str(), "!" | "(" | ")") {
             return false;
@@ -923,7 +925,7 @@ fn is_supported_native_simple(args: &[String]) -> bool {
     let mut seen_type = false;
     let mut seen_maxdepth = false;
     // -name/-iname/-type only. -maxdepth alone is NOT a selector because
-    // FindArgs::default() pins file_type="f" — rtk would drop directories
+    // FindArgs::default() pins file_type="f" — rtco would drop directories
     // while native `find . -maxdepth 2` returns files AND directories.
     let mut seen_selector = false;
 
@@ -965,7 +967,7 @@ fn is_supported_native_simple(args: &[String]) -> bool {
                     return false;
                 };
                 match v.parse::<usize>() {
-                    // Native `-maxdepth 0` prints the start path; rtk strips
+                    // Native `-maxdepth 0` prints the start path; rtco strips
                     // the search-root prefix to empty and skips it → "0 for *".
                     Ok(0) => return false,
                     Ok(_) => {}
@@ -1582,7 +1584,7 @@ mod tests {
 
     #[test]
     fn test_rewrite_cat_with_incompatible_flags_skipped() {
-        // cat flags with different semantics than rtk read — skip rewrite
+        // cat flags with different semantics than rtco read — skip rewrite
         assert_eq!(rewrite_command_no_prefixes("cat -A file.cpp", &[]), None);
         assert_eq!(rewrite_command_no_prefixes("cat -v file.txt", &[]), None);
         assert_eq!(rewrite_command_no_prefixes("cat -e file.txt", &[]), None);
@@ -1596,7 +1598,7 @@ mod tests {
 
     #[test]
     fn test_rewrite_cat_with_compatible_flags() {
-        // cat -n (line numbers) maps to rtk read -n — allow rewrite
+        // cat -n (line numbers) maps to rtco read -n — allow rewrite
         assert_eq!(
             rewrite_command_no_prefixes("cat -n file.txt", &[]),
             Some("rtco read -n file.txt".into())
@@ -1680,7 +1682,7 @@ mod tests {
 
     #[test]
     fn test_rewrite_find_pipe_skipped() {
-        // find in a pipe should NOT be rewritten — rtk find output format
+        // find in a pipe should NOT be rewritten — rtco find output format
         // is incompatible with pipe consumers like xargs (#439)
         assert_eq!(
             rewrite_command_no_prefixes("find . -name '*.rs' | xargs grep 'fn run'", &[]),
@@ -1721,7 +1723,7 @@ mod tests {
 
     #[test]
     fn test_rewrite_mixed_compound_partial() {
-        // First segment already RTK, second gets rewritten
+        // First segment already RTCO, second gets rewritten
         assert_eq!(
             rewrite_command_no_prefixes("rtco git add . && cargo test", &[]),
             Some("rtco git add . && rtco cargo test".into())
@@ -1787,7 +1789,7 @@ mod tests {
         let output = std::process::Command::new(&rtco_bin)
             .args(["rewrite", "RTK_DISABLED=1 git status"])
             .output()
-            .expect("Failed to run rtk");
+            .expect("Failed to run rtco");
 
         assert!(
             !output.status.success(),
@@ -1942,7 +1944,7 @@ mod tests {
 
     #[test]
     fn test_rewrite_head_numeric_flag() {
-        // head -20 file → rtk read file --max-lines 20 (not rtk read -20 file)
+        // head -20 file → rtco read file --max-lines 20 (not rtco read -20 file)
         assert_eq!(
             rewrite_command_no_prefixes("head -20 src/main.rs", &[]),
             Some("rtco read src/main.rs --max-lines 20".into())
@@ -1959,7 +1961,7 @@ mod tests {
 
     #[test]
     fn test_rewrite_head_no_flag_still_rewrites() {
-        // plain `head file` → `rtk read file` (no numeric flag)
+        // plain `head file` → `rtco read file` (no numeric flag)
         assert_eq!(
             rewrite_command_no_prefixes("head src/main.rs", &[]),
             Some("rtco read src/main.rs".into())
@@ -2022,9 +2024,9 @@ mod tests {
 
     // --- Issue #1362: head/tail with multiple files falls back to native command ---
     //
-    // `rtk read <file> --max-lines N` only accepts a single positional file path in
+    // `rtco read <file> --max-lines N` only accepts a single positional file path in
     // a shape that maps cleanly to `head -N`. Rewriting `head -N a b c` to
-    // `rtk read a b c --max-lines N` previously produced a command where `rtk read`
+    // `rtco read a b c --max-lines N` previously produced a command where `rtco read`
     // would concatenate the files without the `==> name <==` banners that native
     // `head` emits, so the fix is to skip the rewrite and let the shell run the
     // real `head`/`tail` binary.
@@ -3382,7 +3384,7 @@ mod tests {
     // --- #664: rewrite-layer guard for non-compact find invocations ---
     //
     // Default-deny: only rewrite when the invocation fits one of two strict
-    // shapes that match RTK's existing compact-find semantics exactly.
+    // shapes that match RTCO's existing compact-find semantics exactly.
     // See `is_supported_simple_find` in this file for the grammar.
 
     // Supported shapes (must still rewrite).
@@ -3421,14 +3423,14 @@ mod tests {
 
     #[test]
     fn rewrite_find_keeps_no_explicit_path() {
-        // `find -name '*.rs'` with no path — both native and rtk default to cwd.
+        // `find -name '*.rs'` with no path — both native and rtco default to cwd.
         assert_eq!(
             rewrite_command_no_prefixes("find -name '*.rs'", &[]),
             Some("rtco find -name '*.rs'".into())
         );
     }
 
-    // Loud-fail set: rtk find errors out, breaking `&&` chains.
+    // Loud-fail set: rtco find errors out, breaking `&&` chains.
 
     #[test]
     fn rewrite_find_skips_exec() {
@@ -3479,7 +3481,7 @@ mod tests {
         );
     }
 
-    // Silent-fail set: rtk find returns wrong results with exit 0.
+    // Silent-fail set: rtco find returns wrong results with exit 0.
 
     #[test]
     fn rewrite_find_skips_mindepth() {
@@ -3507,7 +3509,7 @@ mod tests {
 
     #[test]
     fn rewrite_find_skips_multiple_start_paths() {
-        // rtk find silently drops 'tests', returns only matches under 'src'.
+        // rtco find silently drops 'tests', returns only matches under 'src'.
         assert_eq!(
             rewrite_command_no_prefixes("find src tests -name '*.rs'", &[]),
             None
@@ -3524,7 +3526,7 @@ mod tests {
 
     #[test]
     fn rewrite_find_skips_bare_path_only() {
-        // `find src` natively = "all under src/"; rtk parser would treat
+        // `find src` natively = "all under src/"; rtco parser would treat
         // 'src' as PATTERN. Decline because no selector predicate present.
         assert_eq!(rewrite_command_no_prefixes("find src", &[]), None);
     }
@@ -3537,7 +3539,7 @@ mod tests {
 
     #[test]
     fn rewrite_find_skips_duplicate_name_predicates() {
-        // Native: implicit AND (impossible match). RTK: last wins ('*.md' only).
+        // Native: implicit AND (impossible match). RTCO: last wins ('*.md' only).
         assert_eq!(
             rewrite_command_no_prefixes("find . -name '*.rs' -name '*.md'", &[]),
             None
@@ -3562,27 +3564,27 @@ mod tests {
 
     #[test]
     fn rewrite_find_skips_unsupported_type_value_l() {
-        // -type l (symlink) — RTK only distinguishes "d" vs everything else,
+        // -type l (symlink) — RTCO only distinguishes "d" vs everything else,
         // so it returns files + symlinks indiscriminately. Decline.
         assert_eq!(rewrite_command_no_prefixes("find . -type l", &[]), None);
     }
 
     #[test]
     fn rewrite_find_skips_type_with_compound_value() {
-        // GNU find allows `-type f,d` (comma-list). RTK has no equivalent.
+        // GNU find allows `-type f,d` (comma-list). RTCO has no equivalent.
         assert_eq!(rewrite_command_no_prefixes("find . -type f,d", &[]), None);
     }
 
     #[test]
     fn rewrite_find_skips_maxdepth_only() {
-        // FindArgs::default() pins file_type="f" → rtk drops dirs while native
+        // FindArgs::default() pins file_type="f" → rtco drops dirs while native
         // returns files AND directories. `-maxdepth` alone is not a selector.
         assert_eq!(rewrite_command_no_prefixes("find . -maxdepth 2", &[]), None);
     }
 
     #[test]
     fn rewrite_find_skips_maxdepth_zero() {
-        // Native prints the start path; rtk strips it to empty and skips.
+        // Native prints the start path; rtco strips it to empty and skips.
         assert_eq!(
             rewrite_command_no_prefixes("find . -maxdepth 0 -name foo", &[]),
             None
@@ -3591,7 +3593,7 @@ mod tests {
 
     #[test]
     fn rewrite_find_skips_file_start_path() {
-        // `find Cargo.toml -type f` — file root gets stripped to empty in rtk;
+        // `find Cargo.toml -type f` — file root gets stripped to empty in rtco;
         // native prints it. Cargo.toml exists at the crate root during tests.
         assert_eq!(
             rewrite_command_no_prefixes("find Cargo.toml -type f", &[]),
@@ -3601,7 +3603,7 @@ mod tests {
 
     #[test]
     fn rewrite_find_skips_missing_start_path() {
-        // Native errors non-zero; rtk returns "0 for ..." with success.
+        // Native errors non-zero; rtco returns "0 for ..." with success.
         assert_eq!(
             rewrite_command_no_prefixes("find /this/does/not/exist/rtk-test -name '*.rs'", &[]),
             None
