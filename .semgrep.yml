@@ -5,14 +5,14 @@ rules:
       - pattern-not: Command::new("...")
     message: >
       Dynamic shell invocation via Command::new($ARG).
-      RTK only executes known CLI tools — use string literals, not variables.
+      RTCO only executes known CLI tools — use string literals, not variables.
     languages: [rust]
     severity: ERROR
 
   - id: unsafe-block
     pattern: unsafe { ... }
     message: >
-      Unsafe block detected. RTK has no legitimate need for unsafe code.
+      Unsafe block detected. RTCO has no legitimate need for unsafe code.
     languages: [rust]
     severity: ERROR
 
@@ -22,7 +22,7 @@ rules:
       - pattern: $CMD.env("LD_LIBRARY_PATH", ...)
     message: >
       LD_PRELOAD/LD_LIBRARY_PATH manipulation detected.
-      This can hijack shared library loading — forbidden in RTK.
+      This can hijack shared library loading — forbidden in RTCO.
     languages: [rust]
     severity: ERROR
 
@@ -32,7 +32,7 @@ rules:
       - pattern: UdpSocket::$METHOD(...)
       - pattern: TcpListener::$METHOD(...)
     message: >
-      Raw socket usage detected. RTK is a CLI proxy — it should not
+      Raw socket usage detected. RTCO is a CLI proxy — it should not
       open network connections directly. Use ureq in telemetry only.
     languages: [rust]
     severity: ERROR
@@ -40,7 +40,7 @@ rules:
   - id: reqwest-forbidden
     pattern: reqwest::$METHOD(...)
     message: >
-      reqwest is forbidden in RTK. The project uses ureq for HTTP
+      reqwest is forbidden in RTCO. The project uses ureq for HTTP
       (telemetry only). Adding reqwest increases binary size and attack surface.
     languages: [rust]
     severity: ERROR
@@ -58,7 +58,7 @@ rules:
       - pattern: Command::new("ruby")
     message: >
       Direct interpreter/downloader execution detected.
-      RTK proxies user commands — it should never spawn interpreters
+      RTCO proxies user commands — it should never spawn interpreters
       or download tools on its own.
     languages: [rust]
     severity: ERROR
@@ -91,7 +91,7 @@ rules:
     pattern-regex: \.(ssh|bashrc|zshrc|bash_profile|profile)|authorized_keys|/etc/passwd|/etc/shadow
     message: >
       Reference to sensitive system path detected.
-      RTK filters should not access dotfiles, SSH keys, or system credential files.
+      RTCO filters should not access dotfiles, SSH keys, or system credential files.
     languages: [rust]
     severity: WARNING
 

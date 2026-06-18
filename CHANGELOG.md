@@ -5,6 +5,22 @@ All notable changes to rtco (Rust Token Killer) will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Features
+* **cli:** add `rtco mcp` subcommand to expose `rtco_compress`, `rtco_analyze`, and `rtco_retrieve` as MCP tools over JSON-RPC stdio. Shares code with the standalone `rtco-mcp` binary.
+* **cli:** add `rtco init --mcp` / `rtco init --hooks` / `rtco init --uninstall --mcp` to register (or strip) the `rtco` MCP server entry in 10 provider config files: Claude Code, Cursor, Cline, Windsurf, VS Code Copilot, OpenCode, Codex CLI, Gemini CLI, Amazon Q, and Warp.
+* **cli:** new `McpTarget` enum, `run_mcp_install`, `run_mcp_uninstall`, and 14 unit tests covering per-provider write shape, deep-merge preservation, `.rtco.bak` backup, dry-run, and uninstall symmetry.
+* **install:** install.sh and install.ps1 gain `--with-mcp`, `--no-mcp`, `--with-hooks`, `--no-hooks`, `--provider`, `--all-providers`, and `--dry-run` flags. The `configure_post_install` / `Invoke-PostInstallConfig` step probes which provider config files exist on disk and registers MCP+hooks only in those.
+* **install:** `--uninstall` now also calls `rtco init --uninstall --mcp --hooks --all-providers` (best-effort) to strip the rtco entry from every detected provider before removing the binary.
+* **test:** scripts/test-install.sh extended with help-text, arg-parser, configure_post_install, and uninstall-cleanup regression tests. New scripts/test-install.ps1 PowerShell mirror.
+
+### Bug Fixes
+* **hooks:** the `rtco mcp` server is now callable from inside the main `rtco` binary via a thin `bin_shim` module that re-includes `src/bin/mcp_server.rs` with `#[path]`. Single source of truth, no copy-paste.
+
+### Changed
+* **install:** default behavior is unchanged when no new flag is passed — opt-in only.
+
 ## [0.1.1](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.1.0...v0.1.1) (2026-06-18)
 
 ### Bug Fixes

@@ -21,7 +21,12 @@ RTCO is a single Rust binary that sits between your AI assistant and the shell, 
 ## Quick Install
 
 ```bash
+# Binary only
 curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh | bash
+
+# Binary + auto-config MCP+hooks in every detected AI provider
+curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh \
+  | bash -s -- --with-mcp --with-hooks --all-providers
 ```
 
 ## How It Works

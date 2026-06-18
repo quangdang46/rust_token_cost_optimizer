@@ -52,6 +52,59 @@ After installation, **verify you have the correct rtco**:
 rtco gain  # Must show token savings stats (not "command not found")
 ```
 
+### Auto-Configure MCP + Hooks in Every Detected Provider
+
+The installer can register `rtco` as an MCP server and install the
+`rtco-rewrite` hook into every AI provider whose config file already
+exists on disk. This is opt-in — pass `--with-mcp` and/or `--with-hooks`
+to enable.
+
+```bash
+# Probe every known provider (Claude, Cursor, Cline, Windsurf, Copilot,
+# OpenCode, Codex, Gemini, Amazon Q, Warp) and register MCP+hooks
+# wherever a config file is present.
+curl -fsSL https://raw.githubusercontent.com/rtco-ai/rtco/master/install.sh \
+  | bash -s -- --with-mcp --with-hooks --all-providers
+```
+
+| Flag | Effect |
+|---|---|
+| `--with-mcp` | Register `rtco` as an MCP server in every detected provider config. |
+| `--no-mcp` | Skip the MCP auto-config step (default if neither `--with-mcp` nor `--all-providers` is set). |
+| `--with-hooks` | Install `rtco-rewrite` hooks in every detected provider config. |
+| `--no-hooks` | Skip the hooks auto-config step. |
+| `--provider claude,cursor` | Restrict the set to a comma-separated provider list. |
+| `--all-providers` | Probe every known provider regardless of `--provider`. |
+| `--dry-run` | Print the actions that would be taken; do not modify any files. |
+
+**Per-provider config file paths** the installer probes:
+
+| Provider | File | Format | Key |
+|---|---|---|---|
+| Claude Code | `~/.claude.json` | JSON | `mcpServers` |
+| Cursor | `~/.cursor/mcp.json` | JSON | `mcpServers` |
+| Cline | `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` (macOS) | JSON | `mcpServers` |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` | JSON | `mcpServers` |
+| VS Code Copilot | `~/.vscode/mcp.json` | JSON | `servers` |
+| OpenCode | `~/.opencode.json` (or `~/.config/opencode/.opencode.json`) | JSON | `mcpServers` |
+| Codex CLI | `~/.codex/config.toml` | TOML | `[mcp_servers.rtco]` |
+| Gemini CLI | `~/.gemini/settings.json` | JSON | `mcpServers` |
+| Amazon Q | `~/.aws/amazonq/mcp.json` | JSON | `mcpServers` |
+| Warp | `./.warp/.mcp.json` | JSON | `mcpServers` |
+
+Each file is backed up to `<file>.rtco.bak` before any change. Re-run the
+installer with `--uninstall` to remove the rtco entry from every
+detected provider.
+
+The same flags exist on the PowerShell installer:
+
+```powershell
+irm https://raw.githubusercontent.com/rtco-ai/rtco/master/install.ps1 | iex
+# then re-run with:
+.\install.ps1 -WithMcp -WithHooks -AllProviders
+```
+
+
 ### Alternative: Manual Installation
 
 ```bash
