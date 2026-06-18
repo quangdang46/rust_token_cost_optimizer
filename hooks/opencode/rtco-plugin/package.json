@@ -1,0 +1,9 @@
+{
+  "name": "rtco-opencode-plugin",
+  "version": "0.1.0",
+  "description": "RTCO OpenCode plugin - rewrites commands for token savings",
+  "main": "rtco.ts",
+  "dependencies": {
+    "@opencode-ai/plugin": ">=1.0.0"
+  }
+}
