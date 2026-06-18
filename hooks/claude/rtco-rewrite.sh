@@ -29,14 +29,14 @@ fi
 CACHE_DIR=${XDG_CACHE_HOME:-$HOME/.cache}
 CACHE_FILE="$CACHE_DIR/rtco-hook-version-ok"
 if [ ! -f "$CACHE_FILE" ]; then
-  RTK_VERSION_RAW=$(rtco --version 2>/dev/null)
-  RTK_VERSION=${RTK_VERSION_RAW#rtco }
-  RTK_VERSION=${RTK_VERSION%% *}
-  if [ -n "$RTK_VERSION" ]; then
-    IFS=. read -r MAJOR MINOR PATCH <<<"$RTK_VERSION"
+  RTCO_VERSION_RAW=$(rtco --version 2>/dev/null)
+  RTCO_VERSION=${RTCO_VERSION_RAW#rtco }
+  RTCO_VERSION=${RTCO_VERSION%% *}
+  if [ -n "$RTCO_VERSION" ]; then
+    IFS=. read -r MAJOR MINOR PATCH <<<"$RTCO_VERSION"
     # Require >= 0.23.0
     if [ "$MAJOR" -eq 0 ] && [ "$MINOR" -lt 23 ]; then
-      echo "[rtco] WARNING: rtco $RTK_VERSION is too old (need >= 0.23.0). Upgrade: cargo install rtco" >&2
+      echo "[rtco] WARNING: rtco $RTCO_VERSION is too old (need >= 0.23.0). Upgrade: cargo install rtco" >&2
       exit 0
     fi
   fi
