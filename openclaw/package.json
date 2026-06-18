@@ -1,17 +1,17 @@
 {
-  "name": "@rtk-ai/rtk-rewrite",
+  "name": "@rtco-ai/rtco-rewrite",
   "version": "1.0.0",
-  "description": "RTK plugin for OpenClaw — rewrites shell commands for 60-90% LLM token savings",
+  "description": "RTCO plugin for OpenClaw — rewrites shell commands for 60-90% LLM token savings",
   "main": "index.ts",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rtk-ai/rtk",
+    "url": "https://github.com/rtco-ai/rtco",
     "directory": "openclaw"
   },
-  "homepage": "https://github.com/rtk-ai/rtk",
+  "homepage": "https://github.com/rtco-ai/rtco",
   "keywords": [
-    "rtk",
+    "rtco",
     "openclaw",
     "openclaw-plugin",
     "token-savings",
@@ -24,6 +24,6 @@
     "README.md"
   ],
   "peerDependencies": {
-    "rtk": ">=0.28.0"
+    "rtco": ">=0.1.1"
   }
 }

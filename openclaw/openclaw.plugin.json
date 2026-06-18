@@ -1,9 +1,9 @@
 {
-  "id": "rtk-rewrite",
-  "name": "RTK Token Optimizer",
+  "id": "rtco-rewrite",
+  "name": "RTCO Token Optimizer",
   "version": "1.0.0",
-  "description": "Transparently rewrites shell commands to their RTK equivalents for 60-90% LLM token savings",
-  "homepage": "https://github.com/rtk-ai/rtk",
+  "description": "Transparently rewrites shell commands to their RTCO equivalents for 60-90% LLM token savings",
+  "homepage": "https://github.com/rtco-ai/rtco",
   "license": "Apache-2.0",
   "configSchema": {
     "type": "object",
@@ -12,7 +12,7 @@
       "enabled": {
         "type": "boolean",
         "default": true,
-        "description": "Enable automatic command rewriting to RTK equivalents"
+        "description": "Enable automatic command rewriting to RTCO equivalents"
       },
       "verbose": {
         "type": "boolean",
@@ -22,7 +22,7 @@
     }
   },
   "uiHints": {
-    "enabled": { "label": "Enable RTK rewriting" },
+    "enabled": { "label": "Enable RTCO rewriting" },
     "verbose": { "label": "Verbose logging" }
   }
 }

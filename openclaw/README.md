@@ -1,33 +1,33 @@
-# RTK Plugin for OpenClaw
+# RTCO Plugin for OpenClaw
 
-Transparently rewrites shell commands executed via OpenClaw's `exec` tool to their RTK equivalents, achieving 60-90% LLM token savings.
+Transparently rewrites shell commands executed via OpenClaw's `exec` tool to their RTCO equivalents, achieving 60-90% LLM token savings.
 
-This is the OpenClaw equivalent of the Claude Code hooks in `hooks/rtk-rewrite.sh`.
+This is the OpenClaw equivalent of the Claude Code hooks in `hooks/rtco-rewrite.sh`.
 
 ## How it works
 
-The plugin registers a `before_tool_call` hook that intercepts `exec` tool calls. When the agent runs a command like `git status`, the plugin delegates to `rtk rewrite` which returns the optimized command (e.g. `rtk git status`). The compressed output enters the agent's context window, saving tokens.
+The plugin registers a `before_tool_call` hook that intercepts `exec` tool calls. When the agent runs a command like `git status`, the plugin delegates to `rtco rewrite` which returns the optimized command (e.g. `rtco git status`). The compressed output enters the agent's context window, saving tokens.
 
-All rewrite logic lives in RTK itself (`rtk rewrite`). This plugin is a thin delegate -- when new filters are added to RTK, the plugin picks them up automatically with zero changes.
+All rewrite logic lives in RTCO itself (`rtco rewrite`). This plugin is a thin delegate -- when new filters are added to RTCO, the plugin picks them up automatically with zero changes.
 
 ## Installation
 
 ### Prerequisites
 
-RTK must be installed and available in `$PATH`:
+RTCO must be installed and available in `$PATH`:
 
 ```bash
-brew install rtk
+brew install rtco
 # or
-curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/rtco-ai/rtco/master/install.sh | sh
 ```
 
 ### Install the plugin
 
 ```bash
 # Copy the plugin to OpenClaw's extensions directory
-mkdir -p ~/.openclaw/extensions/rtk-rewrite
-cp openclaw/index.ts openclaw/openclaw.plugin.json ~/.openclaw/extensions/rtk-rewrite/
+mkdir -p ~/.openclaw/extensions/rtco-rewrite
+cp openclaw/index.ts openclaw/openclaw.plugin.json ~/.openclaw/extensions/rtco-rewrite/
 
 # Restart the gateway
 openclaw gateway restart
@@ -47,7 +47,7 @@ In `openclaw.json`:
 {
   plugins: {
     entries: {
-      "rtk-rewrite": {
+      "rtco-rewrite": {
         enabled: true,
         config: {
           enabled: true,    // Toggle rewriting on/off
@@ -61,15 +61,15 @@ In `openclaw.json`:
 
 ## What gets rewritten
 
-Everything that `rtk rewrite` supports (30+ commands). See the [full command list](https://github.com/rtk-ai/rtk#commands).
+Everything that `rtco rewrite` supports (30+ commands). See the [full command list](https://github.com/rtco-ai/rtco#commands).
 
 ## What's NOT rewritten
 
-Handled by `rtk rewrite` guards:
-- Commands already using `rtk`
+Handled by `rtco rewrite` guards:
+- Commands already using `rtco`
 - Piped commands (`|`, `&&`, `;`)
 - Heredocs (`<<`)
-- Commands without an RTK filter
+- Commands without an RTCO filter
 
 ## Measured savings
 
@@ -83,4 +83,4 @@ Handled by `rtk rewrite` guards:
 
 ## License
 
-Apache 2.0 -- same as RTK.
+Apache 2.0 -- same as RTCO.

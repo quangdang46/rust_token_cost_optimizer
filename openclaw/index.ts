@@ -1,5 +1,5 @@
 /**
- * RTK Rewrite Plugin for OpenClaw
+ * RTCO Rewrite Plugin for OpenClaw
  *
  * Transparently rewrites exec tool commands to RTCO equivalents
  * before execution, achieving 60-90% LLM token savings.
