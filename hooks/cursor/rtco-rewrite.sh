@@ -20,12 +20,12 @@ if ! command -v rtco &>/dev/null; then
 fi
 
 # Version guard: rtco rewrite was added in 0.23.0.
-RTK_VERSION=$(rtco --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-if [ -n "$RTK_VERSION" ]; then
-  MAJOR=$(echo "$RTK_VERSION" | cut -d. -f1)
-  MINOR=$(echo "$RTK_VERSION" | cut -d. -f2)
+RTCO_VERSION=$(rtco --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+if [ -n "$RTCO_VERSION" ]; then
+  MAJOR=$(echo "$RTCO_VERSION" | cut -d. -f1)
+  MINOR=$(echo "$RTCO_VERSION" | cut -d. -f2)
   if [ "$MAJOR" -eq 0 ] && [ "$MINOR" -lt 23 ]; then
-    echo "[rtco] WARNING: rtco $RTK_VERSION is too old (need >= 0.23.0). Upgrade: cargo install rtco" >&2
+    echo "[rtco] WARNING: rtco $RTCO_VERSION is too old (need >= 0.23.0). Upgrade: cargo install rtco" >&2
     exit 0
   fi
 fi
