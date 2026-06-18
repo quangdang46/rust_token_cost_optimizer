@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.2.1...v0.2.2) (2026-06-19)
+
+### Bug Fixes
+* **mcp:** fix MCP protocol compliance — ToolDescription.input_schema now serializes as inputSchema (camelCase) per spec. Resolves 'expected object, received undefined' error in MCP clients.
+
+## [0.2.2](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.2.1...v0.2.2) (2026-06-19)
+
+### Bug Fixes
+* **mcp:** fix MCP protocol compliance —  now serializes as  (camelCase) per spec. Resolves  error in MCP clients.
+
 ## [0.2.1](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.2.0...v0.2.1) (2026-06-19)
 
 ### Documentation

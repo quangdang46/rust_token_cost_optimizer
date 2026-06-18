@@ -1,6 +1,6 @@
 [package]
 name = "rtco-core"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 authors = ["Patrick Szymkowiak"]
 description = "Core library for rtco - filtering, tracking, configuration, and utilities"

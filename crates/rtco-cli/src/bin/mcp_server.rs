@@ -87,6 +87,7 @@ impl JsonRpcResponse {
 struct ToolDescription {
     name: String,
     description: String,
+    #[serde(rename = "inputSchema")]
     input_schema: serde_json::Value,
 }
 

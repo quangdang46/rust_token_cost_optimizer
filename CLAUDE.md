@@ -169,3 +169,142 @@ When user provides a numbered plan (QW1-QW4, Phase 1-5, sprint tasks, etc.):
 3. **Never skip or reorder**: If a step is blocked, report it and ask before proceeding
 4. **Track progress**: Use task list (TaskCreate/TaskUpdate) for plans with 3+ steps
 5. **Validate assumptions**: Before starting, verify all referenced file paths exist and working directory is correct
+
+<!-- rtco-instructions v2 -->
+# RTK (Rust Token Killer) - Token-Optimized Commands
+
+## Golden Rule
+
+**Always prefix commands with `rtco`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
+
+**Important**: Even in command chains with `&&`, use `rtco`:
+```bash
+# ❌ Wrong
+git add . && git commit -m "msg" && git push
+
+# ✅ Correct
+rtco git add . && rtco git commit -m "msg" && rtco git push
+```
+
+## RTK Commands by Workflow
+
+### Build & Compile (80-90% savings)
+```bash
+rtco cargo build         # Cargo build output
+rtco cargo check         # Cargo check output
+rtco cargo clippy        # Clippy warnings grouped by file (80%)
+rtco tsc                 # TypeScript errors grouped by file/code (83%)
+rtco lint                # ESLint/Biome violations grouped (84%)
+rtco prettier --check    # Files needing format only (70%)
+rtco next build          # Next.js build with route metrics (87%)
+```
+
+### Test (60-99% savings)
+```bash
+rtco cargo test          # Cargo test failures only (90%)
+rtco go test             # Go test failures only (90%)
+rtco jest                # Jest failures only (99.5%)
+rtco vitest              # Vitest failures only (99.5%)
+rtco playwright test     # Playwright failures only (94%)
+rtco pytest              # Python test failures only (90%)
+rtco rake test           # Ruby test failures only (90%)
+rtco rspec               # RSpec test failures only (60%)
+rtco test <cmd>          # Generic test wrapper - failures only
+```
+
+### Git (59-80% savings)
+```bash
+rtco git status          # Compact status
+rtco git log             # Compact log (works with all git flags)
+rtco git diff            # Compact diff (80%)
+rtco git show            # Compact show (80%)
+rtco git add             # Ultra-compact confirmations (59%)
+rtco git commit          # Ultra-compact confirmations (59%)
+rtco git push            # Ultra-compact confirmations
+rtco git pull            # Ultra-compact confirmations
+rtco git branch          # Compact branch list
+rtco git fetch           # Compact fetch
+rtco git stash           # Compact stash
+rtco git worktree        # Compact worktree
+```
+
+Note: Git passthrough works for ALL subcommands, even those not explicitly listed.
+
+### GitHub (26-87% savings)
+```bash
+rtco gh pr view <num>    # Compact PR view (87%)
+rtco gh pr checks        # Compact PR checks (79%)
+rtco gh run list         # Compact workflow runs (82%)
+rtco gh issue list       # Compact issue list (80%)
+rtco gh api              # Compact API responses (26%)
+```
+
+### JavaScript/TypeScript Tooling (70-90% savings)
+```bash
+rtco pnpm list           # Compact dependency tree (70%)
+rtco pnpm outdated       # Compact outdated packages (80%)
+rtco pnpm install        # Compact install output (90%)
+rtco npm run <script>    # Compact npm script output
+rtco npx <cmd>           # Compact npx command output
+rtco prisma              # Prisma without ASCII art (88%)
+```
+
+### Files & Search (60-75% savings)
+```bash
+rtco ls <path>           # Tree format, compact (65%)
+rtco read <file>         # Code reading with filtering (60%)
+rtco grep <pattern>      # Search grouped by file (75%). Format flags (-c, -l, -L, -o, -Z) run raw.
+rtco find <pattern>      # Find grouped by directory (70%)
+```
+
+### Analysis & Debug (70-90% savings)
+```bash
+rtco err <cmd>           # Filter errors only from any command
+rtco log <file>          # Deduplicated logs with counts
+rtco json <file>         # JSON structure without values
+rtco deps                # Dependency overview
+rtco env                 # Environment variables compact
+rtco summary <cmd>       # Smart summary of command output
+rtco diff                # Ultra-compact diffs
+```
+
+### Infrastructure (85% savings)
+```bash
+rtco docker ps           # Compact container list
+rtco docker images       # Compact image list
+rtco docker logs <c>     # Deduplicated logs
+rtco kubectl get         # Compact resource list
+rtco kubectl logs        # Deduplicated pod logs
+```
+
+### Network (65-70% savings)
+```bash
+rtco curl <url>          # Compact HTTP responses (70%)
+rtco wget <url>          # Compact download output (65%)
+```
+
+### Meta Commands
+```bash
+rtco gain                # View token savings statistics
+rtco gain --history      # View command history with savings
+rtco discover            # Analyze Claude Code sessions for missed RTK usage
+rtco proxy <cmd>         # Run command without filtering (for debugging)
+rtco init                # Add RTK instructions to CLAUDE.md
+rtco init --global       # Add RTK to ~/.claude/CLAUDE.md
+```
+
+## Token Savings Overview
+
+| Category | Commands | Typical Savings |
+|----------|----------|-----------------|
+| Tests | vitest, playwright, cargo test | 90-99% |
+| Build | next, tsc, lint, prettier | 70-87% |
+| Git | status, log, diff, add, commit | 59-80% |
+| GitHub | gh pr, gh run, gh issue | 26-87% |
+| Package Managers | pnpm, npm, npx | 70-90% |
+| Files | ls, read, grep, find | 60-75% |
+| Infrastructure | docker, kubectl | 85% |
+| Network | curl, wget | 65-70% |
+
+Overall average: **60-90% token reduction** on common development operations.
+<!-- /rtco-instructions -->
