@@ -21,12 +21,22 @@ RTCO is a single Rust binary that sits between your AI assistant and the shell, 
 ## Quick Install
 
 ```bash
-# Binary only
+# Binary only (Linux/macOS)
 curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh | bash
 
-# Binary + auto-config MCP+hooks in every detected AI provider
+# Binary + auto-config MCP+hooks in every detected AI provider (Linux/macOS)
 curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh \
   | bash -s -- --with-mcp --with-hooks --all-providers
+```
+
+```powershell
+# Binary only (Windows)
+irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" | iex
+
+# Binary + auto-config MCP+hooks in every detected AI provider (Windows)
+irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" | iex
+# Then re-run with flags:
+.\install.ps1 -WithMcp -WithHooks -AllProviders
 ```
 
 ## How It Works
@@ -99,6 +109,26 @@ Average savings:   78.3%
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh | bash
+```
+
+### Quick Install (Windows PowerShell)
+
+```powershell
+irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" | iex
+```
+
+### Install + Auto-Configure MCP+Hooks (All Platforms)
+
+```bash
+# Linux/macOS — detect and register MCP+hooks in every AI provider found on disk
+curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh \
+  | bash -s -- --with-mcp --with-hooks --all-providers
+```
+
+```powershell
+# Windows — download first, then run with flags
+irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" -OutFile install.ps1
+.\install.ps1 -WithMcp -WithHooks -AllProviders
 ```
 
 ### Cargo
