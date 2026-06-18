@@ -1126,6 +1126,7 @@ directory = "/tmp/rtk-tee"
 
     #[test]
     fn test_truncate_preview_skips_blank_hidden_lines() {
+        let _guard = TEE_ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         // Hidden region starts with blank lines; preview should skip them and
         // surface the first non-empty line instead.
         let content = "visible-1\n\n\n\nactual-content\nmore-content";
