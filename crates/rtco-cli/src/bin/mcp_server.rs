@@ -236,7 +236,11 @@ fn get_string_arg<'a>(
 // Main loop
 // ---------------------------------------------------------------------------
 
-fn main() -> anyhow::Result<()> {
+/// Run the MCP JSON-RPC stdio server. Refactored from `fn main` so the same
+/// code path can be dispatched from `rtco mcp` (see `Commands::Mcp` in
+/// `src/main.rs`). The standalone `rtco-mcp` binary keeps a thin
+/// `fn main` wrapper that calls this function.
+pub fn run() -> anyhow::Result<()> {
     let result_store: ResultStore = std::sync::Mutex::new(HashMap::new());
     let stdin = io::stdin();
     let stdout = io::stdout();
@@ -437,4 +441,66 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Bin entry point (kept for `cargo build --bin rtco-mcp` local dev flow).
+// The canonical entry is `rtco mcp` in `src/main.rs`, which calls `run()`.
+// ---------------------------------------------------------------------------
+
+// When the file is included via `#[path]` from `src/bin_shim.rs`, this
+// `main` is dead code. When compiled as the `rtco-mcp` bin target, it
+// is the real entry point. `#[allow(dead_code)]` keeps both happy.
+#[allow(dead_code)]
+fn main() -> anyhow::Result<()> {
+    run()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_handle_compress_strips_ansi_and_blank_lines_for_build_output() {
+        let input = "\x1b[32mCompiling foo v0.1.0\x1b[0m\n\
+                     \n\
+                     \x1b[32mCompiling bar v0.1.0\x1b[0m\n\
+                     \n\
+                     \x1b[31merror: undefined reference\x1b[0m\n";
+        let result = handle_compress(input);
+        let compressed = result.get("compressed").and_then(|v| v.as_str()).unwrap();
+        // Blank lines stripped
+        assert!(!compressed.contains("\n\n"));
+        // ANSI stripped
+        assert!(!compressed.contains("\x1b["));
+        // Original still preserved for downstream
+        assert!(result.get("original_tokens").is_some());
+    }
+
+    #[test]
+    fn test_handle_analyze_reports_metrics() {
+        let input = "line one\nline two\n\nline three\n";
+        let result = handle_analyze(input);
+        assert_eq!(result.get("line_count").and_then(|v| v.as_u64()), Some(4));
+        assert_eq!(
+            result.get("non_empty_line_count").and_then(|v| v.as_u64()),
+            Some(3)
+        );
+        assert!(result.get("estimated_tokens").is_some());
+        assert!(result.get("detected_type").is_some());
+    }
+
+    #[test]
+    fn test_get_string_arg_missing_returns_none() {
+        let mut m = serde_json::Map::new();
+        m.insert("other".into(), serde_json::json!("x"));
+        assert!(get_string_arg(&m, "missing").is_none());
+    }
+
+    #[test]
+    fn test_get_string_arg_present() {
+        let mut m = serde_json::Map::new();
+        m.insert("content".into(), serde_json::json!("hello"));
+        assert_eq!(get_string_arg(&m, "content"), Some("hello"));
+    }
 }

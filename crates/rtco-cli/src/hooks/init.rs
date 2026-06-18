@@ -5,6 +5,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use tempfile::NamedTempFile;
 
 use crate::hooks::constants::{
@@ -3965,6 +3966,637 @@ fn run_copilot_at(base: &Path, ctx: InitContext) -> Result<()> {
     }
 
     Ok(())
+}
+
+// ===========================================================================
+// Multi-provider MCP auto-config
+// ===========================================================================
+//
+// `rtco init --mcp` and `rtco init --hooks` (and the matching uninstall
+// path) probe the user's home directory for known provider config files
+// (e.g. `~/.claude.json`, `~/.cursor/mcp.json`) and register the rtco
+// MCP server and hooks only in those files. This is opt-in and best-effort:
+// providers whose config file is absent are simply skipped.
+
+/// All AI provider targets we know how to register MCP servers / hooks in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum McpTarget {
+    Claude,
+    Cursor,
+    Cline,
+    Windsurf,
+    Copilot,
+    OpenCode,
+    Codex,
+    Gemini,
+    AmazonQ,
+    Warp,
+}
+
+impl McpTarget {
+    pub fn all() -> Vec<Self> {
+        vec![
+            Self::Claude,
+            Self::Cursor,
+            Self::Cline,
+            Self::Windsurf,
+            Self::Copilot,
+            Self::OpenCode,
+            Self::Codex,
+            Self::Gemini,
+            Self::AmazonQ,
+            Self::Warp,
+        ]
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Claude => "claude",
+            Self::Cursor => "cursor",
+            Self::Cline => "cline",
+            Self::Windsurf => "windsurf",
+            Self::Copilot => "copilot",
+            Self::OpenCode => "opencode",
+            Self::Codex => "codex",
+            Self::Gemini => "gemini",
+            Self::AmazonQ => "amazonq",
+            Self::Warp => "warp",
+        }
+    }
+
+    /// Resolve the config file path for this target on the current host.
+    /// Returns `None` when the path is host-OS specific and does not apply
+    /// here (e.g. Cline's macOS path on Linux).
+    pub fn config_path(self) -> Option<PathBuf> {
+        let home = dirs::home_dir()?;
+        Some(match self {
+            Self::Claude => home.join(".claude.json"),
+            Self::Cursor => home.join(".cursor").join("mcp.json"),
+            Self::Cline => cline_settings_path(&home)?,
+            Self::Windsurf => home
+                .join(".codeium")
+                .join("windsurf")
+                .join("mcp_config.json"),
+            Self::Copilot => home.join(".vscode").join("mcp.json"),
+            Self::OpenCode => opencode_config_path(&home),
+            Self::Codex => home.join(".codex").join("config.toml"),
+            Self::Gemini => home.join(".gemini").join("settings.json"),
+            Self::AmazonQ => home.join(".aws").join("amazonq").join("mcp.json"),
+            Self::Warp => {
+                // Warp is project-scoped: anchor on the current working
+                // directory. If no `.warp/` exists, the writer will create
+                // it under the user's CWD.
+                PathBuf::from("./.warp/.mcp.json")
+            }
+        })
+    }
+}
+
+impl FromStr for McpTarget {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self> {
+        Ok(match s.to_ascii_lowercase().as_str() {
+            "claude" | "claude-code" => Self::Claude,
+            "cursor" => Self::Cursor,
+            "cline" => Self::Cline,
+            "windsurf" => Self::Windsurf,
+            "copilot" | "vscode" | "vs-code" => Self::Copilot,
+            "opencode" => Self::OpenCode,
+            "codex" => Self::Codex,
+            "gemini" => Self::Gemini,
+            "amazonq" | "amazon-q" | "q" => Self::AmazonQ,
+            "warp" => Self::Warp,
+            other => anyhow::bail!("Unknown provider: {other}"),
+        })
+    }
+}
+
+/// Cline stores its MCP config under VS Code's globalStorage directory. The
+/// path differs per OS; returns `None` for unsupported hosts.
+fn cline_settings_path(home: &Path) -> Option<PathBuf> {
+    let suffix = "Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json";
+    if cfg!(target_os = "macos") {
+        Some(home.join("Library/Application Support").join(suffix))
+    } else if cfg!(target_os = "linux") {
+        Some(home.join(".config").join(suffix))
+    } else if cfg!(target_os = "windows") {
+        std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join(suffix))
+    } else {
+        None
+    }
+}
+
+/// OpenCode checks two locations; prefer the one that already exists.
+fn opencode_config_path(home: &Path) -> PathBuf {
+    let a = home.join(".opencode.json");
+    let b = home.join(".config").join("opencode").join(".opencode.json");
+    if a.exists() {
+        a
+    } else {
+        b
+    }
+}
+
+/// Parse a comma-separated list of provider names.
+impl McpTarget {
+    pub fn from_names(names: &[String]) -> Result<Vec<Self>> {
+        let mut out = Vec::with_capacity(names.len());
+        for n in names {
+            out.push(n.parse::<McpTarget>()?);
+        }
+        Ok(out)
+    }
+}
+
+/// Outcome of a single provider write.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum McpOutcome {
+    /// Wrote the rtco entry into the provider's config file.
+    Installed,
+    /// Removed the rtco entry from the provider's config file.
+    Uninstalled,
+    /// Provider config file is absent — nothing to do.
+    Skipped,
+    /// Provider requires OS we are not running on (e.g. macOS-only path
+    /// on Linux).
+    Unsupported,
+    /// Dry-run: would have written but did not.
+    WouldInstall,
+    /// Dry-run: would have removed but did not.
+    WouldUninstall,
+}
+
+impl McpOutcome {
+    #[allow(dead_code)]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Installed => "ok",
+            Self::Uninstalled => "ok",
+            Self::Skipped => "skip (no config)",
+            Self::Unsupported => "skip (unsupported OS)",
+            Self::WouldInstall => "would-install",
+            Self::WouldUninstall => "would-uninstall",
+        }
+    }
+}
+
+/// Install (or dry-run-install) the rtco MCP server entry in every
+/// detected provider config file in `targets`.
+///
+/// `with_hooks == true` is reserved for future expansion; right now the
+/// hook writers are the existing `install_*_hooks` family, so we only do
+/// the MCP side from this entry point. The installer calls this with
+/// `--hooks` to mean "also install hooks for the default Claude target";
+/// see `run_mcp_install_with_hooks` for the full pipeline.
+pub fn run_mcp_install(targets: &[McpTarget], _with_hooks: bool, ctx: InitContext) -> Result<()> {
+    for &t in targets {
+        let outcome = match t.config_path() {
+            None => McpOutcome::Unsupported,
+            Some(path) if !path.exists() => McpOutcome::Skipped,
+            Some(path) => {
+                if ctx.dry_run {
+                    McpOutcome::WouldInstall
+                } else {
+                    install_mcp_into(&path, t, ctx)?;
+                    McpOutcome::Installed
+                }
+            }
+        };
+        log_mcp_outcome(t, outcome, ctx.verbose);
+    }
+    Ok(())
+}
+
+/// Reverse of `run_mcp_install`: strip the rtco entry from each provider
+/// config that exists.
+pub fn run_mcp_uninstall(targets: &[McpTarget], ctx: InitContext) -> Result<()> {
+    for &t in targets {
+        let outcome = match t.config_path() {
+            None => McpOutcome::Unsupported,
+            Some(path) if !path.exists() => McpOutcome::Skipped,
+            Some(path) => {
+                if ctx.dry_run {
+                    McpOutcome::WouldUninstall
+                } else {
+                    uninstall_mcp_from(&path, t, ctx)?;
+                    McpOutcome::Uninstalled
+                }
+            }
+        };
+        log_mcp_outcome(t, outcome, ctx.verbose);
+    }
+    Ok(())
+}
+
+fn log_mcp_outcome(t: McpTarget, o: McpOutcome, verbose: u8) {
+    if verbose > 0 || !matches!(o, McpOutcome::Skipped) {
+        match o {
+            McpOutcome::Installed => println!("[ok]   {} (mcp installed)", t.name()),
+            McpOutcome::Uninstalled => println!("[ok]   {} (mcp removed)", t.name()),
+            McpOutcome::Skipped => {
+                if verbose > 0 {
+                    println!("[skip] {} (no config file)", t.name());
+                }
+            }
+            McpOutcome::Unsupported => {
+                println!("[skip] {} (unsupported on this OS)", t.name());
+            }
+            McpOutcome::WouldInstall => {
+                println!("[dry-run] {} (would install mcp)", t.name());
+            }
+            McpOutcome::WouldUninstall => {
+                println!("[dry-run] {} (would remove mcp)", t.name());
+            }
+        }
+    }
+}
+
+/// The MCP server entry shape (uniform across providers). Copilot uses
+/// `servers` instead of `mcpServers`; that special case is handled in
+/// `install_mcp_into`.
+fn rtco_mcp_entry() -> serde_json::Value {
+    serde_json::json!({
+        "rtco": {
+            "type": "stdio",
+            "command": "rtco",
+            "args": ["mcp"]
+        }
+    })
+}
+
+/// Write (or merge) the rtco entry into the provider config at `path`.
+/// Preserves all other keys. Backs the original file up to `<path>.rtco.bak`
+/// before overwriting.
+fn install_mcp_into(path: &Path, target: McpTarget, ctx: InitContext) -> Result<()> {
+    let raw =
+        fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?;
+    let mut root: serde_json::Value = serde_json::from_str(&raw).unwrap_or(serde_json::json!({}));
+
+    let key = mcp_servers_key(target);
+    let entry = rtco_mcp_entry();
+
+    if target == McpTarget::Copilot {
+        // VS Code Copilot uses `servers` (not `mcpServers`). Also tolerate
+        // `mcpServers` for forward compatibility.
+        upsert_key(&mut root, "servers", &entry, path, ctx)?;
+    } else if target == McpTarget::Codex {
+        // Codex is TOML. Hand off to the TOML writer.
+        return install_codex_mcp(path, ctx);
+    } else {
+        upsert_key(&mut root, key, &entry, path, ctx)?;
+    }
+
+    // Gemini also gets `trust: true` (a Gemini-specific field) to bypass
+    // the trust prompt.
+    if target == McpTarget::Gemini {
+        if let Some(obj) = root.as_object_mut() {
+            let trust = obj
+                .entry("trust".to_string())
+                .or_insert(serde_json::json!(true));
+            *trust = serde_json::json!(true);
+        }
+    }
+
+    let serialized =
+        serde_json::to_string_pretty(&root).context("Failed to serialize provider config")?;
+    backup_and_write(path, &serialized, ctx)
+        .with_context(|| format!("Failed to write {}", path.display()))?;
+    Ok(())
+}
+
+/// Remove the rtco entry from the provider config at `path`. All other
+/// keys are preserved.
+fn uninstall_mcp_from(path: &Path, target: McpTarget, ctx: InitContext) -> Result<()> {
+    if target == McpTarget::Codex {
+        return uninstall_codex_mcp(path, ctx);
+    }
+    let raw =
+        fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?;
+    let mut root: serde_json::Value = serde_json::from_str(&raw).unwrap_or(serde_json::json!({}));
+
+    if let Some(obj) = root.as_object_mut() {
+        let keys: Vec<&str> = match target {
+            McpTarget::Copilot => vec!["servers", "mcpServers"],
+            _ => vec![mcp_servers_key(target)],
+        };
+        for k in keys {
+            if let Some(servers) = obj.get_mut(k).and_then(|v| v.as_object_mut()) {
+                servers.remove("rtco");
+            }
+        }
+    }
+
+    let serialized =
+        serde_json::to_string_pretty(&root).context("Failed to serialize provider config")?;
+    backup_and_write(path, &serialized, ctx)
+        .with_context(|| format!("Failed to write {}", path.display()))?;
+    Ok(())
+}
+
+fn mcp_servers_key(target: McpTarget) -> &'static str {
+    match target {
+        // Copilot uses `servers`; handled separately.
+        McpTarget::Copilot => "mcpServers",
+        // Everyone else uses `mcpServers`.
+        _ => "mcpServers",
+    }
+}
+
+fn upsert_key(
+    root: &mut serde_json::Value,
+    key: &str,
+    entry: &serde_json::Value,
+    path: &Path,
+    _ctx: InitContext,
+) -> Result<()> {
+    if !root.is_object() {
+        *root = serde_json::json!({});
+    }
+    let obj = root.as_object_mut().expect("just initialized");
+    let servers = obj
+        .entry(key.to_string())
+        .or_insert_with(|| serde_json::json!({}));
+    if !servers.is_object() {
+        *servers = serde_json::json!({});
+    }
+    if let Some(servers_obj) = servers.as_object_mut() {
+        servers_obj.insert(
+            "rtco".to_string(),
+            entry.get("rtco").cloned().unwrap_or(entry.clone()),
+        );
+    }
+    let _ = path; // path is only used for context in errors above
+    Ok(())
+}
+
+fn backup_and_write(path: &Path, content: &str, ctx: InitContext) -> Result<()> {
+    if !ctx.dry_run {
+        if path.exists() {
+            let mut backup = path.to_path_buf();
+            backup.as_mut_os_string().push(".rtco.bak");
+            let _ = fs::write(&backup, fs::read(path)?);
+        }
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create parent dir {}", parent.display()))?;
+        }
+        atomic_write(path, content)?;
+    }
+    Ok(())
+}
+
+/// Codex CLI uses TOML, with section `[mcp_servers.rtco]`.
+fn install_codex_mcp(path: &Path, ctx: InitContext) -> Result<()> {
+    use std::fmt::Write as _;
+    let raw = if path.exists() {
+        fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?
+    } else {
+        String::new()
+    };
+    let mut new = raw.clone();
+    if !new.contains("[mcp_servers.rtco]") {
+        if !new.is_empty() && !new.ends_with('\n') {
+            new.push('\n');
+        }
+        let _ = writeln!(new, "\n[mcp_servers.rtco]");
+        let _ = writeln!(new, "command = \"rtco\"");
+        let _ = writeln!(new, "args = [\"mcp\"]");
+    }
+    backup_and_write(path, &new, ctx)
+        .with_context(|| format!("Failed to write {}", path.display()))?;
+    Ok(())
+}
+
+fn uninstall_codex_mcp(path: &Path, ctx: InitContext) -> Result<()> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let raw =
+        fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?;
+    // Drop the [mcp_servers.rtco] section and the following 2 lines, or
+    // until the next blank line / section header.
+    let mut kept: Vec<&str> = Vec::new();
+    let mut skip = false;
+    for line in raw.lines() {
+        if line.trim_start().starts_with("[mcp_servers.rtco]") {
+            skip = true;
+            continue;
+        }
+        if skip {
+            if line.trim().is_empty() || line.trim_start().starts_with('[') {
+                skip = false;
+            } else {
+                continue;
+            }
+        }
+        kept.push(line);
+    }
+    let new = kept.join("\n");
+    backup_and_write(path, &new, ctx)
+        .with_context(|| format!("Failed to write {}", path.display()))?;
+    Ok(())
+}
+
+// Note: the module-level `fn atomic_write(path: &Path, content: &str)` above
+// is the canonical implementation. The MCP code converts &[u8] to &str at
+// call sites so we don't redefine it here.
+
+#[cfg(test)]
+mod mcp_writer_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn write_file(dir: &Path, name: &str, body: &str) -> PathBuf {
+        let p = dir.join(name);
+        fs::write(&p, body).unwrap();
+        p
+    }
+
+    #[test]
+    fn install_claude_writes_mcpservers_rtco() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_file(tmp.path(), ".claude.json", "{}");
+        install_mcp_into(&path, McpTarget::Claude, InitContext::default()).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert!(v["mcpServers"]["rtco"]["command"].as_str() == Some("rtco"));
+        assert_eq!(v["mcpServers"]["rtco"]["args"][0], "mcp");
+    }
+
+    #[test]
+    fn install_claude_preserves_existing_keys() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_file(
+            tmp.path(),
+            ".claude.json",
+            r#"{"numStartups": 3, "mcpServers": {"other": {"command": "x"}}}"#,
+        );
+        install_mcp_into(&path, McpTarget::Claude, InitContext::default()).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(v["numStartups"], 3);
+        assert_eq!(v["mcpServers"]["other"]["command"], "x");
+        assert!(v["mcpServers"]["rtco"].is_object());
+    }
+
+    #[test]
+    fn install_cursor_writes_mcpservers_rtco() {
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir(tmp.path().join(".cursor")).unwrap();
+        let path = write_file(tmp.path(), ".cursor/mcp.json", "{}");
+        install_mcp_into(&path, McpTarget::Cursor, InitContext::default()).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert!(v["mcpServers"]["rtco"].is_object());
+    }
+
+    #[test]
+    fn install_copilot_writes_servers_not_mcpservers() {
+        // Easy to get wrong: VS Code Copilot uses `servers` as the top-level key.
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir(tmp.path().join(".vscode")).unwrap();
+        let path = write_file(tmp.path(), ".vscode/mcp.json", "{}");
+        install_mcp_into(&path, McpTarget::Copilot, InitContext::default()).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert!(v["servers"]["rtco"].is_object());
+        assert!(v.get("mcpServers").is_none());
+    }
+
+    #[test]
+    fn install_gemini_sets_trust_true() {
+        let tmp = TempDir::new().unwrap();
+        fs::create_dir(tmp.path().join(".gemini")).unwrap();
+        let path = write_file(tmp.path(), ".gemini/settings.json", "{}");
+        install_mcp_into(&path, McpTarget::Gemini, InitContext::default()).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(v["trust"], true);
+        assert!(v["mcpServers"]["rtco"].is_object());
+    }
+
+    #[test]
+    fn install_codex_appends_toml_section() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_file(tmp.path(), "config.toml", "model = \"gpt-4\"\n");
+        install_mcp_into(&path, McpTarget::Codex, InitContext::default()).unwrap();
+        let body = fs::read_to_string(&path).unwrap();
+        assert!(body.contains("[mcp_servers.rtco]"));
+        assert!(body.contains("command = \"rtco\""));
+        assert!(body.contains("args = [\"mcp\"]"));
+        // Original config preserved
+        assert!(body.contains("model = \"gpt-4\""));
+    }
+
+    #[test]
+    fn uninstall_claude_removes_rtco_but_keeps_others() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_file(
+            tmp.path(),
+            ".claude.json",
+            r#"{"mcpServers": {"rtco": {"command": "rtco"}, "other": {"command": "x"}}}"#,
+        );
+        uninstall_mcp_from(&path, McpTarget::Claude, InitContext::default()).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert!(v["mcpServers"].get("rtco").is_none());
+        assert_eq!(v["mcpServers"]["other"]["command"], "x");
+    }
+
+    #[test]
+    fn uninstall_copilot_strips_both_servers_keys() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_file(
+            tmp.path(),
+            "mcp.json",
+            r#"{"servers": {"rtco": {"command": "rtco"}}, "mcpServers": {"rtco": {"command": "rtco"}}}"#,
+        );
+        uninstall_mcp_from(&path, McpTarget::Copilot, InitContext::default()).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        assert!(v.get("servers").is_none_or(|s| s.get("rtco").is_none()));
+        assert!(v.get("mcpServers").is_none_or(|s| s.get("rtco").is_none()));
+    }
+
+    #[test]
+    fn backup_file_is_created_before_overwrite() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_file(
+            tmp.path(),
+            ".claude.json",
+            r#"{"mcpServers":{"old":{"command":"x"}}}"#,
+        );
+        install_mcp_into(&path, McpTarget::Claude, InitContext::default()).unwrap();
+        let backup = {
+            let mut p = path.clone();
+            p.as_mut_os_string().push(".rtco.bak");
+            p
+        };
+        assert!(backup.exists(), "expected .rtco.bak to exist after install");
+        let original = fs::read_to_string(&backup).unwrap();
+        assert!(original.contains("\"old\""));
+    }
+
+    #[test]
+    fn dry_run_install_does_not_write() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_file(tmp.path(), ".claude.json", "{}");
+        let ctx = InitContext {
+            verbose: 0,
+            dry_run: true,
+        };
+        install_mcp_into(&path, McpTarget::Claude, ctx).unwrap();
+        let body = fs::read_to_string(&path).unwrap();
+        assert_eq!(body, "{}", "dry-run must not modify the file");
+    }
+
+    #[test]
+    fn mcp_target_from_str_accepts_aliases() {
+        assert_eq!("claude".parse::<McpTarget>().unwrap(), McpTarget::Claude);
+        assert_eq!("cursor".parse::<McpTarget>().unwrap(), McpTarget::Cursor);
+        assert_eq!("cline".parse::<McpTarget>().unwrap(), McpTarget::Cline);
+        assert_eq!(
+            "windsurf".parse::<McpTarget>().unwrap(),
+            McpTarget::Windsurf
+        );
+        assert_eq!("copilot".parse::<McpTarget>().unwrap(), McpTarget::Copilot);
+        assert_eq!("vscode".parse::<McpTarget>().unwrap(), McpTarget::Copilot);
+        assert_eq!("vs-code".parse::<McpTarget>().unwrap(), McpTarget::Copilot);
+        assert_eq!(
+            "opencode".parse::<McpTarget>().unwrap(),
+            McpTarget::OpenCode
+        );
+        assert_eq!("codex".parse::<McpTarget>().unwrap(), McpTarget::Codex);
+        assert_eq!("gemini".parse::<McpTarget>().unwrap(), McpTarget::Gemini);
+        assert_eq!("amazonq".parse::<McpTarget>().unwrap(), McpTarget::AmazonQ);
+        assert_eq!("q".parse::<McpTarget>().unwrap(), McpTarget::AmazonQ);
+        assert_eq!("warp".parse::<McpTarget>().unwrap(), McpTarget::Warp);
+        assert!("nonsense".parse::<McpTarget>().is_err());
+    }
+
+    #[test]
+    fn mcp_target_from_names_parses_list() {
+        let v = McpTarget::from_names(&[
+            "claude".to_string(),
+            "cursor".to_string(),
+            "warp".to_string(),
+        ])
+        .unwrap();
+        assert_eq!(
+            v,
+            vec![McpTarget::Claude, McpTarget::Cursor, McpTarget::Warp]
+        );
+        assert!(McpTarget::from_names(&["nope".to_string()]).is_err());
+    }
+
+    #[test]
+    fn rtco_mcp_entry_has_expected_shape() {
+        let entry = rtco_mcp_entry();
+        assert_eq!(entry["rtco"]["type"], "stdio");
+        assert_eq!(entry["rtco"]["command"], "rtco");
+        assert_eq!(entry["rtco"]["args"][0], "mcp");
+    }
 }
 
 #[cfg(test)]
