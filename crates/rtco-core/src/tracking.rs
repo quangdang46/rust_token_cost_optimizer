@@ -1647,7 +1647,7 @@ mod tests {
     // 3. Tracker::record + get_recent — round-trip DB
     #[test]
     fn test_tracker_record_and_recent() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let tracker = test_tracker();
 
         // Use unique test identifier to avoid conflicts with other tests
@@ -1672,7 +1672,7 @@ mod tests {
     // 4. track_passthrough doesn't dilute stats (input=0, output=0)
     #[test]
     fn test_track_passthrough_no_dilution() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let tracker = test_tracker();
 
         // Use unique test identifiers
@@ -1719,7 +1719,7 @@ mod tests {
     fn test_timed_execution_records_time() {
         // Set isolated DB path so the internal Tracker::new() in track()
         // writes to the same DB the test reads from.
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let db_path =
             std::env::temp_dir().join(format!("rtco_test_timed_track_{}.db", std::process::id()));
         std::env::set_var("RTCO_DB_PATH", &db_path);
@@ -1743,7 +1743,7 @@ mod tests {
     fn test_timed_execution_passthrough() {
         // Set isolated DB path so the internal Tracker::new() in
         // track_passthrough() writes to the same DB the test reads from.
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let db_path = std::env::temp_dir().join("rtco_test_timed_pt.db");
         std::env::set_var("RTCO_DB_PATH", &db_path);
         let _ = std::fs::remove_file(&db_path);
@@ -1773,7 +1773,7 @@ mod tests {
     #[test]
     fn test_db_path_env_and_default() {
         use std::env;
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
 
         let custom_path = env::temp_dir().join("rtk_test_custom.db");
         env::set_var("RTCO_DB_PATH", &custom_path);
@@ -1830,7 +1830,7 @@ mod tests {
     // 12. record_parse_failure + get_parse_failure_summary roundtrip
     #[test]
     fn test_parse_failure_roundtrip() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let tracker = test_tracker();
         let test_cmd = format!("git -C /path status test_{}", std::process::id());
 

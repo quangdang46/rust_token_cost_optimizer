@@ -8,6 +8,7 @@
 [![Release](https://img.shields.io/github/actions/workflow/status/quangdang46/rust_token_cost_optimizer/release.yml?style=for-the-badge&logo=githubactions&label=Release)](https://github.com/quangdang46/rust_token_cost_optimizer/actions/workflows/release.yml)
 [![Version](https://img.shields.io/github/v/release/quangdang46/rust_token_cost_optimizer?style=for-the-badge&logo=semver)](https://github.com/quangdang46/rust_token_cost_optimizer/releases)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge&logo=apache)](LICENSE)
+[![Supply Chain](https://img.shields.io/badge/Supply%20Chain-Audited-brightgreen?style=for-the-badge&logo=rust)](deny.toml)
 [![Stars](https://img.shields.io/github/stars/quangdang46/rust_token_cost_optimizer?style=for-the-badge&logo=github)](https://github.com/quangdang46/rust_token_cost_optimizer/stargazers)
 
 </div>
@@ -22,19 +23,19 @@ RTCO is a single Rust binary that sits between your AI assistant and the shell, 
 
 ```bash
 # Binary only (Linux/macOS)
-curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.sh | bash
 
 # Binary + auto-config MCP+hooks in every detected AI provider (Linux/macOS)
-curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh \
+curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.sh \
   | bash -s -- --with-mcp --with-hooks --all-providers
 ```
 
 ```powershell
 # Binary only (Windows)
-irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" | iex
+irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1" | iex
 
 # Binary + auto-config MCP+hooks in every detected AI provider (Windows)
-irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" | iex
+irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1" | iex
 # Then re-run with flags:
 .\install.ps1 -WithMcp -WithHooks -AllProviders
 ```
@@ -108,26 +109,26 @@ Average savings:   78.3%
 ### Quick Install (Linux/macOS)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.sh | bash
 ```
 
 ### Quick Install (Windows PowerShell)
 
 ```powershell
-irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" | iex
+irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1" | iex
 ```
 
 ### Install + Auto-Configure MCP+Hooks (All Platforms)
 
 ```bash
 # Linux/macOS — detect and register MCP+hooks in every AI provider found on disk
-curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh \
+curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.sh \
   | bash -s -- --with-mcp --with-hooks --all-providers
 ```
 
 ```powershell
 # Windows — download first, then run with flags
-irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" -OutFile install.ps1
+irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1" -OutFile install.ps1
 .\install.ps1 -WithMcp -WithHooks -AllProviders
 ```
 
