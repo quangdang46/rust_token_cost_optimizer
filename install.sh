@@ -2,10 +2,10 @@
 # install.sh — one-shot installer for rtco on Linux + macOS.
 #
 # Usage:
-#   curl -fsSL "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh" | bash
+#   curl -fsSL "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.sh" | bash
 #
 # Pin a version or pass flags by downloading once, then running directly:
-#   curl -fsSL "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.sh" -o install.sh
+#   curl -fsSL "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.sh" -o install.sh
 #   bash install.sh --version v0.1.0 --easy-mode --verify
 
 set -euo pipefail
@@ -53,7 +53,7 @@ usage() {
 $BINARY_NAME installer
 
 Usage:
-  curl -fsSL https://raw.githubusercontent.com/$OWNER/$REPO/master/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/$OWNER/$REPO/main/install.sh | bash
   bash install.sh [flags]
 
 Flags:
@@ -77,7 +77,7 @@ Flags:
   -h, --help         Show this help and exit
 
 Example:
-  curl -fsSL https://raw.githubusercontent.com/$OWNER/$REPO/master/install.sh \\
+  curl -fsSL https://raw.githubusercontent.com/$OWNER/$REPO/main/install.sh \\
     | bash -s -- --with-mcp --with-hooks --all-providers
 EOF
     exit 0

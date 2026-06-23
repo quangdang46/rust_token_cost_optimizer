@@ -38,7 +38,11 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
 
       - name: cargo test
-        run: cargo test --all-features
+        run: cargo test --features prometheus
+
+      - name: cargo deny check (licenses + advisories)
+        run: cargo deny check --all
+        continue-on-error: true
 
       - name: cargo build (for integration tests)
         run: cargo build

@@ -1,0 +1,81 @@
+# cargo-deny configuration for RTCO supply chain security.
+# Run with: cargo deny check or cargo deny check --all
+
+[graph]
+# Skip dev-dependencies (build tools, test harnesses)
+# when auditing. They're not shipped to end users.
+# To check them too, run: cargo deny --all-features check
+exclude-dev = true
+
+[advisories]
+# Database path: gets auto-downloaded by cargo-deny from
+# https://github.com/rustsec/advisory-db
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+# Ignore advisories we've assessed and accepted:
+# ignore = [
+#     "RUSTSEC-2023-0001",  # Example — remove after audit
+# ]
+
+[licenses]
+unlicensed = "deny"
+# Apache 2.0 — RTCO's own license. Keep the list tight.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "ISC",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "Unicode-3.0",
+    "Zlib",
+    "0BSD",
+]
+deny = [
+    "AGPL-3.0",
+    "AGPL-3.0-only",
+    "AGPL-3.0-or-later",
+    "GPL-2.0",
+    "GPL-2.0-only",
+    "GPL-3.0",
+    "GPL-3.0-only",
+    "GPL-3.0-or-later",
+    "LGPL-3.0",
+    "LGPL-3.0-only",
+    "LGPL-3.0-or-later",
+]
+confidence-threshold = 0.8
+exceptions = [
+    # Allow 'ring' license exception (ISC + OpenSSL)
+    { name = "ring", allow = ["Apache-2.0", "ISC"] },
+    { name = "webpki", allow = ["Apache-2.0", "ISC"] },
+    { name = "untrusted", allow = ["Apache-2.0", "ISC"] },
+]
+
+[licenses.private]
+# Ignore private crates (the workspace members) — they don't need license checks.
+ignore = true
+registries = ["https://github.com/quangdang46/rust_token_cost_optimizer"]
+
+[bans]
+multiple-versions = "deny"
+wildcard-dependencies = "deny"
+deny = [
+    # Duplicate crate versions waste compile time and binary size.
+    # Add known duplicates here as they're discovered.
+    # { name = "foo", version = "0.1" },
+]
+skip = [
+    # Allow two versions of crates that genuinely co-exist:
+    { name = "bitflags", vers = "1" },
+    { name = "bitflags", vers = "2" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = []
+
+[targets]
+only = ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "aarch64-apple-darwin", "x86_64-pc-windows-msvc"]

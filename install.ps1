@@ -2,13 +2,13 @@
 install.ps1 -- one-shot installer for rtco on Windows.
 
 Usage:
-  irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" | iex
+  irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1" | iex
 
 To pin a version or pass flags through `irm | iex`:
-  & ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1'))) -Version v0.1.0 -EasyMode
+  & ([scriptblock]::Create((irm 'https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1'))) -Version v0.1.0 -EasyMode
 
 Or download once and run directly:
-  irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1" -OutFile install.ps1
+  irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1" -OutFile install.ps1
   .\install.ps1 -Version v0.1.0 -EasyMode -Verify
 
 Flags:
@@ -31,7 +31,7 @@ Flags:
   -Help              Show this help and exit
 
 Example:
-  irm https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/master/install.ps1 | iex
+  irm https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1 | iex
   # pipe the above into:
   #   -WithMcp -WithHooks -AllProviders
 #>
@@ -95,7 +95,7 @@ if ($Help) {
 
 function Get-Platform {
     if ($IsLinux -or $IsMacOS) {
-        Die "install.ps1 is for Windows only. On Linux / macOS use install.sh:`n  curl -fsSL https://raw.githubusercontent.com/$Owner/$Repo/master/install.sh | bash"
+        Die "install.ps1 is for Windows only. On Linux / macOS use install.sh:`n"https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.sh""
     }
     $arch = $env:PROCESSOR_ARCHITECTURE
     # WOW64 reports x86 even on a 64-bit OS when the host PowerShell is 32-bit;
