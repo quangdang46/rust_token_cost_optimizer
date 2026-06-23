@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.2.2...v0.2.3) (2026-06-23)
+
+### Bug Fixes
+* **ci:** fix install.sh/install.ps1 branch references — master → main
+* **ci:** add deny.toml for supply chain audit (cargo-deny)
+* **ci:** fix cargo test flags — --all-features → --features prometheus
+* **tracking:** fix PoisonError in test mutex — unwrap() → unwrap_or_else(Into::into)
+
+### Documentation
+* **readme:** update install URLs from master to main branch
+
+### Chores
+* **ci:** add cargo-deny check step to CI workflow
+
 ## [0.2.2](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.2.1...v0.2.2) (2026-06-19)
 
 ### Bug Fixes
