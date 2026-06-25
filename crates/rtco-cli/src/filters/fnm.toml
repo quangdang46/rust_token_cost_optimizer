@@ -159,9 +159,9 @@ v0.10.24
 v0.10.25
 v0.10.26
 v0.10.27
+v0.10.27
 v0.10.28
-v0.10.29
-... (6 lines truncated)"""
+... (7 lines truncated)"""
 
 [[tests.fnm]]
 name = "ANSI color codes stripped from list output"

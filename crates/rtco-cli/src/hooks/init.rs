@@ -4230,7 +4230,23 @@ fn rtco_mcp_entry() -> serde_json::Value {
 fn install_mcp_into(path: &Path, target: McpTarget, ctx: InitContext) -> Result<()> {
     let raw =
         fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?;
-    let mut root: serde_json::Value = serde_json::from_str(&raw).unwrap_or(serde_json::json!({}));
+    // #40: Don't silently discard existing config on parse failure.
+    // Warn and preserve existing file instead of creating an empty object.
+    let mut root: serde_json::Value = match serde_json::from_str(&raw) {
+        Ok(val) => val,
+        Err(e) => {
+            if !raw.trim().is_empty() && path.exists() {
+                eprintln!(
+                    "[warn] {} has invalid JSON ({}), backing up and starting fresh",
+                    path.display(),
+                    e
+                );
+                let backup = path.with_extension("json.rtco-invalid.bak");
+                let _ = fs::write(&backup, &raw);
+            }
+            serde_json::json!({})
+        }
+    };
 
     let key = mcp_servers_key(target);
     let entry = rtco_mcp_entry();
@@ -4272,7 +4288,23 @@ fn uninstall_mcp_from(path: &Path, target: McpTarget, ctx: InitContext) -> Resul
     }
     let raw =
         fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?;
-    let mut root: serde_json::Value = serde_json::from_str(&raw).unwrap_or(serde_json::json!({}));
+    // #40: Don't silently discard existing config on parse failure.
+    // Warn and preserve existing file instead of creating an empty object.
+    let mut root: serde_json::Value = match serde_json::from_str(&raw) {
+        Ok(val) => val,
+        Err(e) => {
+            if !raw.trim().is_empty() && path.exists() {
+                eprintln!(
+                    "[warn] {} has invalid JSON ({}), backing up and starting fresh",
+                    path.display(),
+                    e
+                );
+                let backup = path.with_extension("json.rtco-invalid.bak");
+                let _ = fs::write(&backup, &raw);
+            }
+            serde_json::json!({})
+        }
+    };
 
     if let Some(obj) = root.as_object_mut() {
         let keys: Vec<&str> = match target {
