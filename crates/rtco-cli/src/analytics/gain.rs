@@ -1,4 +1,4 @@
-//! Shows users how many tokens RTK has saved them over time.
+//! Shows users how many tokens RTCO has saved them over time.
 
 use crate::hooks::hook_check;
 use anyhow::{Context, Result};
@@ -78,7 +78,7 @@ pub fn run(
 
     if summary.total_commands == 0 {
         println!("No tracking data yet.");
-        println!("Run some rtk commands to start tracking savings.");
+        println!("Run some rtco commands to start tracking savings.");
         return Ok(());
     }
 
@@ -126,7 +126,7 @@ pub fn run(
             hook_check::HookStatus::Missing => {
                 eprintln!(
                     "{}",
-                    "[warn] No hook installed — run `rtk init -g` for automatic token savings"
+                    "[warn] No hook installed — run `rtco init -g` for automatic token savings"
                         .yellow()
                 );
                 eprintln!();
@@ -134,7 +134,7 @@ pub fn run(
             hook_check::HookStatus::Outdated => {
                 eprintln!(
                     "{}",
-                    "[warn] Hook outdated — run `rtk init -g` to update".yellow()
+                    "[warn] Hook outdated — run `rtco init -g` to update".yellow()
                 );
                 eprintln!();
             }
@@ -142,7 +142,7 @@ pub fn run(
         }
 
         // Lightweight RTCO_DISABLED bypass check (best-effort, silent on failure)
-        if let Some(warning) = check_rtk_disabled_bypass() {
+        if let Some(warning) = check_rtco_disabled_bypass() {
             eprintln!("{}", warning.yellow());
             eprintln!();
         }
@@ -651,7 +651,7 @@ fn export_csv(
 /// Lightweight scan of recent Claude Code sessions for RTCO_DISABLED= overuse.
 /// Returns a warning string if bypass rate exceeds 10%, None otherwise.
 /// Silently returns None on any error (missing dirs, permission issues, etc.).
-fn check_rtk_disabled_bypass() -> Option<String> {
+fn check_rtco_disabled_bypass() -> Option<String> {
     use crate::discover::provider::{ClaudeProvider, SessionProvider};
     use crate::discover::registry::cmd_has_rtco_disabled_prefix;
 
@@ -689,7 +689,7 @@ fn check_rtk_disabled_bypass() -> Option<String> {
     let pct = (bypassed as f64 / total_bash as f64) * 100.0;
     if pct > 10.0 {
         Some(format!(
-            "[warn] {} commands ({:.0}%) used RTCO_DISABLED=1 unnecessarily — run `rtk discover` for details",
+            "[warn] {} commands ({:.0}%) used RTCO_DISABLED=1 unnecessarily — run `rtco discover` for details",
             bypassed, pct
         ))
     } else {
