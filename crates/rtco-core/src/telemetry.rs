@@ -142,7 +142,7 @@ fn send_ping() -> Result<(), Box<dyn std::error::Error>> {
     let mut req = ureq::post(url).set("Content-Type", "application/json");
 
     if let Some(token) = TELEMETRY_TOKEN {
-        req = req.set("X-RTK-Token", token);
+        req = req.set("X-rtco-Token", token);
     }
 
     // 2 second timeout — if server is down, we move on

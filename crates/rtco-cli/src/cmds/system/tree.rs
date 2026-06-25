@@ -29,7 +29,14 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
 
     if !show_all && !has_ignore {
         let ignore_pattern = NOISE_DIRS.join("|");
-        cmd.arg("-I").arg(&ignore_pattern);
+        // #44: Skip exclude flags on Windows (tree.com doesn't support -I)
+    #[allow(unused_assignments)]
+    if cfg!(target_os = "windows") {
+        // #44: Skip -I flags on Windows (tree.com doesn't support them)
+    } else {
+        cmd.arg("-I");
+        cmd.arg(&ignore_pattern);
+    }
     }
 
     for arg in args {

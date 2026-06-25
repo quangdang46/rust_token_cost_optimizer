@@ -86,9 +86,9 @@ pub fn run(
     if !daily && !weekly && !monthly && !all {
         // added: scope-aware styled header // changed: merged upstream styled + project scope
         let title = if project_scope.is_some() {
-            "RTK Token Savings (Project Scope)"
+            "rtco Token Savings (Project Scope)"
         } else {
-            "RTK Token Savings (Global Scope)"
+            "rtco Token Savings (Global Scope)"
         };
         println!("{}", styled(title, true));
         println!("{}", "═".repeat(60));
@@ -708,7 +708,7 @@ fn show_failures(tracker: &Tracker) -> Result<()> {
         return Ok(());
     }
 
-    println!("{}", styled("RTK Parse Failures", true));
+    println!("{}", styled("rtco Parse Failures", true));
     println!("{}", "═".repeat(60));
     println!();
 

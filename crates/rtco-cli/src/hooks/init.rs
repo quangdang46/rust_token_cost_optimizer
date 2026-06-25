@@ -32,7 +32,7 @@ const RTCO_SLIM: &str = include_str!("../../../../hooks/claude/rtco-awareness.md
 const RTCO_SLIM_CODEX: &str = include_str!("../../../../hooks/codex/rtco-awareness.md");
 
 /// Template written by `rtk init` when no filters.toml exists yet.
-const FILTERS_TEMPLATE: &str = r#"# Project-local RTK filters — commit this file with your repo.
+const FILTERS_TEMPLATE: &str = r#"# Project-local rtco filters — commit this file with your repo.
 # Filters here override user-global and built-in filters.
 # Docs: https://github.com/rtco-ai/rtco#custom-filters
 schema_version = 1
@@ -48,7 +48,7 @@ schema_version = 1
 "#;
 
 /// Template for user-global filters (~/.config/rtk/filters.toml).
-const FILTERS_GLOBAL_TEMPLATE: &str = r#"# User-global RTK filters — apply to all your projects.
+const FILTERS_GLOBAL_TEMPLATE: &str = r#"# User-global rtco filters — apply to all your projects.
 # Project-local .rtco/filters.toml takes precedence over these.
 # Docs: https://github.com/rtco-ai/rtco#custom-filters
 schema_version = 1
@@ -107,11 +107,11 @@ fn print_dry_run_footer() {
 
 // Legacy full instructions for backward compatibility (--claude-md mode)
 const RTCO_INSTRUCTIONS: &str = r##"<!-- rtco-instructions v2 -->
-# RTK (Rust Token Killer) - Token-Optimized Commands
+# rtco (Rust Token Cost Optimizer) - Token-Optimized Commands
 
 ## Golden Rule
 
-**Always prefix commands with `rtco`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
+**Always prefix commands with `rtco`**. If rtco has a dedicated filter, it uses it. If not, it passes through unchanged. This means rtco is always safe to use.
 
 **Important**: Even in command chains with `&&`, use `rtco`:
 ```bash
@@ -122,7 +122,7 @@ git add . && git commit -m "msg" && git push
 rtco git add . && rtco git commit -m "msg" && rtco git push
 ```
 
-## RTK Commands by Workflow
+## rtco Commands by Workflow
 
 ### Build & Compile (80-90% savings)
 ```bash
@@ -223,10 +223,10 @@ rtco wget <url>          # Compact download output (65%)
 ```bash
 rtco gain                # View token savings statistics
 rtco gain --history      # View command history with savings
-rtco discover            # Analyze Claude Code sessions for missed RTK usage
+rtco discover            # Analyze Claude Code sessions for missed rtco usage
 rtco proxy <cmd>         # Run command without filtering (for debugging)
-rtco init                # Add RTK instructions to CLAUDE.md
-rtco init --global       # Add RTK to ~/.claude/CLAUDE.md
+rtco init                # Add rtco instructions to CLAUDE.md
+rtco init --global       # Add rtco to ~/.claude/CLAUDE.md
 ```
 
 ## Token Savings Overview
@@ -472,7 +472,7 @@ fn prompt_telemetry_consent() -> Result<()> {
 
     eprintln!();
     eprintln!("--- Telemetry ---");
-    eprintln!("RTK collects anonymous usage metrics once per day to improve filters.");
+    eprintln!("rtco collects anonymous usage metrics once per day to improve filters.");
     eprintln!();
     eprintln!("  What:    command names (not arguments), token savings, OS, version");
     eprintln!("  Why:     prioritize filter development for the most-used commands");
@@ -584,7 +584,7 @@ fn remove_hook_from_settings(ctx: InitContext) -> Result<bool> {
     if removed {
         if dry_run {
             println!(
-                "[dry-run] would remove RTK hook entry from {}",
+                "[dry-run] would remove rtco hook entry from {}",
                 settings_path.display()
             );
             if verbose > 0 {
@@ -606,7 +606,7 @@ fn remove_hook_from_settings(ctx: InitContext) -> Result<bool> {
         atomic_write(&settings_path, &serialized)?;
 
         if verbose > 0 {
-            eprintln!("Removed RTK hook from settings.json");
+            eprintln!("Removed rtco hook from settings.json");
         }
     }
 
@@ -638,9 +638,9 @@ pub fn uninstall(
         let cursor_removed = remove_cursor_hooks(ctx).context("Failed to remove Cursor hooks")?;
         if !cursor_removed.is_empty() {
             let header = if dry_run {
-                "[dry-run] would uninstall RTK (Cursor):"
+                "[dry-run] would uninstall rtco (Cursor):"
             } else {
-                "RTK uninstalled (Cursor):"
+                "rtco uninstalled (Cursor):"
             };
             println!("{}", header);
             for item in &cursor_removed {
@@ -3257,7 +3257,7 @@ fn remove_cursor_hooks(ctx: InitContext) -> Result<Vec<String>> {
                         atomic_write(&hooks_json_path, &serialized)?;
 
                         if verbose > 0 {
-                            eprintln!("Removed RTK hook from Cursor hooks.json");
+                            eprintln!("Removed rtco hook from Cursor hooks.json");
                         }
                     }
                     removed.push("Cursor hooks.json: removed RTK entry".to_string());
@@ -3852,7 +3852,7 @@ fn uninstall_gemini(ctx: InitContext) -> Result<Vec<String>> {
                 if arr.len() < before {
                     if dry_run {
                         println!(
-                            "[dry-run] would remove RTK hook from Gemini settings.json: {}",
+                            "[dry-run] would remove rtco hook from Gemini settings.json: {}",
                             settings_path.display()
                         );
                     } else {

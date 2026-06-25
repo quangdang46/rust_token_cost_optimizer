@@ -384,7 +384,7 @@ fn strip_absolute_path(cmd: &str) -> String {
 }
 
 pub fn prefix_contains_rtco_disabled(prefix_part: &str) -> bool {
-    prefix_part.contains("RTK_DISABLED=")
+    prefix_part.contains("RTCO_DISABLED=") || prefix_part.contains("RTK_DISABLED=")
 }
 
 /// Check if a command has RTK_DISABLED= prefix in its env prefix portion.

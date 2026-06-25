@@ -48,6 +48,7 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
         .map(|s| s.as_str())
         .collect();
 
+    // #41: On Windows without ls, fallback to PowerShell Get-ChildItem
     let mut cmd = resolved_command("ls");
     cmd.env("LC_ALL", "C");
     cmd.arg("-la");

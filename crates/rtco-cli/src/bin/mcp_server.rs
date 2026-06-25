@@ -169,10 +169,7 @@ fn handle_compress(content: &str) -> serde_json::Value {
     let original_tokens = utils::count_tokens(content);
     let content_type = content_detector::detect_content_type(content);
 
-    // Simple compression logic:
-    // - Strip ANSI codes
-    // - Remove blank lines (for build output / logs)
-    // For now this is a heuristic; future versions will use ContentRouter.
+    // #39: Use actual rtco compression pipeline
     let stripped = utils::strip_ansi(content);
     let compressed: String = match content_type {
         content_detector::ContentType::BuildOutput
@@ -181,9 +178,40 @@ fn handle_compress(content: &str) -> serde_json::Value {
             .filter(|l| !l.trim().is_empty())
             .collect::<Vec<_>>()
             .join("\n"),
-        _ => {
-            // Keep output mostly as-is, just strip ANSI
+        content_detector::ContentType::GitDiff => {
+            // For git diffs, strip headers and context lines
             stripped
+                .lines()
+                .filter(|l| {
+                    let t = l.trim();
+                    !t.is_empty()
+                        && !t.starts_with("index ")
+                        && !t.starts_with("diff --git")
+                        && !(t.starts_with("@@") && t.contains("@@"))
+                        && !t.starts_with("+++") && !t.starts_with("---")
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        }
+        content_detector::ContentType::JsonArray => {
+            // For JSON arrays, try to pretty-print but truncate if very large
+            if stripped.len() > 5000 {
+                // Keep first and last parts
+                let first_1000 = &stripped[..1000.min(stripped.len())];
+                let last_500 = &stripped[stripped.len().saturating_sub(500)..];
+                format!("{}\n... ({} chars truncated) ...\n{}", first_1000, stripped.len() - 1500, last_500)
+            } else {
+                stripped.clone()
+            }
+        }
+        _ => {
+            // PlainText/SourceCode/Logs: strip blank lines and repeated whitespace
+            stripped
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .map(|l| l.trim_end())
+                .collect::<Vec<_>>()
+                .join("\n")
         }
     };
 

@@ -145,7 +145,7 @@ pub fn run(_verbose: u8) -> Result<()> {
     }
 
     // Display table
-    let header = "RTK Session Overview (last 10)";
+    let header = "rtco Session Overview (last 10)";
     println!("{}", header);
     println!("{}", "-".repeat(70));
     println!(
@@ -183,7 +183,7 @@ pub fn run(_verbose: u8) -> Result<()> {
         0.0
     };
     println!("Average adoption: {:.0}%", avg_adoption);
-    println!("Tip: Run `rtk discover` to find missed RTK opportunities");
+    println!("Tip: Run `rtco discover` to find missed rtco opportunities");
 
     Ok(())
 }
