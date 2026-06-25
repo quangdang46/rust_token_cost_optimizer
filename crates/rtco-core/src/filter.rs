@@ -11,7 +11,7 @@ fn protect_template_literals(content: &str) -> String {
     let mut in_template = false;
     let mut i = 0;
     let chars: Vec<char> = content.chars().collect();
-    
+
     while i < chars.len() {
         match chars[i] {
             '`' => {
@@ -28,7 +28,7 @@ fn protect_template_literals(content: &str) -> String {
         }
         i += 1;
     }
-    
+
     result
 }
 

@@ -89,7 +89,7 @@ fn detect_linter(args: &[String]) -> (&str, bool) {
 
 /// Detect Biome output vs ESLint (#2540)
 fn _is_biome_output(output: &str) -> bool {
-    output.contains("biome") || output.lines().next().map_or(false, |l| l.contains("biome"))
+    output.contains("biome") || output.lines().any(|l| l.contains("biome"))
 }
 
 #[allow(dead_code)]

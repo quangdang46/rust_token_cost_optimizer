@@ -22,16 +22,6 @@ use std::sync::Mutex;
 /// use rtco_core::utils::truncate;
 /// assert_eq!(truncate("hello world", 8), "hello...");
 /// assert_eq!(truncate("hi", 10), "hi");
-
-/// Detect and convert non-UTF-8 output (e.g. Windows GBK) to UTF-8 (#2452)
-pub fn normalize_output(bytes: &[u8]) -> String {
-    // Try UTF-8 first (most common)
-    if let Ok(s) = std::str::from_utf8(bytes) {
-        return s.to_string();
-    }
-    // Fall back to lossy conversion
-    String::from_utf8_lossy(bytes).to_string()
-}
 /// ```
 pub fn truncate(s: &str, max_len: usize) -> String {
     let char_count = s.chars().count();
@@ -555,6 +545,12 @@ pub fn deduplicate_conservative<'a>(lines: &[&'a str]) -> Vec<(usize, &'a str)> 
 #[allow(dead_code)]
 pub fn should_skip_compression(output: &str, min_bytes: usize) -> bool {
     output.len() < min_bytes
+}
+
+/// Detect and convert non-UTF-8 output (e.g. Windows GBK) to UTF-8 (#2452)
+#[allow(dead_code)]
+pub fn normalize_output(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes).to_string()
 }
 
 #[cfg(test)]
