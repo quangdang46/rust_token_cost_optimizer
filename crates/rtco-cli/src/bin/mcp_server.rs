@@ -188,7 +188,8 @@ fn handle_compress(content: &str) -> serde_json::Value {
                         && !t.starts_with("index ")
                         && !t.starts_with("diff --git")
                         && !(t.starts_with("@@") && t.contains("@@"))
-                        && !t.starts_with("+++") && !t.starts_with("---")
+                        && !t.starts_with("+++")
+                        && !t.starts_with("---")
                 })
                 .collect::<Vec<_>>()
                 .join("\n")
@@ -199,7 +200,12 @@ fn handle_compress(content: &str) -> serde_json::Value {
                 // Keep first and last parts
                 let first_1000 = &stripped[..1000.min(stripped.len())];
                 let last_500 = &stripped[stripped.len().saturating_sub(500)..];
-                format!("{}\n... ({} chars truncated) ...\n{}", first_1000, stripped.len() - 1500, last_500)
+                format!(
+                    "{}\n... ({} chars truncated) ...\n{}",
+                    first_1000,
+                    stripped.len() - 1500,
+                    last_500
+                )
             } else {
                 stripped.clone()
             }
