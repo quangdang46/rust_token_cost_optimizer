@@ -269,7 +269,7 @@ rtco estimates tokens using `text.len() / 4` (4 characters per token average).
 
 ```
 Input Tokens    = estimate_tokens(raw_command_output)
-Output Tokens   = estimate_tokens(rtk_filtered_output)
+Output Tokens   = estimate_tokens(rtco_filtered_output)
 Saved Tokens    = Input - Output
 Savings %       = (Saved / Input) × 100
 ```
@@ -299,7 +299,7 @@ sqlite3 ~/.local/share/rtco/history.db ".schema"
 
 # Recent records
 sqlite3 ~/.local/share/rtco/history.db \
-  "SELECT timestamp, rtk_cmd, saved_tokens FROM commands
+  "SELECT timestamp, rtco_cmd, saved_tokens FROM commands
    ORDER BY timestamp DESC LIMIT 10"
 
 # Total database size
@@ -370,7 +370,7 @@ import subprocess
 import json
 import requests
 
-def send_rtk_stats():
+def send_rtco_stats():
     result = subprocess.run(['rtco', 'gain', '--format', 'json'],
                            capture_output=True, text=True)
     data = json.loads(result.stdout)

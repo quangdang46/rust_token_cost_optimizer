@@ -14,7 +14,7 @@ from .manifest import (
     TbTaskEntry,
     write_manifest,
 )
-from .session import run_all_sessions, setup_codebase, setup_rtk
+from .session import run_all_sessions, setup_codebase, setup_rtco
 from .terminal_bench import run_terminal_bench
 from .vm import create_vm_pool, destroy_vm_pool
 
@@ -45,7 +45,7 @@ def _session_to_entry(r) -> SessionEntry:
         group=r.group,
         stdout_json=f"{r.vm_name}-stdout.json",
         otel_log=f"{r.vm_name}-otel.log",
-        rtk_db=f"{r.vm_name}-tracking.db" if r.rtk_db_path else None,
+        rtk_db=f"{r.vm_name}-tracking.db" if r.rtco_db_path else None,
         exit_code=r.exit_code,
         error=r.error or None,
     )
@@ -106,7 +106,7 @@ async def run_benchmark(
         setup_script = ROOT_DIR / "setup-rtco.sh"
         on_vms = [n for n in vm_names if "-on-" in n]
         off_vms = [n for n in vm_names if "-off-" in n]
-        await asyncio.gather(*(setup_rtk(vm, setup_script) for vm in on_vms))
+        await asyncio.gather(*(setup_rtco(vm, setup_script) for vm in on_vms))
         print(f"  RTCO configured on {len(on_vms)} VMs")
 
         _print_step(4, total_steps, f"Running Claude sessions (timeout: {task.timeout_minutes}min)")

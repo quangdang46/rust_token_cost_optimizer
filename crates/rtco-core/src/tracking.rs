@@ -6,7 +6,7 @@
 //!
 //! # Architecture
 //!
-//! - Storage: SQLite database (~/.local/share/rtk/tracking.db)
+//! - Storage: SQLite database (~/.local/share/rtco/tracking.db)
 //! - Retention: 90-day automatic cleanup
 //! - Metrics: Input/output tokens, savings %, execution time
 //!
@@ -112,9 +112,9 @@ use super::constants::{DEFAULT_HISTORY_DAYS, HISTORY_DB, RTCO_DATA_DIR};
 ///
 /// # Database Location
 ///
-/// - Linux: `~/.local/share/rtk/tracking.db`
-/// - macOS: `~/Library/Application Support/rtk/tracking.db`
-/// - Windows: `%APPDATA%\rtk\tracking.db`
+/// - Linux: `~/.local/share/rtco/tracking.db`
+/// - macOS: `~/Library/Application Support/rtco/tracking.db`
+/// - Windows: `%APPDATA%\rtco\tracking.db`
 ///
 /// # Examples
 ///
@@ -1401,7 +1401,7 @@ fn categorize_command(rtco_cmd: &str) -> String {
 }
 
 fn get_db_path() -> Result<PathBuf> {
-    // Priority 1: Environment variable RTK_DB_PATH
+    // Priority 1: Environment variable RTCO_DB_PATH
     if let Ok(custom_path) = std::env::var("RTCO_DB_PATH") {
         return Ok(PathBuf::from(custom_path));
     }
@@ -1767,7 +1767,7 @@ mod tests {
         let _ = std::fs::remove_file(&db_path);
     }
 
-    // 7. get_db_path respects environment variable RTK_DB_PATH
+    // 7. get_db_path respects environment variable RTCO_DB_PATH
     // 8. get_db_path falls back to default when no custom config
     // Combined into one test to avoid env var race between parallel tests
     #[test]

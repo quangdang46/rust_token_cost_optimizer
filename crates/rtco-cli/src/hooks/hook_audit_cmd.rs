@@ -4,14 +4,14 @@ use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-/// Default log file location (aligned with hook's $HOME/.local/share/rtk/).
+/// Default log file location (aligned with hook's $HOME/.local/share/rtco/).
 fn default_log_path() -> PathBuf {
     if let Ok(dir) = std::env::var("RTCO_AUDIT_DIR") {
         PathBuf::from(dir).join("hook-audit.log")
     } else {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
         PathBuf::from(home)
-            .join(".local/share/rtk")
+            .join(".local/share/rtco")
             .join("hook-audit.log")
     }
 }
@@ -242,15 +242,15 @@ mod tests {
 
     #[test]
     fn test_token_savings() {
-        // Simulate what rtk hook-audit would output vs raw log dump
-        let raw_log = r#"2026-02-16T14:30:01Z | rewrite | git status | rtk git status
+        // Simulate what rtco hook-audit would output vs raw log dump
+        let raw_log = r#"2026-02-16T14:30:01Z | rewrite | git status | rtco git status
 2026-02-16T14:30:02Z | skip:no_match | echo hello | -
-2026-02-16T14:30:03Z | rewrite | cargo test | rtk cargo test
-2026-02-16T14:30:04Z | skip:already_rtco | rtk git log | -
-2026-02-16T14:30:05Z | rewrite | git log --oneline -10 | rtk git log --oneline -10
-2026-02-16T14:30:06Z | rewrite | gh pr view 42 | rtk gh pr view 42
+2026-02-16T14:30:03Z | rewrite | cargo test | rtco cargo test
+2026-02-16T14:30:04Z | skip:already_rtco | rtco git log | -
+2026-02-16T14:30:05Z | rewrite | git log --oneline -10 | rtco git log --oneline -10
+2026-02-16T14:30:06Z | rewrite | gh pr view 42 | rtco gh pr view 42
 2026-02-16T14:30:07Z | skip:no_match | mkdir -p foo | -
-2026-02-16T14:30:08Z | rewrite | cargo clippy --all-targets | rtk cargo clippy --all-targets"#;
+2026-02-16T14:30:08Z | rewrite | cargo clippy --all-targets | rtco cargo clippy --all-targets"#;
 
         let entries: Vec<AuditEntry> = raw_log.lines().filter_map(parse_line).collect();
         assert_eq!(entries.len(), 8);

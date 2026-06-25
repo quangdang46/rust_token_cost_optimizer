@@ -112,7 +112,7 @@ fn get_tee_dir(config: &Config) -> Option<PathBuf> {
         return Some(dir.clone());
     }
 
-    // Default: ~/.local/share/rtk/tee/
+    // Default: ~/.local/share/rtco/tee/
     dirs::data_local_dir().map(|d| d.join(RTCO_DATA_DIR).join("tee"))
 }
 

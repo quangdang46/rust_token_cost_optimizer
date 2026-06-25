@@ -11,7 +11,7 @@ else
   exit 1
 fi
 BENCH_DIR="$(pwd)/scripts/benchmark"
-RTK_ROOT="$(pwd)"
+RTCO_ROOT="$(pwd)"
 
 if [ -z "$CI" ]; then
   rm -rf "$BENCH_DIR"
@@ -29,7 +29,7 @@ count_tokens() {
 }
 
 TOTAL_UNIX=0
-TOTAL_RTK=0
+TOTAL_RTCO=0
 TOTAL_TESTS=0
 GOOD_TESTS=0
 FAIL_TESTS=0
@@ -39,39 +39,39 @@ NEGATIVE_TESTS=0
 bench() {
   local name="$1"
   local unix_cmd="$2"
-  local rtk_cmd="$3"
+  local rtco_cmd="$3"
 
   unix_out=$(eval "$unix_cmd" 2>/dev/null || true)
-  rtk_out=$(eval "$rtk_cmd" 2>/dev/null || true)
+  rtco_out=$(eval "$rtco_cmd" 2>/dev/null || true)
 
   unix_tokens=$(count_tokens "$unix_out")
-  rtk_tokens=$(count_tokens "$rtk_out")
+  rtco_tokens=$(count_tokens "$rtco_out")
 
   TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
   local icon=""
   local tag=""
 
-  if [ -z "$rtk_out" ] && [ -n "$unix_out" ]; then
+  if [ -z "$rtco_out" ] && [ -n "$unix_out" ]; then
     icon="❌"
     tag="FAIL"
     FAIL_TESTS=$((FAIL_TESTS + 1))
     TOTAL_UNIX=$((TOTAL_UNIX + unix_tokens))
-    TOTAL_RTK=$((TOTAL_RTK + unix_tokens))
-  elif [ "$rtk_tokens" -gt "$unix_tokens" ] && [ "$unix_tokens" -gt 0 ]; then
+    TOTAL_RTCO=$((TOTAL_RTCO + unix_tokens))
+  elif [ "$rtco_tokens" -gt "$unix_tokens" ] && [ "$unix_tokens" -gt 0 ]; then
     icon="🔴"
     tag="NEG"
     NEGATIVE_TESTS=$((NEGATIVE_TESTS + 1))
     TOTAL_UNIX=$((TOTAL_UNIX + unix_tokens))
-    TOTAL_RTK=$((TOTAL_RTK + rtk_tokens))
-  elif [ "$unix_tokens" -gt 0 ] && [ "$rtk_tokens" -eq "$unix_tokens" ]; then
+    TOTAL_RTCO=$((TOTAL_RTCO + rtco_tokens))
+  elif [ "$unix_tokens" -gt 0 ] && [ "$rtco_tokens" -eq "$unix_tokens" ]; then
     icon="⚠️"
     tag="WARN"
     WARN_TESTS=$((WARN_TESTS + 1))
     TOTAL_UNIX=$((TOTAL_UNIX + unix_tokens))
-    TOTAL_RTK=$((TOTAL_RTK + rtk_tokens))
+    TOTAL_RTCO=$((TOTAL_RTCO + rtco_tokens))
   elif [ "$unix_tokens" -gt 0 ]; then
-    local savings=$(( (unix_tokens - rtk_tokens) * 100 / unix_tokens ))
+    local savings=$(( (unix_tokens - rtco_tokens) * 100 / unix_tokens ))
     if [ "$savings" -lt 60 ]; then
       icon="⚠️"
       tag="WARN"
@@ -82,7 +82,7 @@ bench() {
       GOOD_TESTS=$((GOOD_TESTS + 1))
     fi
     TOTAL_UNIX=$((TOTAL_UNIX + unix_tokens))
-    TOTAL_RTK=$((TOTAL_RTK + rtk_tokens))
+    TOTAL_RTCO=$((TOTAL_RTCO + rtco_tokens))
   else
     icon="⏭️"
     tag="SKIP"
@@ -91,15 +91,15 @@ bench() {
 
   if [ "$tag" = "FAIL" ]; then
     printf "%s %-24s │ %-40s │ %-40s │ %6d → %6s (--)\n" \
-      "$icon" "$name" "$unix_cmd" "$rtk_cmd" "$unix_tokens" "-"
+      "$icon" "$name" "$unix_cmd" "$rtco_cmd" "$unix_tokens" "-"
   else
     if [ "$unix_tokens" -gt 0 ]; then
-      local pct=$(( (unix_tokens - rtk_tokens) * 100 / unix_tokens ))
+      local pct=$(( (unix_tokens - rtco_tokens) * 100 / unix_tokens ))
     else
       local pct=0
     fi
     printf "%s %-24s │ %-40s │ %-40s │ %6d → %6d (%+d%%)\n" \
-      "$icon" "$name" "$unix_cmd" "$rtk_cmd" "$unix_tokens" "$rtk_tokens" "$pct"
+      "$icon" "$name" "$unix_cmd" "$rtco_cmd" "$unix_tokens" "$rtco_tokens" "$pct"
   fi
 
   if [ -z "$CI" ]; then
@@ -116,7 +116,7 @@ bench() {
       "$name" "$ts" "$unix_cmd" "$unix_out" > "$BENCH_DIR/unix/${filename}.md"
 
     printf "# %s\n> %s\n\n\`\`\`bash\n$ %s\n\`\`\`\n\n\`\`\`\n%s\n\`\`\`\n" \
-      "$name" "$ts" "$rtk_cmd" "$rtk_out" > "$BENCH_DIR/rtco/${filename}.md"
+      "$name" "$ts" "$rtco_cmd" "$rtco_out" > "$BENCH_DIR/rtco/${filename}.md"
 
     {
       echo "# Diff: $name"
@@ -124,7 +124,7 @@ bench() {
       echo ""
       echo "| Metric | Unix | RTCO |"
       echo "|--------|------|-----|"
-      echo "| Tokens | $unix_tokens | $rtk_tokens |"
+      echo "| Tokens | $unix_tokens | $rtco_tokens |"
       echo ""
       echo "## Unix"
       echo "\`\`\`"
@@ -133,7 +133,7 @@ bench() {
       echo ""
       echo "## RTCO"
       echo "\`\`\`"
-      echo "$rtk_out"
+      echo "$rtco_out"
       echo "\`\`\`"
     } > "$BENCH_DIR/diff/${prefix}-${filename}.md"
   fi
@@ -216,7 +216,7 @@ bench "grep -c" "grep -ron 'fn ' src/ || true" "$RTCO grep 'fn ' src/ -c"
 # json
 # ===================
 section "json"
-cat > /tmp/rtk_bench.json << 'JSONEOF'
+cat > /tmp/rtco_bench.json << 'JSONEOF'
 {
   "name": "rtco",
   "version": "0.2.1",
@@ -232,9 +232,9 @@ cat > /tmp/rtk_bench.json << 'JSONEOF'
   }
 }
 JSONEOF
-bench "json" "cat /tmp/rtk_bench.json" "$RTCO json /tmp/rtk_bench.json"
-bench "json -d 2" "cat /tmp/rtk_bench.json" "$RTCO json /tmp/rtk_bench.json -d 2"
-rm -f /tmp/rtk_bench.json
+bench "json" "cat /tmp/rtco_bench.json" "$RTCO json /tmp/rtco_bench.json"
+bench "json -d 2" "cat /tmp/rtco_bench.json" "$RTCO json /tmp/rtco_bench.json -d 2"
+rm -f /tmp/rtco_bench.json
 
 # ===================
 # deps
@@ -274,7 +274,7 @@ fi
 # log
 # ===================
 section "log"
-LOG_FILE="/tmp/rtk_bench_sample.log"
+LOG_FILE="/tmp/rtco_bench_sample.log"
 cat > "$LOG_FILE" << 'LOGEOF'
 2024-01-15 10:00:01 INFO  Application started
 2024-01-15 10:00:02 INFO  Loading configuration
@@ -507,7 +507,7 @@ PYEOF
     bench "mypy" "mypy sample.py 2>&1 || true" "$RTCO mypy sample.py"
   fi
 
-  cd "$RTK_ROOT"
+  cd "$RTCO_ROOT"
   rm -rf "$PYTHON_FIXTURE"
 fi
 
@@ -570,7 +570,7 @@ GOEOF
   bench "go build" "go build ./... 2>&1 || true" "$RTCO go build ./..."
   bench "go vet" "go vet ./... 2>&1 || true" "$RTCO go vet ./..."
 
-  cd "$RTK_ROOT"
+  cd "$RTCO_ROOT"
   rm -rf "$GO_FIXTURE"
 fi
 
@@ -653,7 +653,7 @@ echo "════════════════════════�
 if [ "$TOTAL_TESTS" -gt 0 ]; then
   GOOD_PCT=$((GOOD_TESTS * 100 / TOTAL_TESTS))
   if [ "$TOTAL_UNIX" -gt 0 ]; then
-    TOTAL_SAVED=$((TOTAL_UNIX - TOTAL_RTK))
+    TOTAL_SAVED=$((TOTAL_UNIX - TOTAL_RTCO))
     TOTAL_SAVE_PCT=$((TOTAL_SAVED * 100 / TOTAL_UNIX))
   else
     TOTAL_SAVED=0
@@ -662,7 +662,7 @@ if [ "$TOTAL_TESTS" -gt 0 ]; then
 
   echo ""
   echo "  ✅ $GOOD_TESTS good  ⚠️ $WARN_TESTS warn  🔴 $NEGATIVE_TESTS negative  ❌ $FAIL_TESTS fail    $GOOD_TESTS/$TOTAL_TESTS ($GOOD_PCT%)"
-  echo "  Tokens: $TOTAL_UNIX → $TOTAL_RTK  (-$TOTAL_SAVE_PCT%)"
+  echo "  Tokens: $TOTAL_UNIX → $TOTAL_RTCO  (-$TOTAL_SAVE_PCT%)"
   echo ""
 
   if [ -z "$CI" ]; then

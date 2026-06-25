@@ -68,7 +68,7 @@ shift
 ARGS="$@"
 
 # List of supported RTCO commands (from src/main.rs)
-RTK_COMMANDS=(
+RTCO_COMMANDS=(
     "git"
     "grep"
     "ls"
@@ -103,7 +103,7 @@ RTK_COMMANDS=(
 )
 
 # Check if command in supported list
-if [[ " ${RTK_COMMANDS[@]} " =~ " ${COMMAND} " ]]; then
+if [[ " ${RTCO_COMMANDS[@]} " =~ " ${COMMAND} " ]]; then
     echo "✅ RTCO filter available: $COMMAND $ARGS → rtco $COMMAND $ARGS"
     echo ""
 
@@ -162,8 +162,8 @@ if ! command -v rtco >/dev/null 2>&1; then
 fi
 
 # Check RTCO version
-RTK_VERSION=$(rtco --version 2>/dev/null | awk '{print $2}')
-echo "RTCO Version: $RTK_VERSION"
+RTCO_VERSION=$(rtco --version 2>/dev/null | awk '{print $2}')
+echo "RTCO Version: $RTCO_VERSION"
 echo ""
 
 # Check if command has filter

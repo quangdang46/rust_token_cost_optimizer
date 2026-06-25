@@ -130,11 +130,11 @@ Glob pattern="tests/fixtures/*.txt"
 
 1. `src/core/tracking.rs` → `track_command()` function
 2. `src/core/config.rs` → `tracking.database_path` field
-3. `RTK_DB_PATH` env var overrides config
+3. `RTCO_DB_PATH` env var overrides config
 
 ### Configuration issues
 
-1. `src/core/config.rs` → `RtkConfig` struct
+1. `src/core/config.rs` → `Config` struct
 2. `src/hooks/init.rs` → `rtco init` command
 3. Config file: `~/.config/rtco/config.toml`
 4. Filter files: `~/.config/rtco/filters/` (global) or `.rtco/filters/` (project)

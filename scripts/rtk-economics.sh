@@ -41,7 +41,7 @@ fi
 
 # Fetch rtco data
 echo -e "${YELLOW}Fetching token savings data from rtco...${NC}"
-if ! rtk_json=$(rtco gain --monthly --format json 2>/dev/null); then
+if ! rtco_json=$(rtco gain --monthly --format json 2>/dev/null); then
     echo -e "${RED}Failed to fetch rtco data${NC}"
     exit 1
 fi
@@ -55,30 +55,30 @@ ccusage_output=$(echo "$ccusage_json" | jq -r ".monthly[] | select(.month == \"$
 ccusage_total=$(echo "$ccusage_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .totalTokens // 0")
 
 # Parse rtco data for current month
-rtk_saved=$(echo "$rtk_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .saved_tokens // 0")
-rtk_commands=$(echo "$rtk_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .commands // 0")
-rtk_input=$(echo "$rtk_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .input_tokens // 0")
-rtk_output=$(echo "$rtk_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .output_tokens // 0")
-rtk_pct=$(echo "$rtk_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .savings_pct // 0")
+rtco_saved=$(echo "$rtco_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .saved_tokens // 0")
+rtco_commands=$(echo "$rtco_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .commands // 0")
+rtco_input=$(echo "$rtco_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .input_tokens // 0")
+rtco_output=$(echo "$rtco_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .output_tokens // 0")
+rtco_pct=$(echo "$rtco_json" | jq -r ".monthly[] | select(.month == \"$CURRENT_MONTH\") | .savings_pct // 0")
 
 # Estimate cost avoided (rough: $0.0001/token for mixed usage)
 # More accurate would be to use ccusage's model-specific pricing
-saved_cost=$(echo "scale=2; $rtk_saved * 0.0001" | bc 2>/dev/null || echo "0")
+saved_cost=$(echo "scale=2; $rtco_saved * 0.0001" | bc 2>/dev/null || echo "0")
 
 # Calculate total without rtco
-total_without_rtk=$(echo "scale=2; $ccusage_cost + $saved_cost" | bc 2>/dev/null || echo "$ccusage_cost")
+total_without_rtco=$(echo "scale=2; $ccusage_cost + $saved_cost" | bc 2>/dev/null || echo "$ccusage_cost")
 
 # Calculate savings percentage
-if (( $(echo "$total_without_rtk > 0" | bc -l) )); then
-    savings_pct=$(echo "scale=1; ($saved_cost / $total_without_rtk) * 100" | bc 2>/dev/null || echo "0")
+if (( $(echo "$total_without_rtco > 0" | bc -l) )); then
+    savings_pct=$(echo "scale=1; ($saved_cost / $total_without_rtco) * 100" | bc 2>/dev/null || echo "0")
 else
     savings_pct="0"
 fi
 
 # Calculate cost per command
-if [ "$rtk_commands" -gt 0 ]; then
-    cost_per_cmd_with=$(echo "scale=2; $ccusage_cost / $rtk_commands" | bc 2>/dev/null || echo "0")
-    cost_per_cmd_without=$(echo "scale=2; $total_without_rtk / $rtk_commands" | bc 2>/dev/null || echo "0")
+if [ "$rtco_commands" -gt 0 ]; then
+    cost_per_cmd_with=$(echo "scale=2; $ccusage_cost / $rtco_commands" | bc 2>/dev/null || echo "0")
+    cost_per_cmd_without=$(echo "scale=2; $total_without_rtco / $rtco_commands" | bc 2>/dev/null || echo "0")
 else
     cost_per_cmd_with="N/A"
     cost_per_cmd_without="N/A"
@@ -106,25 +106,25 @@ ${BLUE}Tokens Consumed (via Claude API):${NC}
   ${RED}Actual cost:         \$$ccusage_cost${NC}
 
 ${BLUE}Tokens Saved by rtco:${NC}
-  Commands executed:   $rtk_commands
-  Input avoided:       $(format_number $rtk_input) tokens
-  Output generated:    $(format_number $rtk_output) tokens
-  Total saved:         $(format_number $rtk_saved) tokens (${rtk_pct}% reduction)
+  Commands executed:   $rtco_commands
+  Input avoided:       $(format_number $rtco_input) tokens
+  Output generated:    $(format_number $rtco_output) tokens
+  Total saved:         $(format_number $rtco_saved) tokens (${rtco_pct}% reduction)
   ${GREEN}Cost avoided:        ~\$$saved_cost${NC}
 
 ${BLUE}Economic Analysis:${NC}
-  Cost without rtco:    \$$total_without_rtk (estimated)
+  Cost without rtco:    \$$total_without_rtco (estimated)
   Cost with rtco:       \$$ccusage_cost (actual)
   ${GREEN}Net savings:         \$$saved_cost ($savings_pct%)${NC}
   ROI:                 ${GREEN}Infinite${NC} (rtco is free)
 
 ${BLUE}Efficiency Metrics:${NC}
   Cost per command:    \$$cost_per_cmd_without → \$$cost_per_cmd_with
-  Tokens per command:  $(echo "scale=0; $rtk_input / $rtk_commands" | bc 2>/dev/null || echo "N/A") → $(echo "scale=0; $rtk_output / $rtk_commands" | bc 2>/dev/null || echo "N/A")
+  Tokens per command:  $(echo "scale=0; $rtco_input / $rtco_commands" | bc 2>/dev/null || echo "N/A") → $(echo "scale=0; $rtco_output / $rtco_commands" | bc 2>/dev/null || echo "N/A")
 
 ${BLUE}12-Month Projection:${NC}
   Annual savings:      ~\$$(echo "scale=2; $saved_cost * 12" | bc 2>/dev/null || echo "0")
-  Commands needed:     $(echo "$rtk_commands * 12" | bc 2>/dev/null || echo "0") (at current rate)
+  Commands needed:     $(echo "$rtco_commands * 12" | bc 2>/dev/null || echo "0") (at current rate)
 
 ════════════════════════════════════════════════════════════════
 

@@ -1,4 +1,4 @@
-//! Detects whether RTK hooks are installed and warns if they are outdated.
+//! Detects whether RTCO hooks are installed and warns if they are outdated.
 
 use super::constants::{
     CLAUDE_DIR, CLAUDE_HOOK_COMMAND, HOOKS_SUBDIR, PRE_TOOL_USE_KEY, REWRITE_HOOK_FILE,
@@ -10,7 +10,7 @@ use std::path::PathBuf;
 const CURRENT_HOOK_VERSION: u8 = 3;
 const WARN_INTERVAL_SECS: u64 = 24 * 3600;
 
-/// Hook status for diagnostics and `rtk gain`.
+/// Hook status for diagnostics and `rtco gain`.
 #[derive(Debug, PartialEq, Clone)]
 pub enum HookStatus {
     /// Hook is installed and up to date.
@@ -124,7 +124,7 @@ fn check_and_warn() -> Option<()> {
 pub fn parse_hook_version(content: &str) -> u8 {
     // Version tag must be in the first 5 lines (shebang + header convention)
     for line in content.lines().take(5) {
-        if let Some(rest) = line.strip_prefix("# rtk-hook-version:") {
+        if let Some(rest) = line.strip_prefix("# rtco-hook-version:") {
             if let Ok(v) = rest.trim().parse::<u8>() {
                 return v;
             }
@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn test_parse_hook_version_present() {
-        let content = "#!/usr/bin/env bash\n# rtk-hook-version: 2\n# some comment\n";
+        let content = "#!/usr/bin/env bash\n# rtco-hook-version: 2\n# some comment\n";
         assert_eq!(parse_hook_version(content), 2);
     }
 
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_parse_hook_version_future() {
-        let content = "#!/usr/bin/env bash\n# rtk-hook-version: 5\n";
+        let content = "#!/usr/bin/env bash\n# rtco-hook-version: 5\n";
         assert_eq!(parse_hook_version(content), 5);
     }
 

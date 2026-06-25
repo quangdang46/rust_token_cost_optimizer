@@ -1,4 +1,4 @@
-//! Translates a raw shell command into its RTK-optimized equivalent.
+//! Translates a raw shell command into its RTCO-optimized equivalent.
 
 use super::permissions::{check_command, PermissionVerdict};
 use crate::discover::registry;
@@ -12,7 +12,7 @@ use std::io::Write;
 /// | Exit | Stdout   | Meaning                                                      |
 /// |------|----------|--------------------------------------------------------------|
 /// | 0    | rewritten| Rewrite allowed — hook may auto-allow the rewritten command. |
-/// | 1    | (none)   | No RTK equivalent — hook passes through unchanged.           |
+/// | 1    | (none)   | No RTCO equivalent — hook passes through unchanged.           |
 /// | 2    | (none)   | Deny rule matched — hook defers to Claude Code native deny.  |
 /// | 3    | rewritten| Ask rule matched — hook rewrites but lets Claude Code prompt.|
 pub fn run(cmd: &str) -> anyhow::Result<()> {
@@ -83,7 +83,7 @@ mod tests {
     }
 
     #[test]
-    fn test_run_already_rtk_returns_some() {
+    fn test_run_already_rtco_returns_some() {
         assert_eq!(
             rewrite_command_no_prefixes("rtco git status"),
             Some("rtco git status".into())
@@ -92,9 +92,9 @@ mod tests {
 
     /// SECURITY: Verify the exit code protocol for permission verdicts.
     ///
-    /// The bash hook (.claude/hooks/rtk-rewrite.sh) interprets exit codes as:
+    /// The bash hook (.claude/hooks/rtco-rewrite.sh) interprets exit codes as:
     ///   0 → auto-allow (sets permissionDecision: "allow")
-    ///   1 → passthrough (no RTK equivalent)
+    ///   1 → passthrough (no RTCO equivalent)
     ///   2 → deny (let Claude Code handle natively)
     ///   3 → ask (rewrite but omit permissionDecision, forcing user prompt)
     ///
@@ -160,7 +160,7 @@ mod tests {
         fn test_no_auto_allow_bypass_for_unrecognized_commands() {
             // SECURITY: A command with no permission rules and no matching allow rule
             // must NOT be auto-allowed. This is the core of issue #1155.
-            // Even though `git status` can be rewritten to `rtk git status`,
+            // Even though `git status` can be rewritten to `rtco git status`,
             // the absence of an allow rule means Default → exit 3 → ask.
             let verdict = check_command_with_rules("git status", &[], &[], &[]);
             assert_eq!(verdict, PermissionVerdict::Default);

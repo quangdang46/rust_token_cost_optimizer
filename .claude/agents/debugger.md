@@ -20,7 +20,7 @@ When invoked to debug RTCO issues, follow this systematic approach:
 **For filter parsing errors**:
 ```bash
 # Capture full error output
-rtco <cmd> 2>&1 | tee /tmp/rtk_error.log
+rtco <cmd> 2>&1 | tee /tmp/rtco_error.log
 
 # Show filter source
 cat src/<cmd>_cmd.rs
@@ -236,7 +236,7 @@ rtco git log -20 > /tmp/git_log_filtered.txt
 diff /tmp/git_log_raw.txt /tmp/git_log_filtered.txt
 
 # 4. Identify problematic lines
-grep -n "error\|panic\|failed" /tmp/rtk_error.log
+grep -n "error\|panic\|failed" /tmp/rtco_error.log
 ```
 
 **Add debug logging**:

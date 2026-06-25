@@ -284,15 +284,15 @@ if ! command -v rtco >/dev/null 2>&1; then
 fi
 
 # 3. Use absolute path (prevent PATH hijacking)
-RTK_BIN=$(which rtco)
+RTCO_BIN=$(which rtco)
 
 # 4. Validate RTCO version (prevent downgrade attacks)
-if ! "$RTK_BIN" --version | grep -q "rtco 0.16"; then
+if ! "$RTCO_BIN" --version | grep -q "rtco 0.16"; then
     echo "Warning: RTCO version mismatch"
 fi
 
 # 5. Execute with explicit path
-"$RTK_BIN" "$@"
+"$RTCO_BIN" "$@"
 ```
 
 ### Malicious Output (🟡 Medium)

@@ -94,7 +94,7 @@ export async function vmWaitReady(maxWaitSec = 2400): Promise<boolean> {
 }
 
 /** Transfer RTCO source and build in release mode */
-export async function vmBuildRtk(projectRoot: string): Promise<{
+export async function vmBuildRtco(projectRoot: string): Promise<{
   buildTime: number;
   binarySize: number;
   version: string;
@@ -178,4 +178,4 @@ export async function vmEnsureReady(): Promise<void> {
   }
 }
 
-export const RTK_BIN = "/home/ubuntu/rtco/target/release/rtco";
+export const RTCO_BIN = "/home/ubuntu/rtco/target/release/rtco";

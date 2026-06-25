@@ -134,7 +134,7 @@ rtco telemetry forget     # Withdraw consent + delete local data + request serve
 
 Environment variable override (blocks telemetry regardless of consent):
 ```bash
-export RTK_TELEMETRY_DISABLED=1
+export RTCO_TELEMETRY_DISABLED=1
 ```
 
 ## Retention Policy
@@ -152,7 +152,7 @@ Under the EU General Data Protection Regulation, you have the right to:
 - **Erasure** (Art. 17): run `rtco telemetry forget` to delete local data and send an erasure request to the server. Alternatively, email contact@rtco-ai.app with your device hash.
 - **Restriction of processing**: `rtco telemetry disable` stops all data collection immediately.
 - **Portability**: the local SQLite database at `~/.local/share/rtco/history.db` contains all locally stored data.
-- **Objection**: `rtco telemetry disable` or `export RTK_TELEMETRY_DISABLED=1`.
+- **Objection**: `rtco telemetry disable` or `export RTCO_TELEMETRY_DISABLED=1`.
 
 ## Erasure Procedure
 

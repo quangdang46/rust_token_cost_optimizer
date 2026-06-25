@@ -1505,8 +1505,8 @@ mod tests {
 
 Added smart markdown filtering for gh issue/pr view commands.
 
-[![CI](https://img.shields.io/github/actions/workflow/status/rtk-ai/rtk/ci.yml)](https://github.com/rtk-ai/rtk/actions)
-[![Coverage](https://img.shields.io/codecov/c/github/rtk-ai/rtk)](https://codecov.io/gh/rtk-ai/rtk)
+[![CI](https://img.shields.io/github/actions/workflow/status/rtco-ai/rtco/ci.yml)](https://github.com/rtco-ai/rtco/actions)
+[![Coverage](https://img.shields.io/codecov/c/github/rtco-ai/rtco)](https://codecov.io/gh/rtco-ai/rtco)
 
 ![screenshot](https://user-images.githubusercontent.com/123/screenshot.png)
 

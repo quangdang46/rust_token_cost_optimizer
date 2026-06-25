@@ -32,9 +32,9 @@ TimedExecution::start()
   ↓
 [command runs]
   ↓
-TimedExecution::track(original_cmd, rtk_cmd, input, output)
+TimedExecution::track(original_cmd, rtco_cmd, input, output)
   ↓
-Tracker::record(original_cmd, rtk_cmd, input_tokens, output_tokens, exec_time_ms)
+Tracker::record(original_cmd, rtco_cmd, input_tokens, output_tokens, exec_time_ms)
   ↓
 SQLite database (~/.local/share/rtco/tracking.db)
   ↓
@@ -74,7 +74,7 @@ impl Tracker {
     pub fn record(
         &self,
         original_cmd: &str,      // Standard command (e.g., "ls -la")
-        rtk_cmd: &str,            // RTCO command (e.g., "rtco ls")
+        rtco_cmd: &str,            // RTCO command (e.g., "rtco ls")
         input_tokens: usize,      // Estimated input tokens
         output_tokens: usize,     // Actual output tokens
         exec_time_ms: u64,        // Execution time in milliseconds
@@ -177,7 +177,7 @@ Individual command record from history.
 ```rust
 pub struct CommandRecord {
     pub timestamp: DateTime<Utc>, // UTC timestamp
-    pub rtk_cmd: String,           // RTCO command used
+    pub rtco_cmd: String,           // RTCO command used
     pub saved_tokens: usize,       // Tokens saved
     pub savings_pct: f64,          // Savings percentage
 }

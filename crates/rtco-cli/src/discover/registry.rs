@@ -896,7 +896,7 @@ fn is_supported_simple_find(cmd_part: &str) -> bool {
     //   glob → Shape B (RTCO alias `find PATTERN [PATH] [-m N] [-t f|d]`)
     //   else → Shape A (native simple `find [PATH] (FLAG VALUE)+`)
     if contains_glob_metachar(&args[0]) {
-        is_supported_rtk_alias(&args)
+        is_supported_rtco_alias(&args)
     } else {
         is_supported_native_simple(&args)
     }
@@ -986,7 +986,7 @@ fn is_supported_native_simple(args: &[String]) -> bool {
     seen_selector
 }
 
-fn is_supported_rtk_alias(args: &[String]) -> bool {
+fn is_supported_rtco_alias(args: &[String]) -> bool {
     use std::path::Path;
 
     // args[0] is a glob pattern (checked by caller).
@@ -1773,15 +1773,15 @@ mod tests {
         if !rtco_bin.exists() {
             return;
         }
-        let rtk_mtime = std::fs::metadata(&rtco_bin)
+        let rtco_mtime = std::fs::metadata(&rtco_bin)
             .ok()
             .and_then(|m| m.modified().ok());
         let test_mtime = std::env::current_exe()
             .ok()
             .and_then(|p| std::fs::metadata(p).ok())
             .and_then(|m| m.modified().ok());
-        if let (Some(rtk_t), Some(test_t)) = (rtk_mtime, test_mtime) {
-            if rtk_t < test_t {
+        if let (Some(rtco_t), Some(test_t)) = (rtco_mtime, test_mtime) {
+            if rtco_t < test_t {
                 return;
             }
         }
@@ -3406,7 +3406,7 @@ mod tests {
     }
 
     #[test]
-    fn rewrite_find_keeps_rtk_alias_glob_path_max() {
+    fn rewrite_find_keeps_max_flag() {
         assert_eq!(
             rewrite_command_no_prefixes("find '*.rs' src -m 5", &[]),
             Some("rtco find '*.rs' src -m 5".into())

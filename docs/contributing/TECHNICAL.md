@@ -177,7 +177,7 @@ rewrite_segment(seg, excluded)                     [src/discover/registry.rs]
   |  c. Guard: RTK_DISABLED=1 in prefix → None
   |  d. Guard: gh with --json/--jq/--template → None
   |  e. Apply rule's rewrite_prefixes: "cargo fmt" → "rtco cargo fmt"
-  |  f. Reassemble: env_prefix + rtk_cmd + args + redirect_suffix
+  |  f. Reassemble: env_prefix + rtco_cmd + args + redirect_suffix
   |
   v
 classify_command(cmd)                              [src/discover/registry.rs]
@@ -189,7 +189,7 @@ classify_command(cmd)                              [src/discover/registry.rs]
   |  6. Guard: cat/head/tail with redirect (>, >>) → Unsupported (write, not read)
   |  7. Match against REGEX_SET (60+ compiled patterns from rules.rs)
   |  8. Extract subcommand → lookup custom savings/status overrides
-  |  9. Return Classification::Supported { rtk_equivalent, category, savings, status }
+  |  9. Return Classification::Supported { rtco_equivalent, category, savings, status }
   |
   v
 Result: "rtco cargo fmt --all && rtco cargo test 2>&1 | tail -20"

@@ -1278,10 +1278,10 @@ mod tests {
 
     #[test]
     fn test_restore_double_dash_with_separator() {
-        // rtk cargo test -- --nocapture → clap gives ["--nocapture"]
+        // rtco cargo test -- --nocapture → clap gives ["--nocapture"]
         let args: Vec<String> = vec!["--nocapture".into()];
         let raw = vec![
-            "rtk".into(),
+            "rtco".into(),
             "cargo".into(),
             "test".into(),
             "--".into(),
@@ -1293,10 +1293,10 @@ mod tests {
 
     #[test]
     fn test_restore_double_dash_with_test_name() {
-        // rtk cargo test my_test -- --nocapture → clap gives ["my_test", "--nocapture"]
+        // rtco cargo test my_test -- --nocapture → clap gives ["my_test", "--nocapture"]
         let args: Vec<String> = vec!["my_test".into(), "--nocapture".into()];
         let raw = vec![
-            "rtk".into(),
+            "rtco".into(),
             "cargo".into(),
             "test".into(),
             "my_test".into(),
@@ -1309,10 +1309,10 @@ mod tests {
 
     #[test]
     fn test_restore_double_dash_without_separator() {
-        // rtk cargo test my_test → no --, args unchanged
+        // rtco cargo test my_test → no --, args unchanged
         let args: Vec<String> = vec!["my_test".into()];
         let raw = vec![
-            "rtk".into(),
+            "rtco".into(),
             "cargo".into(),
             "test".into(),
             "my_test".into(),
@@ -1324,17 +1324,17 @@ mod tests {
     #[test]
     fn test_restore_double_dash_empty_args() {
         let args: Vec<String> = vec![];
-        let raw = vec!["rtk".into(), "cargo".into(), "test".into()];
+        let raw = vec!["rtco".into(), "cargo".into(), "test".into()];
         let result = restore_double_dash_with_raw(&args, &raw);
         assert!(result.is_empty());
     }
 
     #[test]
     fn test_restore_double_dash_clippy() {
-        // rtk cargo clippy -- -D warnings → clap gives ["-D", "warnings"]
+        // rtco cargo clippy -- -D warnings → clap gives ["-D", "warnings"]
         let args: Vec<String> = vec!["-D".into(), "warnings".into()];
         let raw = vec![
-            "rtk".into(),
+            "rtco".into(),
             "cargo".into(),
             "clippy".into(),
             "--".into(),
@@ -1347,7 +1347,7 @@ mod tests {
 
     #[test]
     fn test_restore_double_dash_clippy_with_package_flags() {
-        // rtk cargo clippy -p my-service -p my-crate -- -D warnings
+        // rtco cargo clippy -p my-service -p my-crate -- -D warnings
         // Clap with trailing_var_arg preserves "--" when args precede it
         // → clap gives ["-p", "my-service", "-p", "my-crate", "--", "-D", "warnings"]
         let args: Vec<String> = vec![
@@ -1360,7 +1360,7 @@ mod tests {
             "warnings".into(),
         ];
         let raw = vec![
-            "rtk".into(),
+            "rtco".into(),
             "cargo".into(),
             "clippy".into(),
             "-p".into(),

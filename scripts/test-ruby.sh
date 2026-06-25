@@ -147,8 +147,8 @@ cd "$TMPDIR"
 
 # 1. Create minimal Rails app
 printf "  → rails new (--minimal --skip-git --skip-docker) ...\n"
-rails new rtk_smoke_app --minimal --skip-git --skip-docker --quiet 2>&1 | tail -1 || true
-cd rtk_smoke_app
+rails new rtco_smoke_app --minimal --skip-git --skip-docker --quiet 2>&1 | tail -1 || true
+cd rtco_smoke_app
 
 # 2. Add rspec-rails and rubocop to Gemfile
 cat >> Gemfile <<'GEMFILE'
@@ -390,50 +390,50 @@ section "Token savings"
 
 # rspec (passing spec)
 raw_len=$( (bundle exec rspec spec/models/post_spec.rb 2>&1 || true) | wc -c | tr -d ' ')
-rtk_len=$( (rtco rspec spec/models/post_spec.rb 2>&1 || true) | wc -c | tr -d ' ')
-if [[ "$rtk_len" -lt "$raw_len" ]]; then
+rtco_len=$( (rtco rspec spec/models/post_spec.rb 2>&1 || true) | wc -c | tr -d ' ')
+if [[ "$rtco_len" -lt "$raw_len" ]]; then
     PASS=$((PASS + 1))
-    printf "  ${GREEN}PASS${NC}  rspec: rtco (%s bytes) < raw (%s bytes)\n" "$rtk_len" "$raw_len"
+    printf "  ${GREEN}PASS${NC}  rspec: rtco (%s bytes) < raw (%s bytes)\n" "$rtco_len" "$raw_len"
 else
     FAIL=$((FAIL + 1))
     FAILURES+=("token savings: rspec")
-    printf "  ${RED}FAIL${NC}  rspec: rtco (%s bytes) >= raw (%s bytes)\n" "$rtk_len" "$raw_len"
+    printf "  ${RED}FAIL${NC}  rspec: rtco (%s bytes) >= raw (%s bytes)\n" "$rtco_len" "$raw_len"
 fi
 
 # rubocop (exits non-zero on offenses, so || true)
 raw_len=$( (bundle exec rubocop app/ 2>&1 || true) | wc -c | tr -d ' ')
-rtk_len=$( (rtco rubocop app/ 2>&1 || true) | wc -c | tr -d ' ')
-if [[ "$rtk_len" -lt "$raw_len" ]]; then
+rtco_len=$( (rtco rubocop app/ 2>&1 || true) | wc -c | tr -d ' ')
+if [[ "$rtco_len" -lt "$raw_len" ]]; then
     PASS=$((PASS + 1))
-    printf "  ${GREEN}PASS${NC}  rubocop: rtco (%s bytes) < raw (%s bytes)\n" "$rtk_len" "$raw_len"
+    printf "  ${GREEN}PASS${NC}  rubocop: rtco (%s bytes) < raw (%s bytes)\n" "$rtco_len" "$raw_len"
 else
     FAIL=$((FAIL + 1))
     FAILURES+=("token savings: rubocop")
-    printf "  ${RED}FAIL${NC}  rubocop: rtco (%s bytes) >= raw (%s bytes)\n" "$rtk_len" "$raw_len"
+    printf "  ${RED}FAIL${NC}  rubocop: rtco (%s bytes) >= raw (%s bytes)\n" "$rtco_len" "$raw_len"
 fi
 
 # rake test (passing file)
 raw_len=$( (bundle exec rake test TEST=test/models/post_pass_test.rb 2>&1 || true) | wc -c | tr -d ' ')
-rtk_len=$( (rtco rake test test/models/post_pass_test.rb 2>&1 || true) | wc -c | tr -d ' ')
-if [[ "$rtk_len" -lt "$raw_len" ]]; then
+rtco_len=$( (rtco rake test test/models/post_pass_test.rb 2>&1 || true) | wc -c | tr -d ' ')
+if [[ "$rtco_len" -lt "$raw_len" ]]; then
     PASS=$((PASS + 1))
-    printf "  ${GREEN}PASS${NC}  rake test: rtco (%s bytes) < raw (%s bytes)\n" "$rtk_len" "$raw_len"
+    printf "  ${GREEN}PASS${NC}  rake test: rtco (%s bytes) < raw (%s bytes)\n" "$rtco_len" "$raw_len"
 else
     FAIL=$((FAIL + 1))
     FAILURES+=("token savings: rake test")
-    printf "  ${RED}FAIL${NC}  rake test: rtco (%s bytes) >= raw (%s bytes)\n" "$rtk_len" "$raw_len"
+    printf "  ${RED}FAIL${NC}  rake test: rtco (%s bytes) >= raw (%s bytes)\n" "$rtco_len" "$raw_len"
 fi
 
 # bundle install (idempotent)
 raw_len=$( (bundle install 2>&1 || true) | wc -c | tr -d ' ')
-rtk_len=$( (rtco bundle install 2>&1 || true) | wc -c | tr -d ' ')
-if [[ "$rtk_len" -lt "$raw_len" ]]; then
+rtco_len=$( (rtco bundle install 2>&1 || true) | wc -c | tr -d ' ')
+if [[ "$rtco_len" -lt "$raw_len" ]]; then
     PASS=$((PASS + 1))
-    printf "  ${GREEN}PASS${NC}  bundle install: rtco (%s bytes) < raw (%s bytes)\n" "$rtk_len" "$raw_len"
+    printf "  ${GREEN}PASS${NC}  bundle install: rtco (%s bytes) < raw (%s bytes)\n" "$rtco_len" "$raw_len"
 else
     FAIL=$((FAIL + 1))
     FAILURES+=("token savings: bundle install")
-    printf "  ${RED}FAIL${NC}  bundle install: rtco (%s bytes) >= raw (%s bytes)\n" "$rtk_len" "$raw_len"
+    printf "  ${RED}FAIL${NC}  bundle install: rtco (%s bytes) >= raw (%s bytes)\n" "$rtco_len" "$raw_len"
 fi
 
 # ── 12. Verbose flag ─────────────────────────────────

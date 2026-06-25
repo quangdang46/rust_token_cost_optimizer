@@ -2,7 +2,7 @@
  * Test helpers for RTCO integration testing.
  */
 
-import { vmExec, RTK_BIN } from "./vm";
+import { vmExec, RTCO_BIN } from "./vm";
 
 export type TestStatus = "PASS" | "FAIL" | "SKIP";
 
@@ -93,14 +93,14 @@ export async function testCmd(
 export async function testSavings(
   name: string,
   rawCmd: string,
-  rtkCmd: string,
+  rtcoCmd: string,
   targetPct: number
 ): Promise<TestResult> {
   const raw = await vmExec(rawCmd);
-  const rtco = await vmExec(rtkCmd);
+  const rtco = await vmExec(rtcoCmd);
 
   const rawSize = raw.stdout.length;
-  const rtkSize = rtco.stdout.length;
+  const rtcoSize = rtco.stdout.length;
 
   if (rawSize === 0) {
     const result: TestResult = {
@@ -112,17 +112,17 @@ export async function testSavings(
     return result;
   }
 
-  const savings = Math.round(100 - (rtkSize * 100) / rawSize);
+  const savings = Math.round(100 - (rtcoSize * 100) / rawSize);
 
   let status: TestStatus;
   let detail: string;
 
   if (savings >= targetPct) {
     status = "PASS";
-    detail = `raw=${rawSize}b filtered=${rtkSize}b savings=${savings}% (target: >=${targetPct}%)`;
+    detail = `raw=${rawSize}b filtered=${rtcoSize}b savings=${savings}% (target: >=${targetPct}%)`;
   } else {
     status = "FAIL";
-    detail = `savings=${savings}% < target ${targetPct}% (raw=${rawSize}b filtered=${rtkSize}b)`;
+    detail = `savings=${savings}% < target ${targetPct}% (raw=${rawSize}b filtered=${rtcoSize}b)`;
   }
 
   const result: TestResult = { name, status, detail, savings };
@@ -138,7 +138,7 @@ export async function testRewrite(
   expected: string
 ): Promise<TestResult> {
   const escaped = input.replace(/'/g, "'\\''");
-  const { stdout } = await vmExec(`${RTK_BIN} rewrite '${escaped}'`);
+  const { stdout } = await vmExec(`${RTCO_BIN} rewrite '${escaped}'`);
   const actual = stdout.trim();
 
   let status: TestStatus;

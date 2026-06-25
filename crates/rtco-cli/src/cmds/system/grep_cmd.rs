@@ -19,7 +19,7 @@ fn is_env_file(path: &str) -> bool {
 
 fn env_warning(what: &str) -> String {
     format!(
-        "[SECURITY] rtk: refusing to read '{}' - .env files may contain secrets",
+        "[SECURITY] rtco: refusing to read '{}' - .env files may contain secrets",
         what
     )
 }
@@ -114,7 +114,7 @@ if verbose > 0 {
 
         timer.track_passthrough(
             &format!("grep {}", args_display),
-            &format!("rtk grep {} (passthrough)", args_display),
+            &format!("rtco grep {} (passthrough)", args_display),
         );
         return Ok(result.exit_code);
     }
@@ -131,7 +131,7 @@ if verbose > 0 {
         println!("{}", msg);
         timer.track(
             &format!("grep -rn '{}' {}", pattern, path),
-            "rtk grep",
+            "rtco grep",
             &raw_output,
             &msg,
         );
@@ -140,7 +140,7 @@ if verbose > 0 {
 
     // Always filter: truncate long lines, apply per-file and global caps.
     // Output in standard file:line:content format that AI agents can parse.
-    // (A passthrough approach yields 0% savings — no reason for RTK to exist on that path.)
+    // (A passthrough approach yields 0% savings — no reason for RTCO to exist on that path.)
     let total_matches = result.stdout.lines().count();
 
     let context_re = if context_only {
@@ -158,8 +158,8 @@ if verbose > 0 {
         by_file.entry(file).or_default().push((line_num, cleaned));
     }
 
-    let mut rtk_output = String::new();
-    rtk_output.push_str(&format!(
+    let mut rtco_output = String::new();
+    rtco_output.push_str(&format!(
         "{} matches in {} files:\n\n",
         total_matches.min(max_results),  // #2608: show accurate count even with long paths
         by_file.len()
@@ -180,21 +180,21 @@ if verbose > 0 {
             if shown >= max_results {
                 break;
             }
-            rtk_output.push_str(&format!("{}:{}:{}\n", file_display, line_num, content));
+            rtco_output.push_str(&format!("{}:{}:{}\n", file_display, line_num, content));
             shown += 1;
         }
     }
 
     if total_matches > shown {
-        rtk_output.push_str(&format!("[+{} more]\n", total_matches - shown));
+        rtco_output.push_str(&format!("[+{} more]\n", total_matches - shown));
     }
 
-    print!("{}", rtk_output);
+    print!("{}", rtco_output);
     timer.track(
         &format!("grep -rn '{}' {}", pattern, path),
-        "rtk grep",
+        "rtco grep",
         &raw_output,
-        &rtk_output,
+        &rtco_output,
     );
 
     Ok(exit_code)

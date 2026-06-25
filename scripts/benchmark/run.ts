@@ -12,7 +12,7 @@
  */
 
 import { $ } from "bun";
-import { vmEnsureReady, vmBuildRtk, vmExec, RTK_BIN } from "./lib/vm";
+import { vmEnsureReady, vmBuildRtco, vmExec, RTCO_BIN } from "./lib/vm";
 import { testCmd, testSavings, testRewrite, skipTest, getCounts } from "./lib/test";
 import { saveReport } from "./lib/report";
 
@@ -31,7 +31,7 @@ const reportPath = args.includes("--report")
   : `${new URL("../../", import.meta.url).pathname.replace(/\/$/, "")}/benchmark-report.txt`;
 
 const PROJECT_ROOT = new URL("../../", import.meta.url).pathname.replace(/\/$/, "");
-const RTCO = RTK_BIN;
+const RTCO = RTCO_BIN;
 
 function shouldRun(phase: number): boolean {
   return phaseOnly === null || phaseOnly === phase;
@@ -57,7 +57,7 @@ await vmEnsureReady();
 heading(1, "Transfer & Build");
 const branch = (await $`git -C ${PROJECT_ROOT} branch --show-current`.text()).trim();
 const commit = (await $`git -C ${PROJECT_ROOT} log --oneline -1`.text()).trim();
-const buildInfo = await vmBuildRtk(PROJECT_ROOT);
+const buildInfo = await vmBuildRtco(PROJECT_ROOT);
 
 // Binary size check
 // ARM Linux release binaries are ~6.5MB (vs ~4MB x86 stripped).
@@ -362,9 +362,9 @@ if (shouldRun(10) && !quick) {
     );
     try {
       const hf = JSON.parse(hfOut);
-      const rtkMean = (hf.results?.[0]?.mean * 1000).toFixed(1);
+      const rtcoMean = (hf.results?.[0]?.mean * 1000).toFixed(1);
       const rawMean = (hf.results?.[1]?.mean * 1000).toFixed(1);
-      console.log(`  Startup: rtco=${rtkMean}ms raw=${rawMean}ms`);
+      console.log(`  Startup: rtco=${rtcoMean}ms raw=${rawMean}ms`);
     } catch {
       console.log("  hyperfine output parse failed");
     }

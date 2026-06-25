@@ -551,8 +551,8 @@ mod tests {
     }
 
     #[test]
-    fn run_from_args_rtk_syntax() {
-        // Simulates: rtk find *.rs src
+    fn run_from_args_rtco_syntax() {
+        // Simulates: rtco find *.rs src
         let result = run_from_args(&args(&["*.rs", "src"]), 0);
         assert!(result.is_ok());
     }

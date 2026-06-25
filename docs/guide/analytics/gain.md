@@ -107,7 +107,7 @@ RTCO estimates tokens using `text.len() / 4` (4 characters per token average). T
 
 ```
 Input Tokens  = estimate_tokens(raw_command_output)
-Output Tokens = estimate_tokens(rtk_filtered_output)
+Output Tokens = estimate_tokens(rtco_filtered_output)
 Saved Tokens  = Input - Output
 Savings %     = (Saved / Input) × 100
 ```
@@ -123,7 +123,7 @@ Savings data is stored locally in SQLite:
 ```bash
 # Inspect raw data
 sqlite3 ~/.local/share/rtco/history.db \
-  "SELECT timestamp, rtk_cmd, saved_tokens FROM commands
+  "SELECT timestamp, rtco_cmd, saved_tokens FROM commands
    ORDER BY timestamp DESC LIMIT 10"
 
 # Backup

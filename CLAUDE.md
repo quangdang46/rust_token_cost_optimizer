@@ -171,11 +171,11 @@ When user provides a numbered plan (QW1-QW4, Phase 1-5, sprint tasks, etc.):
 5. **Validate assumptions**: Before starting, verify all referenced file paths exist and working directory is correct
 
 <!-- rtco-instructions v2 -->
-# RTK (Rust Token Killer) - Token-Optimized Commands
+# RTCO (Rust Token Killer) - Token-Optimized Commands
 
 ## Golden Rule
 
-**Always prefix commands with `rtco`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
+**Always prefix commands with `rtco`**. If RTCO has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTCO is always safe to use.
 
 **Important**: Even in command chains with `&&`, use `rtco`:
 ```bash
@@ -186,7 +186,7 @@ git add . && git commit -m "msg" && git push
 rtco git add . && rtco git commit -m "msg" && rtco git push
 ```
 
-## RTK Commands by Workflow
+## RTCO Commands by Workflow
 
 ### Build & Compile (80-90% savings)
 ```bash
@@ -287,10 +287,10 @@ rtco wget <url>          # Compact download output (65%)
 ```bash
 rtco gain                # View token savings statistics
 rtco gain --history      # View command history with savings
-rtco discover            # Analyze Claude Code sessions for missed RTK usage
+rtco discover            # Analyze Claude Code sessions for missed RTCO usage
 rtco proxy <cmd>         # Run command without filtering (for debugging)
-rtco init                # Add RTK instructions to CLAUDE.md
-rtco init --global       # Add RTK to ~/.claude/CLAUDE.md
+rtco init                # Add RTCO instructions to CLAUDE.md
+rtco init --global       # Add RTCO to ~/.claude/CLAUDE.md
 ```
 
 ## Token Savings Overview

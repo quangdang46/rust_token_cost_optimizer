@@ -59,7 +59,7 @@ enum HookFormat {
     /// Carries the full parsed `toolArgs` object so we can rewrite `command` while preserving
     /// host-supplied metadata (description, initial_wait, mode, …) the tool requires.
     CopilotCli { command: String, args: Value },
-    /// Non-bash tool, already uses rtk, or unknown format — pass through silently.
+    /// Non-bash tool, already uses rtco, or unknown format — pass through silently.
     PassThrough,
 }
 
@@ -86,7 +86,7 @@ pub fn run_copilot() -> Result<()> {
     let v: Value = match serde_json::from_str(input) {
         Ok(v) => v,
         Err(e) => {
-            let _ = writeln!(io::stderr(), "[rtk hook] Failed to parse JSON input: {e}");
+            let _ = writeln!(io::stderr(), "[rtco hook] Failed to parse JSON input: {e}");
             return Ok(());
         }
     };
@@ -203,7 +203,7 @@ fn decide_hook_action(cmd: &str, host: permissions::Host) -> HookDecision {
 fn handle_vscode(cmd: &str) -> Result<()> {
     // #2445: Emit transparency header to stderr so Claude Code's tampering
     // heuristics don't flag our silent rewrites as injection
-    let _ = writeln!(io::stderr(), "[rtk] processing command: {}", cmd);
+    let _ = writeln!(io::stderr(), "[rtco] processing command: {}", cmd);
 
     let (decision, rewritten) = match decide_hook_action(cmd, permissions::Host::Claude) {
         HookDecision::Deny => {
@@ -219,9 +219,9 @@ fn handle_vscode(cmd: &str) -> Result<()> {
 
     // #2445: Report rewrite reason to prevent tampering detection
     let rewrite_reason = if cmd != rewritten {
-        format!("RTK rewrite ({} -> {})", cmd, rewritten)
+        format!("RTCO rewrite ({} -> {})", cmd, rewritten)
     } else {
-        "RTK passthrough".to_string()
+        "RTCO passthrough".to_string()
     };
 
     let output = json!({
@@ -482,7 +482,7 @@ pub fn run_claude() -> Result<()> {
     let v: Value = match serde_json::from_str(input) {
         Ok(v) => v,
         Err(e) => {
-            let _ = writeln!(io::stderr(), "[rtk hook] Failed to parse JSON input: {e}");
+            let _ = writeln!(io::stderr(), "[rtco hook] Failed to parse JSON input: {e}");
             return Ok(());
         }
     };

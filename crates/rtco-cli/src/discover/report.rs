@@ -184,7 +184,7 @@ pub fn format_text(report: &DiscoverReport, limit: usize, verbose: bool) -> Stri
 
         out.push_str(&"-".repeat(52));
         out.push('\n');
-        out.push_str("-> github.com/rtk-ai/rtk/issues\n");
+        out.push_str("-> github.com/rtco-ai/rtco/issues\n");
     }
 
     // RTCO_DISABLED bypass warning
@@ -219,7 +219,7 @@ fn append_agent_notes(out: &mut String, status: AgentIntegrationStatus) {
     }
 
     if status.hermes_plugin_installed {
-        out.push_str("\nNote: Hermes plugin is installed; Hermes sessions are tracked via `rtk gain` (discover scans Claude Code only)\n");
+        out.push_str("\nNote: Hermes plugin is installed; Hermes sessions are tracked via `rtco gain` (discover scans Claude Code only)\n");
     }
 }
 
@@ -316,7 +316,7 @@ mod tests {
             .join(HERMES_PLUGIN_NAME)
             .join(HERMES_PLUGIN_MANIFEST_FILE);
         std::fs::create_dir_all(manifest.parent().unwrap()).unwrap();
-        std::fs::write(&manifest, "name: rtk-rewrite\n").unwrap();
+        std::fs::write(&manifest, "name: rtco-rewrite\n").unwrap();
 
         let status = AgentIntegrationStatus::detect_from_home(temp_home.path());
 
