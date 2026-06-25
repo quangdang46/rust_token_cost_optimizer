@@ -218,7 +218,7 @@ pub fn run(
     builder
         .hidden(!search_hidden) // skip hidden files/dirs unless pattern targets dotfiles
         .git_ignore(true) // respect .gitignore
-        .git_global(true)
+        .git_global(false) // #2589: Don't inherit .gitignore from parent dirs
         .git_exclude(true);
     if let Some(depth) = max_depth {
         builder.max_depth(Some(depth));

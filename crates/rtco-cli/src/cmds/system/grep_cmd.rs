@@ -8,6 +8,22 @@ use anyhow::{Context, Result};
 use regex::Regex;
 use std::collections::HashMap;
 
+/// Check if a file path targets a .env file (security restriction #2428)
+fn is_env_file(path: &str) -> bool {
+    let name = std::path::Path::new(path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("");
+    name == ".env" || name.starts_with(".env.") || name.starts_with(".env_")
+}
+
+fn env_warning(what: &str) -> String {
+    format!(
+        "[SECURITY] rtk: refusing to read '{}' - .env files may contain secrets",
+        what
+    )
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn run(
     pattern: &str,
@@ -21,33 +37,57 @@ pub fn run(
 ) -> Result<i32> {
     let timer = tracking::TimedExecution::start();
 
-    if verbose > 0 {
+        // Security: block grep on .env files (#2428)
+    if path != "." && is_env_file(path) {
+        eprintln!("{}", env_warning(path));
+        return Ok(1);
+    }
+    if is_env_file(pattern) {
+        eprintln!("{}", env_warning(pattern));
+        return Ok(1);
+    }
+
+if verbose > 0 {
         eprintln!("grep: '{}' in {}", pattern, path);
     }
 
     // Fix: convert BRE alternation \| → | for rg (which uses PCRE-style regex)
-    let rg_pattern = pattern.replace(r"\|", "|");
+    // #2563: Convert BRE escapes to PCRE (rg flavor)
+    let rg_pattern = pattern
+        .replace(r"\|", "|")   // BRE alternation
+        .replace(r"\?", "?")   // BRE zero-or-one
+        .replace(r"\+", "+");   // BRE one-or-more
 
     let mut rg_cmd = resolved_command("rg");
-    // --no-ignore-vcs: match grep -r behavior (don't skip .gitignore'd files).
+    // #2606: Don't use --no-ignore-vcs by default so rg's .gitignore handling is preserved.
     // Without this, rg returns 0 matches for files in .gitignore, causing
     // false negatives that make AI agents draw wrong conclusions.
-    // Using --no-ignore-vcs (not --no-ignore) so .ignore/.rgignore are still respected.
     // -H: always emit the filename.
     // -0: NUL-separate filename. Allows the parser to disambiguate filenames or
     // content containing `:digits:` patterns (issue #1436).
-    rg_cmd.args(["-nH0", "--no-heading", "--no-ignore-vcs", &rg_pattern, path]);
+    rg_cmd.args(["-nH0", "--no-heading", &rg_pattern, path]);
 
     if let Some(ft) = file_type {
         rg_cmd.arg("--type").arg(ft);
     }
 
     for arg in extra_args {
-        // Fix: skip grep-ism -r flag (rg is recursive by default; rg -r means --replace)
-        if arg == "-r" || arg == "--recursive" {
-            continue;
+        // Fix: translate grep-ism flags for rg compatibility (#2614)
+        match arg.as_str() {
+            "-r" | "--recursive" => continue,  // rg is recursive by default; -r means --replace
+            "-E" | "--extended-regexp" => continue,  // rg uses PCRE by default (equivalent to -E)
+            "-P" | "--perl-regexp" => continue,  // rg is PCRE by default
+            "-G" | "--basic-regexp" => {},  // rg supports -G
+            "-F" | "--fixed-strings" => { rg_cmd.arg("--fixed-strings"); }
+            "-i" | "--ignore-case" => { rg_cmd.arg("-i"); }
+            "-w" | "--word-regexp" => { rg_cmd.arg("-w"); }
+            "-x" | "--line-regexp" => { rg_cmd.arg("-x"); }
+            "-l" | "--files-with-matches" => { rg_cmd.arg("-l"); }
+            "-c" | "--count" => { rg_cmd.arg("--count"); }
+            // Pass -A/-B/-C context flags to rg natively
+            _ if arg.starts_with('-') => { rg_cmd.arg(arg); }
+            _ => { rg_cmd.arg(arg); }
         }
-        rg_cmd.arg(arg);
     }
 
     let result = exec_capture(&mut rg_cmd)
@@ -121,7 +161,7 @@ pub fn run(
     let mut rtk_output = String::new();
     rtk_output.push_str(&format!(
         "{} matches in {} files:\n\n",
-        total_matches,
+        total_matches.min(max_results),  // #2608: show accurate count even with long paths
         by_file.len()
     ));
 
@@ -310,7 +350,11 @@ mod tests {
     #[test]
     fn test_bre_alternation_translated() {
         let pattern = r"fn foo\|pub.*bar";
-        let rg_pattern = pattern.replace(r"\|", "|");
+        // #2563: Convert BRE escapes to PCRE (rg flavor)
+    let rg_pattern = pattern
+        .replace(r"\|", "|")   // BRE alternation
+        .replace(r"\?", "?")   // BRE zero-or-one
+        .replace(r"\+", "+");   // BRE one-or-more
         assert_eq!(rg_pattern, "fn foo|pub.*bar");
     }
 

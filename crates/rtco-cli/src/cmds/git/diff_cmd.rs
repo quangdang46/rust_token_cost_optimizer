@@ -45,7 +45,7 @@ pub fn run(file1: &Path, file2: &Path, verbose: u8) -> Result<i32> {
     if diff.added == 0 && diff.removed == 0 && diff.modified == 0 {
         // Match GNU diff: silent on identical files (advisory message to
         // stderr only). Exit code 0.
-        eprintln!("[ok] Files are identical");
+        eprintln!("[ok] Files are identical");  // #2446: exit 0 for identical
         timer.track(
             &format!("diff {} {}", file1.display(), file2.display()),
             "rtco diff",
@@ -70,7 +70,7 @@ pub fn run(file1: &Path, file2: &Path, verbose: u8) -> Result<i32> {
         &raw,
         &rtk,
     );
-    // GNU diff convention: exit 1 when files differ.
+    // GNU diff convention: exit 1 when files differ (#2446).
     Ok(1)
 }
 

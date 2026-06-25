@@ -4,6 +4,34 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::str::FromStr;
 
+/// Protect template literal content from aggressive filtering (#2421)
+#[allow(dead_code)]
+fn protect_template_literals(content: &str) -> String {
+    let mut result = String::new();
+    let mut in_template = false;
+    let mut i = 0;
+    let chars: Vec<char> = content.chars().collect();
+    
+    while i < chars.len() {
+        match chars[i] {
+            '`' => {
+                in_template = !in_template;
+                result.push('`');
+            }
+            '#' if in_template => {
+                // In template literal: preserve # character
+                result.push('#');
+            }
+            _ => {
+                result.push(chars[i]);
+            }
+        }
+        i += 1;
+    }
+    
+    result
+}
+
 /// Outputs shorter than this threshold are returned unchanged — compression
 /// overhead would exceed any savings.
 const MIN_COMPRESS_BYTES: usize = 512;

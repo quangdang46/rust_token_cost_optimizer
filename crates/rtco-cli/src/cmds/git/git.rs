@@ -70,7 +70,12 @@ fn uses_compact_status_path(args: &[String]) -> bool {
 fn build_status_command(args: &[String], global_args: &[String]) -> Command {
     let mut cmd = git_cmd(global_args);
     cmd.arg("status");
-    if uses_compact_status_path(args) {
+    // #2487: Don't force --porcelain for machine-friendly formats
+    if args.iter().any(|a| {
+        a == "--porcelain" || a == "-z" || a.starts_with("--name-")
+    }) {
+        cmd.args(args);
+    } else if uses_compact_status_path(args) {
         cmd.args(["--porcelain", "-b"]);
     } else {
         cmd.args(args);
@@ -97,7 +102,9 @@ pub fn run(
         GitCommand::Branch => run_branch(args, verbose, global_args),
         GitCommand::Fetch => run_fetch(args, verbose, global_args),
         GitCommand::Stash { subcommand } => {
-            run_stash(subcommand.as_deref(), args, verbose, global_args)
+            // #2454: Restore -- separator for stash push pathspecs
+            let preserved_args = rtco_core::args_utils::restore_double_dash(args);
+            run_stash(subcommand.as_deref(), &preserved_args, verbose, global_args)
         }
         GitCommand::Worktree => run_worktree(args, verbose, global_args),
     }
@@ -1133,6 +1140,17 @@ fn run_commit(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
 
         timer.track(&original_cmd, "rtco git commit", &raw_output, &compact);
     } else if stderr.contains("nothing to commit") || stdout.contains("nothing to commit") {
+        // #2494: Return actual exit code even on "nothing to commit"
+        if exit_code != 0 {
+            eprintln!("[rtk] commit failed (exit: {})", exit_code);
+            timer.track(
+                &original_cmd,
+                "rtco git commit",
+                &raw_output,
+                &format!("failed ({})", exit_code),
+            );
+            return Ok(exit_code);
+        }
         println!("ok (nothing to commit)");
         timer.track(
             &original_cmd,

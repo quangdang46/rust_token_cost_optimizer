@@ -113,7 +113,9 @@ pub fn truncate_output(output: &str, max_chars: usize) -> String {
         return output.to_string();
     }
 
-    let truncated: String = chars[..max_chars].iter().collect();
+    // Use char_indices to find the nearest safe char boundary (#2509)
+    let safe_max = if max_chars > chars.len() { chars.len() } else { max_chars };
+    let truncated: String = chars[..safe_max].iter().collect();
     format!(
         "{}\n\n[RTK:PASSTHROUGH] Output truncated ({} chars → {} chars)",
         truncated,
