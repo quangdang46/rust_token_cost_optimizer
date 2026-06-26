@@ -71,15 +71,23 @@ fn filter_curl_output(raw: &str, is_tty: bool) -> FilterResult<'_> {
         || (trimmed.starts_with('[') && trimmed.ends_with(']'))
         || (trimmed.starts_with('"') && trimmed.ends_with('"') && trimmed.len() >= 2);
 
+    // #71: Detect HTML content (error pages) and pass through without truncation
+    // HTTP error pages (404, 500, etc.) are HTML and should be visible in full
+    let looks_like_html = trimmed.trim_start().starts_with('<')
+        && (trimmed.contains("</html>") || trimmed.contains("</HTML>")
+            || trimmed.starts_with("<!DOCTYPE") || trimmed.starts_with("<html")
+            || trimmed.starts_with("<HTML") || trimmed.starts_with("<head"));
+
     // Pass through unchanged when:
     // - body looks like JSON (mid-stream truncation produces invalid JSON, #1536)
+    // - body looks like HTML (error pages must be visible, #71)
     // - stdout is not a terminal (pipes / redirects need the full body, #1282)
     // - body fits under the truncation threshold
     //
     // Critically, do NOT call `force_tee_hint_sensitive` on this path — it has a side effect
     // (writes the raw body to a tee log file) and we don't need a recovery file
     // when the consumer already receives the full body.
-    if !is_tty || looks_like_json || trimmed.len() < MAX_RESPONSE_SIZE {
+    if !is_tty || looks_like_json || looks_like_html || trimmed.len() < MAX_RESPONSE_SIZE {
         return FilterResult {
             content: Cow::Borrowed(trimmed),
             tee_hint: None,

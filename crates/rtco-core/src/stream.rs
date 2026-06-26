@@ -533,12 +533,73 @@ impl CaptureResult {
 
 pub fn exec_capture(cmd: &mut Command) -> Result<CaptureResult> {
     cmd.stdin(Stdio::null());
-    let output = cmd.output().context("Failed to execute command")?;
-    Ok(CaptureResult {
-        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-        exit_code: status_to_exit_code(output.status),
-    })
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+
+    // #2320: Add timeout to prevent hanging when child daemons (e.g. dotnet MSBuild
+    // node reuse, NuGet auth plugins) inherit the stdout/stderr pipe.
+    // Use a separate process handle so we can wait with a timeout.
+    let mut child = cmd.spawn().context("Failed to spawn command")?;
+
+    // Collect stdout and stderr via separate threads
+    use std::io::Read;
+    let stdout_handle = {
+        let mut stdout = child.stdout.take().context("Failed to capture stdout")?;
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            stdout.read_to_end(&mut buf).ok();
+            buf
+        })
+    };
+    let stderr_handle = {
+        let mut stderr = child.stderr.take().context("Failed to capture stderr")?;
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            stderr.read_to_end(&mut buf).ok();
+            buf
+        })
+    };
+
+    // Wait for child with timeout (15 minutes for build commands, 5 min default)
+    // Long timeout accommodates dotnet restore/build which can be slow
+    let timeout = std::time::Duration::from_secs(15 * 60);
+    let deadline = std::time::Instant::now() + timeout;
+
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                let stdout = stdout_handle.join().unwrap_or_default();
+                let stderr = stderr_handle.join().unwrap_or_default();
+                return Ok(CaptureResult {
+                    stdout: String::from_utf8_lossy(&stdout).into_owned(),
+                    stderr: String::from_utf8_lossy(&stderr).into_owned(),
+                    exit_code: status_to_exit_code(status),
+                });
+            }
+            Ok(None) => {
+                if std::time::Instant::now() >= deadline {
+                    // Kill hung process (e.g. dotnet daemon with inherited pipe)
+                    let _ = child.kill();
+                    // Try to collect what we got before timeout
+                    let stdout = stdout_handle.join().unwrap_or_default();
+                    let stderr = stderr_handle.join().unwrap_or_default();
+                    eprintln!(
+                        "[rtco] Command timed out after {}s and was killed",
+                        timeout.as_secs()
+                    );
+                    return Ok(CaptureResult {
+                        stdout: String::from_utf8_lossy(&stdout).into_owned(),
+                        stderr: String::from_utf8_lossy(&stderr).into_owned(),
+                        exit_code: -1,
+                    });
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!("Failed to wait for command: {}", e));
+            }
+        }
+    }
 }
 
 /// Test utilities for stream filtering (used by integration tests across crates).

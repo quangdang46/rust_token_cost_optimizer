@@ -76,7 +76,7 @@ pub fn run_test(args: &[String], verbose: u8) -> Result<i32> {
         "go test",
         &args.join(" "),
         filter,
-        rtco_core::runner::RunOptions::stdout_only().tee("go_test"),
+        rtco_core::runner::RunOptions::stdout_only().tee("go_test").early_exit_on_failure(),
     )
 }
 
@@ -97,7 +97,7 @@ pub fn run_build(args: &[String], verbose: u8) -> Result<i32> {
         "go build",
         &args.join(" "),
         filter_go_build_with_exit,
-        rtco_core::runner::RunOptions::with_tee("go_build"),
+        rtco_core::runner::RunOptions::with_tee("go_build").early_exit_on_failure(),
     )
 }
 
@@ -118,7 +118,7 @@ pub fn run_vet(args: &[String], verbose: u8) -> Result<i32> {
         "go vet",
         &args.join(" "),
         filter_go_vet,
-        rtco_core::runner::RunOptions::with_tee("go_vet"),
+        rtco_core::runner::RunOptions::with_tee("go_vet").early_exit_on_failure(),
     )
 }
 

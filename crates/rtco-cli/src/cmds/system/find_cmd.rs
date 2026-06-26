@@ -278,6 +278,19 @@ pub fn run(
     let raw_output = files.join("\n");
 
     if files.is_empty() {
+        // #49: Check if the path exists — non-existent path is an error
+        let path_exists = std::path::Path::new(path).exists();
+        if !path_exists {
+            let msg = format!("rtco find: '{}': No such file or directory", path);
+            eprintln!("{}", msg);
+            timer.track(
+                &format!("find {} -name '{}'", path, effective_pattern),
+                "rtco find",
+                &raw_output,
+                &msg,
+            );
+            return Ok(());
+        }
         let msg = format!("0 for '{}'", effective_pattern);
         println!("{}", msg);
         timer.track(

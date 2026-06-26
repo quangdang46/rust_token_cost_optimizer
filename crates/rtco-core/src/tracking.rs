@@ -1466,7 +1466,10 @@ pub fn record_parse_failure_silent(raw_command: &str, error_message: &str, succe
 /// ```
 pub fn estimate_tokens(text: &str) -> usize {
     // ~4 chars per token on average
-    (text.len() as f64 / 4.0).ceil() as usize
+    // Cap at 1M tokens (~4MB input) to prevent inflated savings from OOM'd
+    // or failed commands that only produce tiny error stubs (#2468)
+    let raw = (text.len() as f64 / 4.0).ceil() as usize;
+    raw.min(1_000_000)
 }
 
 /// Helper struct for timing command execution

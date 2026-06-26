@@ -126,7 +126,7 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
                 tool,
                 &args_display,
                 |raw| filter_test_output(raw, Path::new(".")),
-                RunOptions::with_tee("mvn_test"),
+                RunOptions::with_tee("mvn_test").early_exit_on_failure(),
             )
         }
         MvnTask::Build => runner::run_filtered(
@@ -134,7 +134,7 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
             tool,
             &args_display,
             filter_build_output,
-            RunOptions::with_tee("mvn_build"),
+            RunOptions::with_tee("mvn_build").early_exit_on_failure(),
         ),
         MvnTask::Other => {
             let osargs: Vec<OsString> = args.iter().map(OsString::from).collect();

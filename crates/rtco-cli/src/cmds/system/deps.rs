@@ -78,6 +78,40 @@ pub fn run(path: &Path, verbose: u8) -> Result<()> {
     Ok(())
 }
 
+/// Extract workspace member paths from Cargo.toml (#46)
+#[allow(dead_code)]
+fn extract_workspace_members(content: &str) -> Option<Vec<String>> {
+    let member_re = Regex::new(r#"^\s*"([^"]+)"\s*$"#).unwrap();
+    let mut in_workspace = false;
+    let mut members = Vec::new();
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed == "[workspace]" {
+            in_workspace = true;
+            continue;
+        }
+        if in_workspace {
+            if trimmed.starts_with('[') {
+                break;
+            }
+            if trimmed == "members = [" || trimmed.ends_with('[') {
+                continue;
+            }
+            if trimmed == "]" || trimmed.starts_with("]") {
+                continue;
+            }
+            if let Some(caps) = member_re.captures(trimmed) {
+                if let Some(m) = caps.get(1) {
+                    members.push(m.as_str().to_string());
+                }
+            }
+        }
+    }
+
+    if members.is_empty() { None } else { Some(members) }
+}
+
 fn summarize_cargo_str(path: &Path) -> Result<String> {
     let content = fs::read_to_string(path)?;
     let dep_re =

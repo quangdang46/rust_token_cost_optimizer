@@ -38,8 +38,10 @@ pub fn run(file1: &Path, file2: &Path, verbose: u8) -> Result<i32> {
     };
     let raw = format!("{}\n---\n{}", content1, content2);
 
-    let lines1: Vec<&str> = content1.lines().collect();
-    let lines2: Vec<&str> = content2.lines().collect();
+    // Use split('\n') instead of lines() to preserve \r characters at line endings.
+    // str::lines() strips trailing \r, which makes CRLF vs LF files appear identical (#2627).
+    let lines1: Vec<&str> = content1.split('\n').collect();
+    let lines2: Vec<&str> = content2.split('\n').collect();
     let diff = compute_diff(&lines1, &lines2);
 
     if diff.added == 0 && diff.removed == 0 && diff.modified == 0 {
@@ -124,6 +126,10 @@ fn compute_diff(lines1: &[&str], lines2: &[&str]) -> DiffResult {
     let mut added = 0;
     let mut removed = 0;
     let mut modified = 0;
+
+    // Strip trailing empty line from split('\n') when input ends with newline (#2627)
+    let lines1 = if lines1.last() == Some(&"") { &lines1[..lines1.len()-1] } else { lines1 };
+    let lines2 = if lines2.last() == Some(&"") { &lines2[..lines2.len()-1] } else { lines2 };
 
     // Simple line-by-line comparison (not optimal but fast)
     let max_len = lines1.len().max(lines2.len());

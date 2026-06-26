@@ -29,7 +29,7 @@ pub fn run(
     _verbose: u8,
 ) -> Result<()> {
     let tracker = Tracker::new().context("Failed to initialize tracking database")?;
-    let project_scope = resolve_project_scope(project)?; // added: resolve project path
+    let project_scope = resolve_project_scope(project)?; // resolve project path
 
     if reset {
         if !yes && !confirm_reset()? {
@@ -56,7 +56,7 @@ pub fn run(
                 weekly,
                 monthly,
                 all,
-                project_scope.as_deref(), // added: pass project scope
+                project_scope.as_deref(), // pass project scope
             );
         }
         "csv" => {
@@ -66,14 +66,14 @@ pub fn run(
                 weekly,
                 monthly,
                 all,
-                project_scope.as_deref(), // added: pass project scope
+                project_scope.as_deref(), // pass project scope
             );
         }
         _ => {} // Continue with text format
     }
 
     let summary = tracker
-        .get_summary_filtered(project_scope.as_deref()) // changed: use filtered variant
+        .get_summary_filtered(project_scope.as_deref()) // use filtered variant
         .context("Failed to load token savings summary from database")?;
 
     if summary.total_commands == 0 {
@@ -84,7 +84,7 @@ pub fn run(
 
     // Default view (summary)
     if !daily && !weekly && !monthly && !all {
-        // added: scope-aware styled header // changed: merged upstream styled + project scope
+        // scope-aware styled header // merged upstream styled + project scope
         let title = if project_scope.is_some() {
             "rtco Token Savings (Project Scope)"
         } else {
@@ -98,7 +98,7 @@ pub fn run(
         }
         println!();
 
-        // added: KPI-style aligned output
+        // KPI-style aligned output
         print_kpi("Total commands", summary.total_commands.to_string());
         print_kpi("Input tokens", format_tokens(summary.total_input));
         print_kpi("Output tokens", format_tokens(summary.total_output));
@@ -208,7 +208,7 @@ pub fn run(
 
             for (idx, (cmd, count, saved, pct, avg_time)) in summary.by_command.iter().enumerate() {
                 let row_idx = format!("{:>2}.", idx + 1);
-                let cmd_cell = style_command_cell(&truncate_for_column(cmd, cmd_width)); // added: colored command
+                let cmd_cell = style_command_cell(&truncate_for_column(cmd, cmd_width));
                 let count_cell = format!("{:>count_width$}", count, count_width = count_width);
                 let saved_cell = format!(
                     "{:>saved_width$}",
@@ -233,7 +233,7 @@ pub fn run(
         }
 
         if graph && !summary.by_day.is_empty() {
-            println!("{}", styled("Daily Savings (last 30 days)", true)); // added: styled header
+            println!("{}", styled("Daily Savings (last 30 days)", true)); // styled header
             println!("──────────────────────────────────────────────────────────");
             print_ascii_graph(&summary.by_day);
             println!();
@@ -242,16 +242,19 @@ pub fn run(
         if history {
             let recent = tracker.get_recent_filtered(10, project_scope.as_deref())?; // changed: filtered
             if !recent.is_empty() {
-                println!("{}", styled("Recent Commands", true)); // added: styled header
+                println!("{}", styled("Recent Commands", true)); // styled header
                 println!("──────────────────────────────────────────────────────────");
                 for rec in recent {
                     let time = rec.timestamp.with_timezone(&Local).format("%m-%d %H:%M");
-                    let cmd_short = if rec.rtco_cmd.len() > 25 {
-                        format!("{}...", &rec.rtco_cmd[..22])
+                    // #2318: Use char-safe truncation instead of byte slicing
+                    // which panics on CJK characters (byte index mid-multi-byte char)
+                    let cmd_short = if rec.rtco_cmd.chars().count() > 25 {
+                        let truncated: String = rec.rtco_cmd.chars().take(22).collect();
+                        format!("{}...", truncated)
                     } else {
                         rec.rtco_cmd.clone()
                     };
-                    // added: tier indicators by savings level
+
                     let sign = if rec.savings_pct >= 70.0 {
                         "▲"
                     } else if rec.savings_pct >= 30.0 {
@@ -284,7 +287,7 @@ pub fn run(
 
             let quota_pct = (summary.total_saved as f64 / quota_tokens as f64) * 100.0;
 
-            println!("{}", styled("Monthly Quota Analysis", true)); // added: styled header
+            println!("{}", styled("Monthly Quota Analysis", true)); // styled header
             println!("──────────────────────────────────────────────────────────");
             print_kpi("Subscription tier", tier_name.to_string()); // added: KPI style
             print_kpi("Estimated monthly quota", format_tokens(quota_tokens));
@@ -489,21 +492,21 @@ fn print_ascii_graph(data: &[(String, usize)]) {
 
 fn print_daily_full(tracker: &Tracker, project_scope: Option<&str>) -> Result<()> {
     // changed: add project scope
-    let days = tracker.get_all_days_filtered(project_scope)?; // changed: use filtered variant
+    let days = tracker.get_all_days_filtered(project_scope)?; // use filtered variant
     print_period_table(&days);
     Ok(())
 }
 
 fn print_weekly(tracker: &Tracker, project_scope: Option<&str>) -> Result<()> {
     // changed: add project scope
-    let weeks = tracker.get_by_week_filtered(project_scope)?; // changed: use filtered variant
+    let weeks = tracker.get_by_week_filtered(project_scope)?; // use filtered variant
     print_period_table(&weeks);
     Ok(())
 }
 
 fn print_monthly(tracker: &Tracker, project_scope: Option<&str>) -> Result<()> {
     // changed: add project scope
-    let months = tracker.get_by_month_filtered(project_scope)?; // changed: use filtered variant
+    let months = tracker.get_by_month_filtered(project_scope)?; // use filtered variant
     print_period_table(&months);
     Ok(())
 }
@@ -536,10 +539,10 @@ fn export_json(
     weekly: bool,
     monthly: bool,
     all: bool,
-    project_scope: Option<&str>, // added: project scope
+    project_scope: Option<&str>, // project scope
 ) -> Result<()> {
     let summary = tracker
-        .get_summary_filtered(project_scope) // changed: use filtered variant
+        .get_summary_filtered(project_scope) // use filtered variant
         .context("Failed to load token savings summary from database")?;
 
     let export = ExportData {
@@ -581,7 +584,7 @@ fn export_csv(
     weekly: bool,
     monthly: bool,
     all: bool,
-    project_scope: Option<&str>, // added: project scope
+    project_scope: Option<&str>, // project scope
 ) -> Result<()> {
     if all || daily {
         let days = tracker.get_all_days_filtered(project_scope)?; // changed: use filtered

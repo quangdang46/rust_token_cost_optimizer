@@ -6,6 +6,7 @@
 use rtco_core::runner::{self, RunOptions};
 use rtco_core::utils::resolved_command;
 use anyhow::Result;
+use std::io::IsTerminal;
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -20,6 +21,14 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
     let mut cmd = resolved_command("sqlite3");
     for arg in args {
         cmd.arg(arg);
+    }
+
+    // #61: Accept SQL from stdin when piped (echo "SELECT ..." | rtco sqlite test.db)
+    if !std::io::stdin().is_terminal() && !args.iter().any(|a| a == "-") {
+        // stdin is piped — pass SQL via stdin instead of args
+        // sqlite3 reads from stdin when no SQL arg is given before the database
+        // We pass "-" to make sqlite3 read from stdin explicitly
+        cmd.arg("-");
     }
 
     if verbose > 0 {

@@ -21,8 +21,24 @@ pub fn run(
     }
 
     // Read file content
-    let content = fs::read_to_string(file)
-        .with_context(|| format!("Failed to read file: {}", file.display()))?;
+    // Read file content
+    let content_bytes = fs::read(file).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            anyhow::anyhow!("rtco: '{}': No such file or directory", file.display())
+        } else {
+            anyhow::anyhow!("rtco: failed to read '{}': {}", file.display(), e)
+        }
+    })?;
+    // #50: Provide user-friendly error for binary files
+    let content = String::from_utf8(content_bytes).map_err(|_| {
+        anyhow::anyhow!(
+            "rtco: '{}' is a binary file. Use `rtco read --level none` or `xxd` to inspect.",
+            file.display()
+        )
+    })?
+    // #59: Normalize CRLF/CR line endings to LF
+    .replace("\r\n", "\n")
+    .replace("\r", "\n");
 
     // Detect language from extension
     let lang = file

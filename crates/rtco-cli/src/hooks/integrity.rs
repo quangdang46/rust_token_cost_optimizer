@@ -216,7 +216,7 @@ pub fn run_verify(verbose: u8) -> Result<()> {
             let content = fs::read_to_string(&settings_path).unwrap_or_default();
             if content.contains("rtco hook claude") {
                 println!("PASS  native binary hook registered in settings.json");
-                println!("      command: rtk hook claude");
+                println!("      command: rtco hook claude");
                 println!("      (no script file — integrity check not applicable)");
                 return Ok(());
             }

@@ -27,25 +27,32 @@ fn is_stdin_command(cmd: &str) -> bool {
 const STDIN_CAP: usize = 1_048_576; // 1 MiB
 
 fn read_stdin_limited() -> Result<String> {
-    // Use thread + timeout to prevent indefinite blocking (#2553)
-    let stdin_handle = std::thread::spawn(move || -> std::io::Result<String> {
+    // Use channel + recv_timeout to prevent indefinite blocking (#2553)
+    let (tx, rx) = std::sync::mpsc::channel();
+    let _ = std::thread::spawn(move || {
         let mut buf = String::new();
-        io::stdin()
+        let result = io::stdin()
             .take((STDIN_CAP + 1) as u64)
-            .read_to_string(&mut buf)?;
-        Ok(buf)
+            .read_to_string(&mut buf);
+        let _ = tx.send((buf, result));
     });
 
-    // Wait up to 30 seconds for stdin
-    match stdin_handle.join() {
-        Ok(Ok(data)) => {
+    // Wait up to 60 seconds for stdin, then return passthrough
+    let timeout = std::time::Duration::from_secs(60);
+    match rx.recv_timeout(timeout) {
+        Ok((data, Ok(_))) => {
             if data.len() > STDIN_CAP {
                 anyhow::bail!("hook stdin exceeds {} byte limit", STDIN_CAP);
             }
             Ok(data)
         }
-        Ok(Err(e)) => anyhow::bail!("Failed to read stdin: {}", e),
-        Err(_) => anyhow::bail!("stdin read thread panicked or timed out"),
+        Ok((_, Err(e))) => anyhow::bail!("Failed to read stdin: {}", e),
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            anyhow::bail!("stdin read timed out after 60s")
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+            anyhow::bail!("stdin read thread panicked")
+        }
     }
 }
 
@@ -274,7 +281,7 @@ fn copilot_cli_response_from_decision(
     }
 
     let mut response = json!({
-        "permissionDecisionReason": "RTK auto-rewrite",
+        "permissionDecisionReason": "RTCO auto-rewrite",
         "modifiedArgs": modified,
     });
     if allow {
@@ -452,7 +459,7 @@ fn process_claude_payload(v: &Value) -> PayloadAction {
 
     let mut hook_output = json!({
         "hookEventName": PRE_TOOL_USE_KEY,
-        "permissionDecisionReason": "RTK auto-rewrite",
+        "permissionDecisionReason": "RTCO auto-rewrite",
         "updatedInput": updated_input
     });
 
@@ -886,7 +893,7 @@ mod tests {
         assert_eq!(hook["hookEventName"], PRE_TOOL_USE_KEY);
         // permissionDecision is only set when an explicit allow rule matches;
         // with default-to-ask semantics (no rules configured), it is absent.
-        assert_eq!(hook["permissionDecisionReason"], "RTK auto-rewrite");
+        assert_eq!(hook["permissionDecisionReason"], "RTCO auto-rewrite");
         assert!(hook["updatedInput"].is_object());
         assert!(hook["updatedInput"]["command"].is_string());
     }

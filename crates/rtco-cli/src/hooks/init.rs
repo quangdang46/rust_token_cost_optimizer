@@ -31,7 +31,7 @@ const PI_PLUGIN: &str = include_str!("../../../../hooks/pi/rtco.ts");
 const RTCO_SLIM: &str = include_str!("../../../../hooks/claude/rtco-awareness.md");
 const RTCO_SLIM_CODEX: &str = include_str!("../../../../hooks/codex/rtco-awareness.md");
 
-/// Template written by `rtk init` when no filters.toml exists yet.
+/// Template written by `rtco init` when no filters.toml exists yet.
 const FILTERS_TEMPLATE: &str = r#"# Project-local rtco filters — commit this file with your repo.
 # Filters here override user-global and built-in filters.
 # Docs: https://github.com/rtco-ai/rtco#custom-filters
@@ -246,7 +246,7 @@ Overall average: **60-90% token reduction** on common development operations.
 <!-- /rtco-instructions -->
 "##;
 
-/// Main entry point for `rtk init`
+/// Main entry point for `rtco init`
 #[allow(clippy::too_many_arguments)]
 pub fn run(
     global: bool,
@@ -283,15 +283,15 @@ pub fn run(
     } else {
         // Validation: Global-only features
         if install_opencode && !global {
-            anyhow::bail!("OpenCode plugin is global-only. Use: rtk init -g --opencode");
+            anyhow::bail!("OpenCode plugin is global-only. Use: rtco init -g --opencode");
         }
 
         if install_cursor && !global {
-            anyhow::bail!("Cursor hooks are global-only. Use: rtk init -g --agent cursor");
+            anyhow::bail!("Cursor hooks are global-only. Use: rtco init -g --agent cursor");
         }
 
         if install_windsurf && !global {
-            anyhow::bail!("Windsurf support is global-only. Use: rtk init -g --agent windsurf");
+            anyhow::bail!("Windsurf support is global-only. Use: rtco init -g --agent windsurf");
         }
 
         if install_windsurf {
@@ -401,6 +401,10 @@ fn atomic_write(path: &Path, content: &str) -> Result<()> {
         )
     })?;
 
+    // Ensure parent directory exists before creating temp file (#2519)
+    std::fs::create_dir_all(parent)
+        .with_context(|| format!("Failed to create directory {}", parent.display()))?;
+
     // Create temp file in same directory (ensures same filesystem for atomic rename)
     let mut temp_file = NamedTempFile::new_in(parent)
         .with_context(|| format!("Failed to create temp file in {}", parent.display()))?;
@@ -498,7 +502,7 @@ fn prompt_telemetry_consent() -> Result<()> {
     save_telemetry_consent(accepted)?;
 
     if accepted {
-        eprintln!("  Telemetry enabled. Disable anytime: rtk telemetry disable");
+        eprintln!("  Telemetry enabled. Disable anytime: rtco telemetry disable");
     } else {
         eprintln!("  Telemetry disabled.");
     }
@@ -726,15 +730,15 @@ pub fn uninstall(
     let rtk_md_path = claude_dir.join(RTCO_MD);
     if rtk_md_path.exists() {
         if dry_run {
-            println!("[dry-run] would remove RTK.md: {}", rtk_md_path.display());
+            println!("[dry-run] would remove RTCO.md: {}", rtk_md_path.display());
         } else {
             fs::remove_file(&rtk_md_path)
-                .with_context(|| format!("Failed to remove RTK.md: {}", rtk_md_path.display()))?;
+                .with_context(|| format!("Failed to remove RTCO.md: {}", rtk_md_path.display()))?;
         }
         removed.push(format!("RTK.md: {}", rtk_md_path.display()));
     }
 
-    // 3. Remove @RTK.md reference from CLAUDE.md
+    // 3. Remove @RTCO.md reference from CLAUDE.md
     let claude_md_path = claude_dir.join(CLAUDE_MD);
     if claude_md_path.exists() {
         let content = fs::read_to_string(&claude_md_path)
@@ -752,7 +756,7 @@ pub fn uninstall(
 
             working_content = clean_double_blanks(&new_content);
             claude_md_changed = true;
-            removed.push("CLAUDE.md: removed @RTK.md reference".to_string());
+            removed.push("CLAUDE.md: removed @RTCO.md reference".to_string());
         }
 
         if working_content.contains(RTCO_BLOCK_START) {
@@ -879,12 +883,12 @@ fn uninstall_codex_at(codex_dir: &Path, ctx: InitContext) -> Result<Vec<String>>
     let rtk_md_path = codex_dir.join(RTCO_MD);
     if rtk_md_path.exists() {
         if dry_run {
-            println!("[dry-run] would remove RTK.md: {}", rtk_md_path.display());
+            println!("[dry-run] would remove RTCO.md: {}", rtk_md_path.display());
         } else {
             fs::remove_file(&rtk_md_path)
-                .with_context(|| format!("Failed to remove RTK.md: {}", rtk_md_path.display()))?;
+                .with_context(|| format!("Failed to remove RTCO.md: {}", rtk_md_path.display()))?;
             if verbose > 0 {
-                eprintln!("Removed RTK.md: {}", rtk_md_path.display());
+                eprintln!("Removed RTCO.md: {}", rtk_md_path.display());
             }
         }
         removed.push(format!("RTK.md: {}", rtk_md_path.display()));
@@ -919,7 +923,7 @@ fn uninstall_codex_at(codex_dir: &Path, ctx: InitContext) -> Result<Vec<String>>
         &[RTCO_MD_REF, absolute_rtk_md_ref.as_str()],
         ctx,
     )? {
-        removed.push("AGENTS.md: removed @RTK.md reference".to_string());
+        removed.push("AGENTS.md: removed @RTCO.md reference".to_string());
     }
 
     Ok(removed)
@@ -1113,7 +1117,7 @@ fn hook_already_present(root: &serde_json::Value, hook_command: &str) -> bool {
         })
 }
 
-/// Default mode: hook + slim RTK.md + @RTK.md reference
+/// Default mode: hook + slim RTK.md + @RTCO.md reference
 fn run_default_mode(
     global: bool,
     patch_mode: PatchMode,
@@ -1153,15 +1157,15 @@ fn run_default_mode(
     if !dry_run {
         println!("\nRTK hook registered (global).\n");
         println!("  Command:   {}", CLAUDE_HOOK_COMMAND);
-        println!("  RTK.md:    {} (10 lines)", rtk_md_path.display());
+        println!("  RTCO.md:    {} (10 lines)", rtk_md_path.display());
         if let Some(path) = &opencode_plugin_path {
             println!("  OpenCode:  {}", path.display());
         }
-        println!("  CLAUDE.md: @RTK.md reference added");
+        println!("  CLAUDE.md: @RTCO.md reference added");
 
         if migrated {
             println!("\n  [ok] Migrated: removed 137-line RTK block from CLAUDE.md");
-            println!("              replaced with @RTK.md (10 lines)");
+            println!("              replaced with @RTCO.md (10 lines)");
         }
     }
 
@@ -2317,7 +2321,7 @@ fn run_codex_mode_with_paths(
 
     if !dry_run {
         println!("\nRTK configured for Codex CLI.\n");
-        println!("  RTK.md:    {}", rtk_md_path.display());
+        println!("  RTCO.md:    {}", rtk_md_path.display());
         if added_ref {
             println!("  AGENTS.md: {} reference added", rtk_md_ref);
         } else {
@@ -2531,7 +2535,7 @@ fn patch_claude_md(path: &Path, ctx: InitContext) -> Result<bool> {
 
     if dry_run {
         println!(
-            "[dry-run] would add @RTK.md reference to CLAUDE.md: {}",
+            "[dry-run] would add @RTCO.md reference to CLAUDE.md: {}",
             path.display()
         );
         if verbose > 0 {
@@ -2541,7 +2545,7 @@ fn patch_claude_md(path: &Path, ctx: InitContext) -> Result<bool> {
         fs::write(path, new_content)?;
 
         if verbose > 0 {
-            eprintln!("Added @RTK.md reference to CLAUDE.md");
+            eprintln!("Added @RTCO.md reference to CLAUDE.md");
         }
     }
 
@@ -2570,7 +2574,7 @@ fn patch_agents_md(path: &Path, rtk_md_ref: &str, ctx: InitContext) -> Result<bo
         }
     }
 
-    // ISSUE #892: Check for both relative and absolute @RTK.md references
+    // ISSUE #892: Check for both relative and absolute @RTCO.md references
     if content.contains(RTCO_MD_REF) || content.contains(rtk_md_ref) {
         if verbose > 0 {
             eprintln!("{} reference already present in AGENTS.md", rtk_md_ref);
@@ -2668,7 +2672,7 @@ fn remove_rtk_reference_from_agents(path: &Path, refs: &[&str], ctx: InitContext
 
     if dry_run {
         println!(
-            "[dry-run] would remove RTK.md reference from AGENTS.md: {}",
+            "[dry-run] would remove RTCO.md reference from AGENTS.md: {}",
             path.display()
         );
         if verbose > 0 {
@@ -2682,7 +2686,7 @@ fn remove_rtk_reference_from_agents(path: &Path, refs: &[&str], ctx: InitContext
 
     if verbose > 0 {
         eprintln!(
-            "Removed RTK.md reference from AGENTS.md: {}",
+            "Removed RTCO.md reference from AGENTS.md: {}",
             path.display()
         );
     }
@@ -2721,7 +2725,7 @@ fn remove_rtk_block(content: &str) -> (String, bool) {
         }
 
         eprintln!("    Action: Manually remove the incomplete block, then re-run:");
-        eprintln!("            rtk init -g");
+        eprintln!("            rtco init -g");
         (content.to_string(), false)
     } else {
         (content.to_string(), false)
@@ -3389,10 +3393,10 @@ fn show_claude_config() -> Result<()> {
                 println!("[ok] Integrity: hook hash verified");
             }
             Ok(integrity::IntegrityStatus::Tampered { .. }) => {
-                println!("[FAIL] Integrity: hook modified outside rtk init (run: rtk verify)");
+                println!("[FAIL] Integrity: hook modified outside rtco init (run: rtco verify)");
             }
             Ok(integrity::IntegrityStatus::NoBaseline) => {
-                println!("[warn] Integrity: no baseline hash (run: rtk init -g to establish)");
+                println!("[warn] Integrity: no baseline hash (run: rtco init -g to establish)");
             }
             Ok(integrity::IntegrityStatus::NotInstalled)
             | Ok(integrity::IntegrityStatus::OrphanedHash) => {
@@ -3408,13 +3412,13 @@ fn show_claude_config() -> Result<()> {
     if global_claude_md.exists() {
         let content = fs::read_to_string(&global_claude_md)?;
         if content.contains(RTCO_MD_REF) {
-            println!("[ok] Global (~/.claude/CLAUDE.md): @RTK.md reference");
+            println!("[ok] Global (~/.claude/CLAUDE.md): @RTCO.md reference");
         } else if content.contains(RTCO_BLOCK_START) {
             println!(
-                "[warn] Global (~/.claude/CLAUDE.md): old RTK block (run: rtk init -g to migrate)"
+                "[warn] Global (~/.claude/CLAUDE.md): old RTK block (run: rtco init -g to migrate)"
             );
         } else {
-            println!("[--] Global (~/.claude/CLAUDE.md): exists but rtk not configured");
+            println!("[--] Global (~/.claude/CLAUDE.md): exists but rtco not configured");
         }
     } else {
         println!("[--] Global (~/.claude/CLAUDE.md): not found");
@@ -3424,9 +3428,9 @@ fn show_claude_config() -> Result<()> {
     if local_claude_md.exists() {
         let content = fs::read_to_string(&local_claude_md)?;
         if content.contains("rtk") {
-            println!("[ok] Local (./CLAUDE.md): rtk enabled");
+            println!("[ok] Local (./CLAUDE.md): rtco enabled");
         } else {
-            println!("[--] Local (./CLAUDE.md): exists but rtk not configured");
+            println!("[--] Local (./CLAUDE.md): exists but rtco not configured");
         }
     } else {
         println!("[--] Local (./CLAUDE.md): not found");
@@ -3441,7 +3445,7 @@ fn show_claude_config() -> Result<()> {
                     println!("[ok] settings.json: RTK hook configured");
                 } else {
                     println!("[warn] settings.json: exists but RTK hook not configured");
-                    println!("    Run: rtk init -g --auto-patch");
+                    println!("    Run: rtco init -g --auto-patch");
                 }
             } else {
                 println!("[warn] settings.json: exists but invalid JSON");
@@ -3518,16 +3522,16 @@ fn show_claude_config() -> Result<()> {
     }
 
     println!("\nUsage:");
-    println!("  rtk init              # Full injection into local CLAUDE.md");
-    println!("  rtk init -g           # Hook + RTK.md + @RTK.md + settings.json (recommended)");
-    println!("  rtk init -g --auto-patch    # Same as above but no prompt");
-    println!("  rtk init -g --no-patch      # Skip settings.json (manual setup)");
-    println!("  rtk init -g --uninstall     # Remove all RTK artifacts");
-    println!("  rtk init -g --claude-md     # Legacy: full injection into ~/.claude/CLAUDE.md");
-    println!("  rtk init -g --hook-only     # Hook only, no RTK.md");
-    println!("  rtk init --codex            # Configure local AGENTS.md + RTK.md");
-    println!("  rtk init -g --codex         # Configure $CODEX_HOME/AGENTS.md + $CODEX_HOME/RTK.md (or ~/.codex/)");
-    println!("  rtk init -g --opencode      # OpenCode plugin only");
+    println!("  rtco init              # Full injection into local CLAUDE.md");
+    println!("  rtco init -g           # Hook + RTCO.md + @RTCO.md + settings.json (recommended)");
+    println!("  rtco init -g --auto-patch    # Same as above but no prompt");
+    println!("  rtco init -g --no-patch      # Skip settings.json (manual setup)");
+    println!("  rtco init -g --uninstall     # Remove all RTCO artifacts");
+    println!("  rtco init -g --claude-md     # Legacy: full injection into ~/.claude/CLAUDE.md");
+    println!("  rtco init -g --hook-only     # Hook only, no RTCO.md");
+    println!("  rtco init --codex            # Configure local AGENTS.md + RTCO.md");
+    println!("  rtco init -g --codex         # Configure $CODEX_HOME/AGENTS.md + $CODEX_HOME/RTCO.md (or ~/.codex/)");
+    println!("  rtco init -g --opencode      # OpenCode plugin only");
     println!("  rtk init -g --agent cursor  # Install Cursor Agent hooks");
 
     Ok(())
@@ -3552,7 +3556,7 @@ fn show_codex_config() -> Result<()> {
     if global_agents_md.exists() {
         let content = fs::read_to_string(&global_agents_md)?;
         if has_rtk_reference(&content, &[RTCO_MD_REF, global_rtk_md_ref.as_str()]) {
-            println!("[ok] Global AGENTS.md: RTK.md reference");
+            println!("[ok] Global AGENTS.md: RTCO.md reference");
         } else if content.contains(RTCO_BLOCK_START) {
             println!("[!!] Global AGENTS.md: old inline RTK block");
         } else {
@@ -3571,7 +3575,7 @@ fn show_codex_config() -> Result<()> {
     if local_agents_md.exists() {
         let content = fs::read_to_string(&local_agents_md)?;
         if has_rtk_reference(&content, &[RTCO_MD_REF]) {
-            println!("[ok] Local AGENTS.md: @RTK.md reference");
+            println!("[ok] Local AGENTS.md: @RTCO.md reference");
         } else if content.contains(RTCO_BLOCK_START) {
             println!("[!!] Local AGENTS.md: old inline RTK block");
         } else {
@@ -3903,7 +3907,7 @@ git status                 rtco git status
 git log -10                rtco git log -10
 cargo test                 rtco cargo test
 docker ps                  rtco docker ps
-kubectl get pods           rtco kubectl pods
+kubectl get pods           rtco kubectl get pods
 ```
 
 ## Meta commands (use directly)

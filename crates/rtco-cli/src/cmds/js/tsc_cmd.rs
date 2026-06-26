@@ -38,7 +38,7 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
         "tsc",
         &args.join(" "),
         Box::new(BlockStreamFilter::new(TscHandler::new())),
-        runner::RunOptions::with_tee("tsc"),
+        runner::RunOptions::with_tee("tsc").early_exit_on_failure(),
     )
 }
 

@@ -129,7 +129,9 @@ impl ClaudeProvider {
     /// `/home/chris/2_project`   → `-home-chris-2-project`
     /// `C:\Users\foo\bar`        → `C:-Users-foo-bar`
     pub fn encode_project_path(path: &str) -> String {
-        const SANITIZED_CHARS: &[char] = &['/', '.', '_', '\\'];
+        // #2367: Windows drive colon (C:) must be sanitized to match Claude Code's
+        // project directory naming convention which uses "C-" for the drive.
+        const SANITIZED_CHARS: &[char] = &['/', '.', '_', '\\', ':'];
 
         path.chars()
             .map(|c| {
@@ -407,10 +409,10 @@ mod tests {
 
     #[test]
     fn test_encode_project_path_windows() {
-        // Windows backslashes are also replaced with '-'
+        // Windows backslashes and drive colon are replaced with '-' (#2367)
         assert_eq!(
             ClaudeProvider::encode_project_path(r"C:\Users\foo\bar"),
-            "C:-Users-foo-bar"
+            "C--Users-foo-bar"
         );
     }
 

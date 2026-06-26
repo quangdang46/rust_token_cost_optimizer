@@ -28,7 +28,7 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
         "mypy",
         &args.join(" "),
         |raw| filter_mypy_output(&strip_ansi(raw)),
-        runner::RunOptions::default(),
+        runner::RunOptions::default().early_exit_on_failure(),
     )
 }
 

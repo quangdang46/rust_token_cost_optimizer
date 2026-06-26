@@ -77,15 +77,17 @@ struct CargoBuildHandler {
     warnings: usize,
     error_count: usize,
     finished_line: Option<String>,
+    subcommand: String,
 }
 
 impl CargoBuildHandler {
-    fn new() -> Self {
+    fn new(subcommand: &str) -> Self {
         Self {
             compiled: 0,
             warnings: 0,
             error_count: 0,
             finished_line: None,
+            subcommand: subcommand.to_string(),
         }
     }
 }
@@ -133,15 +135,31 @@ impl BlockHandler for CargoBuildHandler {
 
     fn format_summary(&self, _exit_code: i32, _raw: &str) -> Option<String> {
         if self.error_count == 0 && self.warnings == 0 {
-            let mut s = format!("cargo build ({} crates compiled)", self.compiled);
-            if let Some(ref finished) = self.finished_line {
-                s = format!("{}\n{}", s, finished);
+            // #2545: When cargo check/build -q produces no output (quiet mode),
+            // don't show "0 crates compiled" which misleads AI agents. Show "ok" instead.
+            if self.compiled == 0 {
+                Some("ok\n".to_string())
+            } else {
+                let sub = if self.subcommand == "check" {
+                    "cargo check"
+                } else {
+                    "cargo build"
+                };
+                let mut s = format!("{} ({} crates compiled)", sub, self.compiled);
+                if let Some(ref finished) = self.finished_line {
+                    s = format!("{}\n{}", s, finished);
+                }
+                Some(format!("{}\n", s))
             }
-            Some(format!("{}\n", s))
         } else {
+            let sub = if self.subcommand == "check" {
+                "cargo check"
+            } else {
+                "cargo build"
+            };
             Some(format!(
-                "═══════════════════════════════════════\ncargo build: {} errors, {} warnings ({} crates)\n",
-                self.error_count, self.warnings, self.compiled
+                "═══════════════════════════════════════\n{}: {} errors, {} warnings ({} crates)\n",
+                sub, self.error_count, self.warnings, self.compiled
             ))
         }
     }
@@ -178,7 +196,9 @@ impl BlockHandler for CargoTestHandler {
         if line.starts_with("running ") {
             return true;
         }
-        if line.starts_with("test ") && line.ends_with("... ok") {
+        // #45: Skip both passing and failing test summary lines to prevent
+        // duplicates. Test failures are shown as detailed blocks (---- ...).
+        if line.starts_with("test ") && (line.ends_with("... ok") || line.ends_with("... FAILED")) {
             return true;
         }
         // Track compile errors for fallback
@@ -222,7 +242,7 @@ impl BlockHandler for CargoTestHandler {
 
     fn format_summary(&self, _exit_code: i32, raw: &str) -> Option<String> {
         if self.summary_lines.is_empty() && self.has_compile_errors {
-            let build_filtered = filter_cargo_build(raw);
+            let build_filtered = filter_cargo_build(raw, "build");
             if build_filtered.starts_with("cargo build:") {
                 return Some(format!(
                     "{}\n",
@@ -305,7 +325,7 @@ where
         &format!("cargo {}", subcommand),
         &restored_args.join(" "),
         filter_fn,
-        runner::RunOptions::with_tee(&format!("cargo_{}", subcommand)),
+        runner::RunOptions::with_tee(&format!("cargo_{}", subcommand)).early_exit_on_failure(),
     )
 }
 
@@ -332,7 +352,7 @@ fn run_cargo_streamed(
         &format!("cargo {}", subcommand),
         &restored_args.join(" "),
         filter,
-        runner::RunOptions::with_tee(&format!("cargo_{}", subcommand)),
+        runner::RunOptions::with_tee(&format!("cargo_{}", subcommand)).early_exit_on_failure(),
     )
 }
 
@@ -341,7 +361,7 @@ fn run_build(args: &[String], verbose: u8) -> Result<i32> {
         "build",
         args,
         verbose,
-        Box::new(BlockStreamFilter::new(CargoBuildHandler::new())),
+        Box::new(BlockStreamFilter::new(CargoBuildHandler::new("build"))),
     )
 }
 
@@ -363,7 +383,7 @@ fn run_check(args: &[String], verbose: u8) -> Result<i32> {
         "check",
         args,
         verbose,
-        Box::new(BlockStreamFilter::new(CargoBuildHandler::new())),
+        Box::new(BlockStreamFilter::new(CargoBuildHandler::new("check"))),
     )
 }
 
@@ -796,8 +816,8 @@ fn filter_cargo_nextest(output: &str) -> String {
     String::new()
 }
 
-fn filter_cargo_build(output: &str) -> String {
-    let mut handler = CargoBuildHandler::new();
+fn filter_cargo_build(output: &str, subcommand: &str) -> String {
+    let mut handler = CargoBuildHandler::new(subcommand);
     let mut blocks: Vec<Vec<String>> = Vec::new();
     let mut current_block: Vec<String> = Vec::new();
     let mut in_block = false;
@@ -1077,7 +1097,7 @@ pub(crate) fn filter_cargo_test(output: &str) -> String {
         });
 
         if has_compile_errors {
-            let build_filtered = filter_cargo_build(output);
+            let build_filtered = filter_cargo_build(output, "build");
             if build_filtered.starts_with("cargo build:") {
                 return build_filtered.replacen("cargo build:", "cargo test:", 1);
             }
@@ -1388,7 +1408,7 @@ mod tests {
    Compiling rtco v0.41.0
     Finished dev [unoptimized + debuginfo] target(s) in 15.23s
 "#;
-        let result = filter_cargo_build(output);
+        let result = filter_cargo_build(output, "build");
         assert!(result.contains("cargo build"));
         assert!(result.contains("3 crates compiled"));
     }
@@ -1404,7 +1424,7 @@ error[E0308]: mismatched types
 
 error: aborting due to 1 previous error
 "#;
-        let result = filter_cargo_build(output);
+        let result = filter_cargo_build(output, "build");
         assert!(result.contains("1 errors"));
         assert!(result.contains("E0308"));
         assert!(result.contains("mismatched types"));
@@ -2143,7 +2163,7 @@ error: test run failed
     #[test]
     fn test_cargo_build_stream_success() {
         let input = "   Compiling libc v0.2.153\n   Compiling cfg-if v1.0.0\n   Compiling rtco v0.41.0\n    Finished dev [unoptimized + debuginfo] target(s) in 15.23s\n";
-        let mut f = BlockStreamFilter::new(CargoBuildHandler::new());
+        let mut f = BlockStreamFilter::new(CargoBuildHandler::new("build"));
         let result = run_block_filter(&mut f, input, 0);
         assert!(result.contains("3 crates compiled"), "got: {}", result);
         assert!(result.contains("Finished"), "got: {}", result);
@@ -2161,7 +2181,7 @@ error[E0308]: mismatched types
 
 error: aborting due to 1 previous error
 "#;
-        let mut f = BlockStreamFilter::new(CargoBuildHandler::new());
+        let mut f = BlockStreamFilter::new(CargoBuildHandler::new("build"));
         let result = run_block_filter(&mut f, input, 1);
         assert!(result.contains("E0308"), "got: {}", result);
         assert!(result.contains("mismatched types"), "got: {}", result);
@@ -2267,7 +2287,7 @@ error: could not compile `rtk` (test "repro_compile_fail") due to 1 previous err
    Compiling rtco v0.41.0
     Finished dev [unoptimized + debuginfo] target(s) in 15.23s
 "#;
-        let result = filter_cargo_build(output);
+        let result = filter_cargo_build(output, "build");
         let raw_tokens = count_tokens(output);
         let filtered_tokens = count_tokens(&result);
         let savings = 100.0 - (filtered_tokens as f64 / raw_tokens as f64 * 100.0);
@@ -2325,14 +2345,14 @@ test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
     #[test]
     fn test_cargo_build_snapshot() {
         let input = include_str!("../../../../../tests/fixtures/cargo/cargo_test.txt");
-        let output = filter_cargo_build(input);
+        let output = filter_cargo_build(input, "build");
         insta::assert_snapshot!(output);
     }
 
     #[test]
     fn test_cargo_build_compile_errors_from_fixture() {
         let input = "error[E0308]: mismatched types\n --> src/main.rs:10:5\n  |\n10|     \"hello\"\n  |     ^^^^^^^ expected `i32`, found `&str`\n\nerror: aborting due to 1 previous error\n";
-        let output = filter_cargo_build(input);
+        let output = filter_cargo_build(input, "build");
         insta::assert_snapshot!(output);
     }
 

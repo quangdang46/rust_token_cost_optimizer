@@ -575,14 +575,9 @@ fn run_log(
         (10, false)
     };
 
-    // Only add --no-merges if user didn't explicitly request merge commits
-    let wants_merges = args
-        .iter()
-        .any(|arg| arg == "--merges" || arg == "--min-parents=2" || arg == "--no-merges");
-    // Don't add --no-merges if user explicitly requested merges or an exact count (-n N / --max-count)
-    if !wants_merges && !has_limit_flag {
-        cmd.arg("--no-merges");
-    }
+    // Note: We no longer add --no-merges by default (#2305). Git log by default
+    // shows merge commits — adding --no-merges silently drops merge/HEAD verification.
+    // Users who want to exclude merges can pass --no-merges explicitly.
 
     // Pass all user arguments
     for arg in args {
@@ -1644,6 +1639,18 @@ fn run_stash(
                 return Ok(0);
             }
 
+            if !result.success() {
+                if !result.stderr.trim().is_empty() {
+                    eprintln!("{}", result.stderr);
+                }
+                timer.track(
+                    "git stash list",
+                    "rtco git stash list",
+                    &result.stdout,
+                    "",
+                );
+                return Ok(result.exit_code);
+            }
             let filtered = filter_stash_list(&result.stdout);
             println!("{}", filtered);
             timer.track(
@@ -1671,6 +1678,18 @@ fn run_stash(
                 compacted
             };
 
+            if !result.success() {
+                if !result.stderr.trim().is_empty() {
+                    eprintln!("{}", result.stderr);
+                }
+                timer.track(
+                    "git stash show",
+                    "rtco git stash show",
+                    &result.stdout,
+                    "",
+                );
+                return Ok(result.exit_code);
+            }
             timer.track(
                 "git stash show",
                 "rtco git stash show",
@@ -1827,6 +1846,18 @@ fn run_worktree(args: &[String], verbose: u8, global_args: &[String]) -> Result<
     cmd.args(["worktree", "list"]);
     let result = exec_capture(&mut cmd).context("Failed to run git worktree list")?;
 
+    if !result.success() {
+        if !result.stderr.trim().is_empty() {
+            eprintln!("{}", result.stderr);
+        }
+        timer.track(
+            "git worktree list",
+            "rtco git worktree",
+            &result.stdout,
+            "",
+        );
+        return Ok(result.exit_code);
+    }
     let filtered = filter_worktree_list(&result.stdout);
     println!("{}", filtered);
     timer.track(

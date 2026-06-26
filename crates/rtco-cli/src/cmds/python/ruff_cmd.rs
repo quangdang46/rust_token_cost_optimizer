@@ -86,7 +86,7 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
                 stdout.trim().to_string()
             }
         },
-        runner::RunOptions::stdout_only(),
+        runner::RunOptions::stdout_only().early_exit_on_failure(),
     )
 }
 

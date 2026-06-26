@@ -51,7 +51,9 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
     // #41: On Windows without ls, fallback to PowerShell Get-ChildItem
     let mut cmd = resolved_command("ls");
     cmd.env("LC_ALL", "C");
-    cmd.arg("-la");
+    // -b: Escape non-graphic characters (newlines, tabs) so filenames with
+    // embedded newlines don't get truncated when we split output by lines (#69)
+    cmd.arg("-lab");
     for flag in &flags {
         if flag.starts_with("--") {
             if *flag != "--all" {

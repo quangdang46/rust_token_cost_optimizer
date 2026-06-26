@@ -7,7 +7,7 @@ import type { Plugin } from "@opencode-ai/plugin"
 // which is the single source of truth (src/discover/registry.rs).
 // To add or change rewrite rules, edit the Rust registry — not this file.
 
-export const RtkOpenCodePlugin: Plugin = async ({ $ }) => {
+const RtkOpenCodePlugin: Plugin = async ({ $ }) => {
   try {
     await $`which rtco`.quiet()
   } catch {
@@ -37,3 +37,8 @@ export const RtkOpenCodePlugin: Plugin = async ({ $ }) => {
     },
   }
 }
+
+// Named export for direct imports
+export { RtkOpenCodePlugin }
+// Default export for plugin loader that expects default (#2516)
+export default RtkOpenCodePlugin

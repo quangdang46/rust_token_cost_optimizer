@@ -237,7 +237,12 @@ pub fn run(filter_name: Option<&str>, passthrough: bool) -> Result<()> {
     };
 
     let output = apply_filter(filter_fn, &buf);
-    print!("{}", output);
+    // #56: Ensure output ends with newline (flush consumer expectations)
+    if output.ends_with('\n') {
+        print!("{}", output);
+    } else {
+        println!("{}", output);
+    }
     Ok(())
 }
 

@@ -24,7 +24,78 @@ fn env_warning(what: &str) -> String {
     )
 }
 
+
+/// Parse raw grep arguments into (pattern, path, remaining_flags).
+///
+/// Handles:
+/// - `grep -r pattern path` — flags before pattern
+/// - `grep pattern path -r` — flags after path
+/// - `grep -rn pattern` — combined short flags
+/// - `grep -A5 pattern` — flags with values
+fn parse_grep_args(args: &[String]) -> (String, String, Vec<String>) {
+    let mut pattern = String::new();
+    let mut path = String::from(".");
+    let mut extra = Vec::new();
+    let mut i = 0;
+
+    // Two-pass: first collect all flags/values
+    let mut raw = Vec::new();
+    while i < args.len() {
+        let arg = &args[i];
+        if arg.starts_with('-') {
+            // Expand combined short flags like -rn to -r -n
+            if arg.len() > 2 && !arg.starts_with("--") {
+                let chars: Vec<char> = arg[1..].chars().collect();
+                for c in &chars {
+                    extra.push(format!("-{}", c));
+                }
+            } else {
+                extra.push(arg.clone());
+                // Flags that take a separate value: -A, -B, -C
+                if matches!(arg.as_str(), "-A" | "-B" | "-C" | "--after-context" | "--before-context" | "--context") {
+                    if i + 1 < args.len() && !args[i + 1].starts_with('-') {
+                        i += 1;
+                        extra.push(args[i].clone());
+                    }
+                }
+            }
+        } else {
+            raw.push(arg.clone());
+        }
+        i += 1;
+    }
+
+    // First non-flag arg is pattern, second is path
+    for (idx, val) in raw.iter().enumerate() {
+        if idx == 0 {
+            pattern = val.clone();
+        } else if idx == 1 {
+            path = val.clone();
+        } else {
+            extra.push(val.clone());
+        }
+    }
+
+    if pattern.is_empty() {
+        pattern = "*".to_string();
+    }
+
+    (pattern, path, extra)
+}
+/// Entry point from raw CLI arguments (bypasses clap strict parsing for grep-flag compat).
+///
+/// Parses pattern, path, and common grep flags from a raw arg list so that
+/// `rtco grep -rn foo .` works even though `-r` is not a named clap flag.
+/// Fixes #2614 (common grep flags rejected), #2620 (ultra-compact support).
+pub fn run_from_args(args: &[String], verbose: u8, ultra_compact: bool) -> Result<i32> {
+    let (pattern, path, extra_args) = parse_grep_args(args);
+    run_inner(
+        &pattern, &path, 80, 200, false, None, &extra_args, verbose, ultra_compact,
+    )
+}
+
 #[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 pub fn run(
     pattern: &str,
     path: &str,
@@ -35,9 +106,29 @@ pub fn run(
     extra_args: &[String],
     verbose: u8,
 ) -> Result<i32> {
+    run_inner(pattern, path, max_line_len, max_results, context_only, file_type, extra_args, verbose, false)
+}
+
+/// Core grep implementation with all options.
+///
+/// #2614: Accepts grep-ism flags and translates them for ripgrep compatibility.
+/// #2620: When `ultra_compact` is true, uses minimal output format.
+/// #2606: Uses rg internally with .gitignore handling preserved.
+#[allow(clippy::too_many_arguments)]
+fn run_inner(
+    pattern: &str,
+    path: &str,
+    max_line_len: usize,
+    max_results: usize,
+    context_only: bool,
+    file_type: Option<&str>,
+    extra_args: &[String],
+    verbose: u8,
+    ultra_compact: bool,
+) -> Result<i32> {
     let timer = tracking::TimedExecution::start();
 
-        // Security: block grep on .env files (#2428)
+    // Security: block grep on .env files (#2428)
     if path != "." && is_env_file(path) {
         eprintln!("{}", env_warning(path));
         return Ok(1);
@@ -159,11 +250,16 @@ if verbose > 0 {
     }
 
     let mut rtco_output = String::new();
-    rtco_output.push_str(&format!(
-        "{} matches in {} files:\n\n",
-        total_matches.min(max_results),  // #2608: show accurate count even with long paths
-        by_file.len()
-    ));
+    // #2608: Skip header for single-match results — the header is pure overhead
+    // when the user will see exactly one file:line. Only show it when there are
+    // multiple matches or files, or when ultra_compact is explicitly requested.
+    if !ultra_compact && by_file.len() >= 1 && total_matches > 1 {
+        rtco_output.push_str(&format!(
+            "{} matches in {} files:\n\n",
+            total_matches.min(max_results),
+            by_file.len()
+        ));
+    }
 
     let mut shown = 0;
     let mut files: Vec<_> = by_file.iter().collect();

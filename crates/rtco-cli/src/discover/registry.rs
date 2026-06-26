@@ -479,6 +479,49 @@ fn collapse_line_continuations(s: &str) -> std::borrow::Cow<'_, str> {
 /// starts with `"foo bar "` (or strictly equals `"foo bar"`), not anything
 /// else. Matching is literal, not pattern-based: configure the exact concrete
 /// prefix you use.
+/// Check if a command is a shell builtin that must run in-process (#2508).
+/// Builtins like cd, export, source, etc. have no effect when run as a subprocess.
+fn is_shell_builtin(cmd: &str) -> bool {
+    let first_word = cmd.split_whitespace().next().unwrap_or("");
+    matches!(
+        first_word,
+        "cd" | "pushd"
+            | "popd"
+            | "export"
+            | "source"
+            | "alias"
+            | "unalias"
+            | "set"
+            | "unset"
+            | "ulimit"
+            | "umask"
+            | "trap"
+            | "exec"
+            | "exit"
+            | "return"
+            | "logout"
+            | "type"
+            | "builtin"
+            | "enable"
+            | "let"
+            | "read"
+            | "readonly"
+            | "shift"
+            | "shopt"
+            | "declare"
+            | "local"
+            | "eval"
+            | "."
+            | "bg"
+            | "fg"
+            | "jobs"
+            | "disown"
+            | "wait"
+            | "suspend"
+            | "times"
+    )
+}
+
 pub fn rewrite_command(
     cmd: &str,
     excluded: &[String],
@@ -512,6 +555,14 @@ pub fn rewrite_command(
     let is_rtco_style = trimmed.starts_with("rtco ");
     let is_bare_rtco = trimmed == "rtco";
     if !has_compound && (is_rtco_style || is_bare_rtco) {
+        // #2508: If the inner command is a shell builtin (cd, export, source, etc.),
+        // return passthrough so the shell runs the real builtin instead of rtco as
+        // a subprocess (which would lose the side-effect).
+        let inner = trimmed.strip_prefix("rtco ").unwrap_or("");
+        let inner_trimmed = inner.trim();
+        if is_shell_builtin(inner_trimmed) {
+            return None; // passthrough — let the shell execute the builtin directly
+        }
         return Some(trimmed.to_string());
     }
 
@@ -788,8 +839,12 @@ fn rewrite_segment_inner(
         return None;
     }
 
+    // #2363: Apply exclude_commands check to head/tail rewrites
     if cmd_part.starts_with("head -") || cmd_part.starts_with("tail ") {
-        return rewrite_line_range(cmd_part).map(|r| format!("{}{}", r, redirect_suffix));
+        if !is_excluded(cmd_part, excluded) {
+            return rewrite_line_range(cmd_part).map(|r| format!("{}{}", r, redirect_suffix));
+        }
+        return None;
     }
 
     // Most cat flags (-v, -A, -e, -t, -s, -b, --show-all, etc.) have different
@@ -1609,7 +1664,7 @@ mod tests {
     fn test_rewrite_rg_pattern() {
         assert_eq!(
             rewrite_command_no_prefixes("rg \"fn main\"", &[]),
-            Some("rtco grep \"fn main\"".into())
+            Some("rtco rg \"fn main\"".into())
         );
     }
 

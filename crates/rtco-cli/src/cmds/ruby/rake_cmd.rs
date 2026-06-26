@@ -69,7 +69,7 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
         "rake",
         &args.join(" "),
         filter_minitest_output,
-        runner::RunOptions::with_tee("rake"),
+        runner::RunOptions::with_tee("rake").early_exit_on_failure(),
     )
 }
 

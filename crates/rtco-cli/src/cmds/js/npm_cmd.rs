@@ -128,7 +128,7 @@ fn run_filtered(name: &str, args: &[String], verbose: u8, skip_env: bool) -> Res
         name,
         &args_display,
         filter_npm_output,
-        runner::RunOptions::default(),
+        runner::RunOptions::default().early_exit_on_failure(),
     )
 }
 

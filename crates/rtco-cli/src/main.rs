@@ -53,6 +53,13 @@ pub enum AgentTarget {
     Hermes,
 }
 
+/// Config subcommands
+#[derive(Debug, Clone, Subcommand)]
+pub enum ConfigAction {
+    /// Show current configuration
+    Show,
+}
+
 #[derive(Parser)]
 #[command(
     name = "rtco",
@@ -69,8 +76,9 @@ struct Cli {
     verbose: u8,
 
     /// Ultra-compact mode: ASCII icons, inline format (Level 2 optimizations)
-    #[arg(long, global = true)]
-    ultra_compact: bool,
+    /// Can be specified multiple times (all consumed by clap)
+    #[arg(long, global = true, action = clap::ArgAction::Count)]
+    ultra_compact: u8,
 
     /// Set SKIP_ENV_VALIDATION=1 for child processes (Next.js, tsc, lint, prisma)
     #[arg(long = "skip-env", global = true)]
@@ -114,8 +122,8 @@ enum Commands {
 
     /// Generate 2-line technical summary (heuristic-based)
     Smart {
-        /// File to analyze
-        file: PathBuf,
+        /// File to analyze (optional — reads from stdin if omitted, #62)
+        file: Option<PathBuf>,
         /// Model: heuristic
         #[arg(short, long, default_value = "heuristic")]
         model: String,
@@ -237,8 +245,8 @@ enum Commands {
 
     /// Show JSON (compact values by default, or keys-only with --keys-only)
     Json {
-        /// JSON file
-        file: PathBuf,
+        /// JSON file (optional — reads from stdin if omitted, #63)
+        file: Option<PathBuf>,
         /// Max depth
         #[arg(short, long, default_value = "5")]
         depth: usize,
@@ -311,30 +319,22 @@ enum Commands {
     },
 
     /// Compact grep - strips whitespace, truncates, groups by file
+    ///
+    /// Usage: rtco grep [FLAGS] <PATTERN> [PATH]
+    ///   Flags: -r, -E, -i, -A, -B, -C, -w, -l, -c, -o (passed to rg)
+    ///   Supports combined short flags: -rn, -rln, -A5
     Grep {
-        /// Pattern to search
-        pattern: String,
-        /// Path to search in
-        #[arg(default_value = ".")]
-        path: String,
-        /// Max line length
-        #[arg(short = 'l', long, default_value = "80")]
-        max_len: usize,
-        /// Max results to show
-        #[arg(short, long, default_value = "200")]
-        max: usize,
-        /// Show only match context (not full line)
-        #[arg(long)]
-        context_only: bool,
-        /// Filter by file type (e.g., ts, py, rust)
-        #[arg(short = 't', long)]
-        file_type: Option<String>,
-        /// Show line numbers (always on, accepted for grep/rg compatibility)
-        #[arg(short = 'n', long)]
-        line_numbers: bool,
-        /// Extra ripgrep arguments (e.g., -i, -A 3, -w, --glob)
+        /// Raw arguments including pattern, path, and grep flags
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
-        extra_args: Vec<String>,
+        raw_args: Vec<String>,
+    },
+
+    /// Ripgrep passthrough — runs native rg without filtering (#2338)
+    /// Preserves all rg flags (--glob, --type, --ignore-case, etc.)
+    Rg {
+        /// Arguments passed to rg
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
     },
 
     /// Initialize rtco instructions for assistant CLI usage
@@ -494,10 +494,14 @@ enum Commands {
     },
 
     /// Show or create configuration file
+    #[command(args_conflicts_with_subcommands = false, subcommand_required = false)]
     Config {
-        /// Create default config file
+        /// Action: "show" (default) or "--create"
         #[arg(long)]
         create: bool,
+        /// Alias for viewing config
+        #[command(subcommand)]
+        action: Option<ConfigAction>,
     },
 
     /// Jest commands with compact output
@@ -612,9 +616,10 @@ enum Commands {
     Session {},
 
     /// Manage telemetry consent and data (RGPD/GDPR)
+    #[command(args_conflicts_with_subcommands = false, subcommand_required = false)]
     Telemetry {
         #[command(subcommand)]
-        command: telemetry_cmd::TelemetrySubcommand,
+        command: Option<telemetry_cmd::TelemetrySubcommand>,
     },
 
     /// Learn CLI corrections from Claude Code error history
@@ -1559,7 +1564,20 @@ fn run_cli() -> Result<i32> {
             model,
             force_download,
         } => {
-            local_llm::run(&file, &model, force_download, cli.verbose)?;
+            if let Some(f) = file {
+                local_llm::run(&f, &model, force_download, cli.verbose)?;
+            } else {
+                // #62: Read from stdin when no file provided
+                let mut buf = String::new();
+                use std::io::Read;
+                std::io::stdin()
+                    .read_to_string(&mut buf)
+                    .context("Failed to read stdin")?;
+                let tmp = std::env::temp_dir().join("rtco_stdin_smart");
+                std::fs::write(&tmp, &buf).context("Failed to write stdin to temp file")?;
+                local_llm::run(&tmp, &model, force_download, cli.verbose)?;
+                let _ = std::fs::remove_file(&tmp);
+            }
             0
         }
 
@@ -1687,7 +1705,7 @@ fn run_cli() -> Result<i32> {
         }
 
         Commands::Gh { subcommand, args } => {
-            gh_cmd::run(&subcommand, &args, cli.verbose, cli.ultra_compact)?
+            gh_cmd::run(&subcommand, &args, cli.verbose, cli.ultra_compact > 0)?
         }
 
         Commands::Glab {
@@ -1706,7 +1724,7 @@ fn run_cli() -> Result<i32> {
                 args.push("-g".to_string());
                 args.push(g);
             }
-            glab_cmd::run(&subcommand, &args, cli.verbose, cli.ultra_compact)?
+            glab_cmd::run(&subcommand, &args, cli.verbose, cli.ultra_compact > 0)?
         }
 
         Commands::Aws { subcommand, args } => aws_cmd::run(&subcommand, &args, cli.verbose)?,
@@ -1759,10 +1777,14 @@ fn run_cli() -> Result<i32> {
             depth,
             keys_only,
         } => {
-            if file == Path::new("-") {
-                json_cmd::run_stdin(depth, keys_only, cli.verbose)?;
-            } else {
-                json_cmd::run(&file, depth, keys_only, cli.verbose)?;
+            // #63: Accept stdin when file is None or "-"
+            match file {
+                Some(f) if f != Path::new("-") => {
+                    json_cmd::run(&f, depth, keys_only, cli.verbose)?;
+                }
+                _ => {
+                    json_cmd::run_stdin(depth, keys_only, cli.verbose)?;
+                }
             }
             0
         }
@@ -1877,25 +1899,22 @@ fn run_cli() -> Result<i32> {
             summary::run(&cmd, cli.verbose)?
         }
 
-        Commands::Grep {
-            pattern,
-            path,
-            max_len,
-            max,
-            context_only,
-            file_type,
-            line_numbers: _, // no-op: line numbers always enabled in grep_cmd::run
-            extra_args,
-        } => grep_cmd::run(
-            &pattern,
-            &path,
-            max_len,
-            max,
-            context_only,
-            file_type.as_deref(),
-            &extra_args,
-            cli.verbose,
-        )?,
+        Commands::Grep { raw_args } => {
+            grep_cmd::run_from_args(&raw_args, cli.verbose, cli.ultra_compact > 0)?
+        }
+        Commands::Rg { args } => {
+            // #2338: passthrough to native rg with all flags preserved
+            let mut cmd = rtco_core::utils::resolved_command("rg");
+            for arg in &args {
+                cmd.arg(arg);
+            }
+            let result = rtco_core::stream::exec_capture(&mut cmd).context("rg failed")?;
+            print!("{}", result.stdout);
+            if !result.stderr.is_empty() {
+                eprint!("{}", result.stderr.trim());
+            }
+            result.exit_code
+        }
 
         Commands::Init {
             global,
@@ -2067,7 +2086,7 @@ fn run_cli() -> Result<i32> {
             0
         }
 
-        Commands::Config { create } => {
+        Commands::Config { create, action: _ } => {
             if create {
                 let path = rtco_core::config::Config::create_default()?;
                 println!("Created: {}", path.display());
@@ -2168,7 +2187,9 @@ fn run_cli() -> Result<i32> {
         }
 
         Commands::Telemetry { command } => {
-            telemetry_cmd::run(&command)?;
+            // #48: Default to Status when no subcommand is provided
+            let cmd = command.unwrap_or(telemetry_cmd::TelemetrySubcommand::Status);
+            telemetry_cmd::run(&cmd)?;
             0
         }
 
@@ -3212,7 +3233,7 @@ mod tests {
         let cli =
             Cli::try_parse_from(["rtco", "git", "push", "-u", "origin", "my-branch"]).unwrap();
         assert!(
-            !cli.ultra_compact,
+            !cli.ultra_compact > 0,
             "-u on git push must NOT be consumed as --ultra-compact"
         );
         match cli.command {
@@ -3331,7 +3352,7 @@ mod tests {
     fn test_ultra_compact_long_form_still_works() {
         let cli = Cli::try_parse_from(["rtco", "--ultra-compact", "git", "status"]).unwrap();
         assert!(
-            cli.ultra_compact,
+            cli.ultra_compact > 0,
             "--ultra-compact long form must still enable ultra-compact mode"
         );
     }

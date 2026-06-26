@@ -32,7 +32,13 @@ pub fn run(cmd: &str) -> anyhow::Result<()> {
             std::process::exit(3);
         }
         RewriteOutcome::Deny => std::process::exit(2),
-        RewriteOutcome::Passthrough => std::process::exit(1),
+        RewriteOutcome::Passthrough => {
+            // #68: Output the original command even on passthrough so the hook
+            // can use it (instead of silently exiting 1 with no output)
+            print!("{}", cmd);
+            let _ = std::io::stdout().flush();
+            std::process::exit(1);
+        }
     }
 }
 
@@ -44,9 +50,13 @@ enum RewriteOutcome {
     Ask(String),
 }
 
-fn evaluate(cmd: &str, excluded: &[String], transparent_prefixes: &[String]) -> RewriteOutcome {
-    let verdict = check_command(cmd);
-
+/// Evaluate command with explicit permission verdict (for test isolation, #2640).
+fn evaluate_with_verdict(
+    cmd: &str,
+    verdict: PermissionVerdict,
+    excluded: &[String],
+    transparent_prefixes: &[String],
+) -> RewriteOutcome {
     if verdict == PermissionVerdict::Deny {
         return RewriteOutcome::Deny;
     }
@@ -62,6 +72,11 @@ fn evaluate(cmd: &str, excluded: &[String], transparent_prefixes: &[String]) -> 
         },
         None => RewriteOutcome::Passthrough,
     }
+}
+
+fn evaluate(cmd: &str, excluded: &[String], transparent_prefixes: &[String]) -> RewriteOutcome {
+    let verdict = check_command(cmd);
+    evaluate_with_verdict(cmd, verdict, excluded, transparent_prefixes)
 }
 
 #[cfg(test)]
