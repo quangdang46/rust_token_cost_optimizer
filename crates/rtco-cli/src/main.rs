@@ -1,5 +1,4 @@
 mod analytics;
-mod bin_shim;
 mod cmds;
 mod discover;
 mod hooks;
@@ -389,27 +388,6 @@ enum Commands {
         /// Preview changes without writing any files (combine with -v to show content)
         #[arg(long = "dry-run", conflicts_with = "show")]
         dry_run: bool,
-
-        /// Register the `rtco` MCP server in the provider config file(s)
-        ///
-        /// Probes which provider config files exist on disk and registers
-        /// the MCP server only in those. Combine with `--provider` to
-        /// restrict the set; default is all known providers.
-        #[arg(long)]
-        mcp: bool,
-
-        /// Install rtco hooks in the provider config file(s)
-        #[arg(long)]
-        hooks: bool,
-
-        /// Restrict MCP/hooks registration to a comma-separated list of
-        /// providers (e.g. `claude,cursor,windsurf`). Default: all known.
-        #[arg(long, value_delimiter = ',')]
-        provider: Vec<String>,
-
-        /// Probe every known provider regardless of `--provider` list
-        #[arg(long)]
-        all_providers: bool,
     },
 
     /// Download with compact output (strips progress bars)
@@ -802,17 +780,6 @@ enum Commands {
         args: Vec<String>,
     },
 
-    /// Run the RTCO MCP (Model Context Protocol) server over stdio
-    ///
-    /// Exposes `rtco_compress`, `rtco_analyze`, and `rtco_retrieve` as MCP
-    /// tools. The same code is used by the standalone `rtco-mcp` binary; this
-    /// subcommand lets `rtco` ship both entry points in one executable.
-    Mcp {
-        /// Server name reported in the `initialize` response (default: rtco-mcp)
-        #[arg(long, default_value = "rtco-mcp")]
-        server_name: String,
-    },
-
     /// Hook processors for LLM CLI tools (Gemini CLI, Copilot, etc.)
     Hook {
         #[command(subcommand)]
@@ -1197,7 +1164,6 @@ const RTCO_META_COMMANDS: &[&str] = &[
     "untrust",
     "session",
     "rewrite",
-    "mcp",
 ];
 
 fn run_fallback(parse_error: clap::Error) -> Result<i32> {
@@ -1501,9 +1467,8 @@ fn run_cli() -> Result<i32> {
     };
 
     // Warn if installed hook is outdated/missing (1/day, non-blocking).
-    // Skip for Gain (its own inline warning) and Mcp (stdio JSON-RPC;
-    // unsolicited stderr noise corrupts the protocol).
-    if !matches!(cli.command, Commands::Gain { .. } | Commands::Mcp { .. }) {
+    // Skip for Gain (its own inline warning).
+    if !matches!(cli.command, Commands::Gain { .. }) {
         hooks::hook_check::maybe_warn();
     }
 
@@ -1930,10 +1895,6 @@ fn run_cli() -> Result<i32> {
             codex,
             copilot,
             dry_run,
-            mcp,
-            hooks: install_hooks_flag,
-            provider,
-            all_providers,
         } => {
             let ctx = hooks::init::InitContext {
                 verbose: cli.verbose,
@@ -1941,21 +1902,6 @@ fn run_cli() -> Result<i32> {
             };
             if show {
                 hooks::init::show_config(codex)?;
-            } else if mcp || install_hooks_flag {
-                // New MCP/hooks auto-config path. Probes which provider
-                // config files exist on disk and registers only those.
-                // `--provider` restricts the set; `--all-providers` overrides.
-                let requested: Vec<hooks::init::McpTarget> = if all_providers || provider.is_empty()
-                {
-                    hooks::init::McpTarget::all()
-                } else {
-                    hooks::init::McpTarget::from_names(&provider)?
-                };
-                if uninstall {
-                    hooks::init::run_mcp_uninstall(&requested, ctx)?;
-                } else {
-                    hooks::init::run_mcp_install(&requested, install_hooks_flag, ctx)?;
-                }
             } else if uninstall {
                 uninstall_init_dispatch(
                     agent,
@@ -2352,15 +2298,6 @@ fn run_cli() -> Result<i32> {
         Commands::Rewrite { args } => {
             let cmd = args.join(" ");
             hooks::rewrite_cmd::run(&cmd)?;
-            0
-        }
-
-        Commands::Mcp { server_name: _ } => {
-            // The same JSON-RPC stdio loop is shared with the `rtco-mcp` bin.
-            // We accept --server-name for future use (e.g. multiple servers
-            // in one process); the embedded `pub fn run()` already wires
-            // CARGO_PKG_VERSION into the `initialize` response.
-            crate::bin_shim::mcp_server::run()?;
             0
         }
 

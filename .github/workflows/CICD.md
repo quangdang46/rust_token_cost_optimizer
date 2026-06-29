@@ -79,7 +79,7 @@ create the release manually with `gh` CLI:
 cargo build --release
 
 # Create tarball
-tar czf "rtco-$VERSION-$(uname -sm | tr ' ' '-').tar.gz" -C target/release rtco rtco-mcp
+tar czf "rtco-$VERSION-$(uname -sm | tr ' ' '-').tar.gz" -C target/release rtco
 shasum -a 256 "rtco-$VERSION-$(uname -sm | tr ' ' '-').tar.gz" > rtco-SHA256SUMS.txt
 
 # Create release (requires gh CLI with repo scope)

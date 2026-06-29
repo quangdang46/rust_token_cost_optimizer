@@ -45,18 +45,19 @@ fn parse_grep_args(args: &[String]) -> (String, String, Vec<String>) {
         if arg.starts_with('-') {
             // Expand combined short flags like -rn to -r -n
             if arg.len() > 2 && !arg.starts_with("--") {
-                let chars: Vec<char> = arg[1..].chars().collect();
+                let chars: Vec<char> = arg.strip_prefix('-').unwrap_or(arg).chars().collect();
                 for c in &chars {
                     extra.push(format!("-{}", c));
                 }
             } else {
                 extra.push(arg.clone());
                 // Flags that take a separate value: -A, -B, -C
-                if matches!(arg.as_str(), "-A" | "-B" | "-C" | "--after-context" | "--before-context" | "--context") {
-                    if i + 1 < args.len() && !args[i + 1].starts_with('-') {
-                        i += 1;
-                        extra.push(args[i].clone());
-                    }
+                if matches!(arg.as_str(), "-A" | "-B" | "-C" | "--after-context" | "--before-context" | "--context")
+                    && i + 1 < args.len()
+                    && !args[i + 1].starts_with('-')
+                {
+                    i += 1;
+                    extra.push(args[i].clone());
                 }
             }
         } else {
@@ -253,7 +254,7 @@ if verbose > 0 {
     // #2608: Skip header for single-match results — the header is pure overhead
     // when the user will see exactly one file:line. Only show it when there are
     // multiple matches or files, or when ultra_compact is explicitly requested.
-    if !ultra_compact && by_file.len() >= 1 && total_matches > 1 {
+    if !ultra_compact && !by_file.is_empty() && total_matches > 1 {
         rtco_output.push_str(&format!(
             "{} matches in {} files:\n\n",
             total_matches.min(max_results),

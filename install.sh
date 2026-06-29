@@ -22,13 +22,8 @@ EASY=0
 VERIFY=0
 FROM_SOURCE=0
 UNINSTALL=0
-WITH_MCP=0
-NO_MCP=0
 WITH_HOOKS=0
 NO_HOOKS=0
-DRY_RUN=0
-ALL_PROVIDERS=0
-PROVIDERS=""
 MAX_RETRIES=3
 DOWNLOAD_TIMEOUT=120
 LOCK_DIR="/tmp/${BINARY_NAME}-install.lock.d"
@@ -65,20 +60,13 @@ Flags:
   --from-source      Build from source via cargo (requires Rust)
   --quiet, -q        Suppress info logs
   --uninstall        Remove the binary and any easy-mode PATH lines
-                     (also calls \`$BINARY_NAME init --uninstall --mcp --hooks\` if the binary is on PATH)
-  --with-mcp         After install, register the rtco MCP server in every detected provider
-                     (claude, cursor, cline, windsurf, copilot, opencode, codex, gemini, amazonq, warp)
-  --no-mcp           Skip the MCP auto-config step (default if neither --with-mcp nor --no-mcp)
   --with-hooks       After install, register rtco hooks in every detected provider
   --no-hooks         Skip the hooks auto-config step (default if neither --with-hooks nor --no-hooks)
-  --provider <list>  Comma-separated provider list, e.g. claude,cursor. Restricts MCP/hooks.
-  --all-providers    Probe every known provider regardless of --provider
-  --dry-run          Print the actions that would be taken; do not modify provider configs
   -h, --help         Show this help and exit
 
 Example:
-  curl -fsSL https://raw.githubusercontent.com/$OWNER/$REPO/main/install.sh \\
-    | bash -s -- --with-mcp --with-hooks --all-providers
+  curl -fsSL https://raw.githubusercontent.com/$OWNER/$REPO/main/install.sh \
+    | bash -s -- --with-hooks
 EOF
     exit 0
 }
@@ -96,14 +84,8 @@ while [ $# -gt 0 ]; do
         --from-source) FROM_SOURCE=1; shift;;
         --quiet|-q)    QUIET=1;     shift;;
         --uninstall)   UNINSTALL=1; shift;;
-        --with-mcp)    WITH_MCP=1;  shift;;
-        --no-mcp)      NO_MCP=1;    shift;;
         --with-hooks)  WITH_HOOKS=1;shift;;
         --no-hooks)    NO_HOOKS=1;  shift;;
-        --provider)    PROVIDERS="$2"; shift 2;;
-        --provider=*)  PROVIDERS="${1#*=}"; shift;;
-        --all-providers) ALL_PROVIDERS=1; shift;;
-        --dry-run)     DRY_RUN=1;   shift;;
         -h|--help)     usage;;
         *) shift;;
     esac
@@ -111,12 +93,12 @@ done
 
 # === Uninstall ===
 if [ "$UNINSTALL" -eq 1 ]; then
-    # Best-effort: clean MCP entries and hooks before removing the binary.
+    # Best-effort: clean hooks before removing the binary.
     # Failures here are warnings, not fatal — the binary removal is the
     # user-facing promise of --uninstall.
     if command -v "$BINARY_NAME" >/dev/null 2>&1; then
-        log_info "Cleaning MCP/hooks for known providers…"
-        "$BINARY_NAME" init --uninstall --mcp --hooks --all-providers 2>/dev/null \
+        log_info "Cleaning hooks for known providers…"
+        "$BINARY_NAME" init --uninstall --hooks 2>/dev/null \
             || log_warn "Could not clean provider configs (rtco init returned non-zero)"
     else
         log_warn "$BINARY_NAME not on PATH; skipping provider cleanup"
@@ -222,22 +204,16 @@ build_from_source() {
 }
 
 # === Post-install configuration ===
-# Build the `rtco init` arg vector from --with-mcp / --with-hooks /
-# --provider / --all-providers / --dry-run flags, then invoke the
-# just-installed binary. Best-effort: if the binary is not on PATH yet
-# (e.g. user hasn't sourced the new shell) we log a warning and exit 0.
+# Build the `rtco init` arg vector from --with-hooks / --no-hooks
+# flags, then invoke the just-installed binary. Best-effort: if the binary
+# is not on PATH yet (e.g. user hasn't sourced the new shell) we log a
+# warning and exit 0.
 configure_post_install() {
-    # If neither --with-mcp nor --no-mcp is set, default to opt-in only
-    # when --all-providers is explicit. Otherwise we skip silently.
-    local do_mcp="$WITH_MCP"
     local do_hooks="$WITH_HOOKS"
-    if [ "$WITH_MCP" -eq 0 ] && [ "$NO_MCP" -eq 0 ] && [ "$ALL_PROVIDERS" -eq 0 ] && [ -z "$PROVIDERS" ]; then
-        do_mcp=0
-    fi
-    if [ "$WITH_HOOKS" -eq 0 ] && [ "$NO_HOOKS" -eq 0 ] && [ "$ALL_PROVIDERS" -eq 0 ] && [ -z "$PROVIDERS" ]; then
+    if [ "$WITH_HOOKS" -eq 0 ] && [ "$NO_HOOKS" -eq 0 ]; then
         do_hooks=0
     fi
-    if [ "$do_mcp" -eq 0 ] && [ "$do_hooks" -eq 0 ]; then
+    if [ "$do_hooks" -eq 0 ]; then
         return 0
     fi
 
@@ -254,23 +230,15 @@ configure_post_install() {
     fi
 
     local -a args=(init)
-    if [ "$do_mcp" -eq 1 ]; then args+=(--mcp); fi
     if [ "$do_hooks" -eq 1 ]; then args+=(--hooks); fi
-    if [ -n "$PROVIDERS" ]; then args+=(--provider "$PROVIDERS"); fi
-    if [ "$ALL_PROVIDERS" -eq 1 ]; then args+=(--all-providers); fi
-    if [ "$DRY_RUN" -eq 1 ]; then args+=(--dry-run); fi
 
     log_info "Configuring providers: ${args[*]}"
-    if [ "$DRY_RUN" -eq 1 ]; then
-        log_info "(dry-run: $bin ${args[*]})"
-        return 0
-    fi
 
     # Run with a copy of the current env so the user's HOME etc. are
     # visible. We don't fail the install on non-zero exit — the user
-    # can re-run `rtco init --mcp` later.
+    # can re-run `rtco init --hooks` later.
     if ! "$bin" "${args[@]}"; then
-        log_warn "Provider configuration returned non-zero; you can retry with: rtco init --mcp"
+        log_warn "Provider configuration returned non-zero; you can retry with: rtco init --hooks"
     fi
 }
 
@@ -352,7 +320,7 @@ main() {
     fi
 
     # Best-effort post-install provider configuration. Skipped silently
-    # unless the user passed --with-mcp / --with-hooks / --all-providers.
+    # unless the user passed --with-hooks.
     configure_post_install
 
     echo ""

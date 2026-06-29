@@ -25,19 +25,19 @@ RTCO is a single Rust binary that sits between your AI assistant and the shell, 
 # Binary only (Linux/macOS)
 curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.sh | bash
 
-# Binary + auto-config MCP+hooks in every detected AI provider (Linux/macOS)
+# Binary + auto-config hooks in every detected AI provider (Linux/macOS)
 curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.sh \
-  | bash -s -- --with-mcp --with-hooks --all-providers
+  | bash -s -- --with-hooks
 ```
 
 ```powershell
 # Binary only (Windows)
 irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1" | iex
 
-# Binary + auto-config MCP+hooks in every detected AI provider (Windows)
+# Binary + auto-config hooks in every detected AI provider (Windows)
 irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1" | iex
 # Then re-run with flags:
-.\install.ps1 -WithMcp -WithHooks -AllProviders
+.\install.ps1 -WithHooks
 ```
 
 ## How It Works
@@ -80,7 +80,7 @@ Average savings:   78.3%
 | :zap: | **60-90% Token Savings** | Every command filtered through a purpose-built pipeline |
 | :toolbox: | **30+ Supported Tools** | git, cargo, pnpm, docker, kubectl, gh, pytest, and more |
 | :shredder: | **Multi-Algorithm Compression** | SmartCrusher, CCR, structural anchors — pick your weapon |
-| :robot: | **MCP Server** | `rtco-mcp` for direct agent integration |
+| :robot: | **CLI Proxy** | `rtco <cmd>` for direct agent integration |
 | :bar_chart: | **Tracking & Analytics** | `rtco gain` shows real savings, history, and cost reductions |
 | :rocket: | **Blazing Fast** | <10ms startup, <5MB memory, zero runtime overhead |
 | :link: | **Auto-Wiring** | Works with Claude Code, Copilot, Cursor, Windsurf, Gemini CLI |
@@ -118,18 +118,18 @@ curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimiz
 irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1" | iex
 ```
 
-### Install + Auto-Configure MCP+Hooks (All Platforms)
+### Install + Auto-Configure Hooks (All Platforms)
 
 ```bash
-# Linux/macOS — detect and register MCP+hooks in every AI provider found on disk
+# Linux/macOS — detect and register hooks in every AI provider found on disk
 curl -fsSL https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.sh \
-  | bash -s -- --with-mcp --with-hooks --all-providers
+  | bash -s -- --with-hooks
 ```
 
 ```powershell
 # Windows — download first, then run with flags
 irm "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.ps1" -OutFile install.ps1
-.\install.ps1 -WithMcp -WithHooks -AllProviders
+.\install.ps1 -WithHooks
 ```
 
 ### Cargo
