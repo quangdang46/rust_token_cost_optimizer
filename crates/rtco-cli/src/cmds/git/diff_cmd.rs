@@ -7,7 +7,7 @@ use std::path::Path;
 
 /// Ultra-condensed diff - only changed lines, no context.
 ///
-/// Exit-code contract aligned with GNU `diff` (issue rtk#1918):
+/// Exit-code contract aligned with GNU `diff` (issue rtco#1918):
 /// - `Ok(0)` when files are identical.
 /// - `Ok(1)` when files differ.
 /// - `Ok(2)` on I/O errors such as missing files.

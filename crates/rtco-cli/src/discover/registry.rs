@@ -387,13 +387,13 @@ pub fn prefix_contains_rtco_disabled(prefix_part: &str) -> bool {
     prefix_part.contains("RTCO_DISABLED=") || prefix_part.contains("RTK_DISABLED=")
 }
 
-/// Check if a command has RTK_DISABLED= prefix in its env prefix portion.
+/// Check if a command has RTCO_DISABLED= prefix (or legacy RTK_DISABLED=) in its env prefix portion.
 pub fn cmd_has_rtco_disabled_prefix(cmd: &str) -> bool {
     let (prefix_part, _) = strip_disabled_prefix(cmd);
     prefix_contains_rtco_disabled(prefix_part)
 }
 
-/// Strip RTK_DISABLED=X and other env prefixes, returns `(env_prefix, actual_command)`.
+/// Strip RTCO_DISABLED=X (or legacy RTK_DISABLED=X) and other env prefixes, returns `(env_prefix, actual_command)`.
 pub fn strip_disabled_prefix(cmd: &str) -> (&str, &str) {
     let trimmed = cmd.trim();
     let stripped = ENV_PREFIX.replace(trimmed, "");
@@ -792,12 +792,19 @@ fn rewrite_segment_inner(
 
     let (env_prefix, rest_after_env) = strip_disabled_prefix(trimmed);
     if !env_prefix.is_empty() {
-        // #345: RTK_DISABLED=1 in env prefix → skip rewrite entirely
+        // #345: RTK_DISABLED=1 in env prefix → skip rewrite entirely (legacy compat)
         // #508: warn on stderr so agents learn to stop overusing it
         if env_prefix.contains("RTK_DISABLED=") {
             eprintln!(
-                "[rtco] RTK_DISABLED=1 detected — skipping filter for this command. \
-                 Remove RTK_DISABLED=1 to restore token savings."
+                "[rtco] RTK_DISABLED=1 detected — skipping filter. \
+                 Use RTCO_DISABLED=1 for the new env var."
+            );
+            return None;
+        }
+        if env_prefix.contains("RTCO_DISABLED=") {
+            eprintln!(
+                "[rtco] RTCO_DISABLED=1 detected — skipping filter for this command. \
+                 Remove RTCO_DISABLED=1 to restore token savings."
             );
             return None;
         }

@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn test_list_token_savings() {
-        // NOTE: deviation from upstream rtco PR #1 (port of rtk#1972), which used count_tokens (whitespace
+        // NOTE: deviation from upstream rtco PR #1 (port of rtco#1972), which used count_tokens (whitespace
         // splitting) and asserted ≥20% savings on pipe-separated input. That assertion
         // is mathematically backwards: with no internal whitespace, the input is one
         // token per line; replacing `|` with `\t` introduces whitespace and increases
@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_column_token_savings() {
-        // NOTE: deviation from upstream rtco PR #1 (port of rtk#1972) — it asserted ≥40% savings using
+        // NOTE: deviation from upstream rtco PR #1 (port of rtco#1972) — it asserted ≥40% savings using
         // count_tokens (whitespace splitting), but in column mode the savings come
         // from collapsing PADDING (runs of spaces), which split_whitespace already
         // collapses on the input side, so token counts barely move (≈14% on this

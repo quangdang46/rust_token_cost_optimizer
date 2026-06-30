@@ -1,6 +1,6 @@
 use super::report::RtcoStatus;
 
-pub struct RtkRule {
+pub struct RtcoRule {
     pub pattern: &'static str,
     pub rtco_cmd: &'static str,
     pub rewrite_prefixes: &'static [&'static str],
@@ -10,8 +10,8 @@ pub struct RtkRule {
     pub subcmd_status: &'static [(&'static str, RtcoStatus)],
 }
 
-pub const RULES: &[RtkRule] = &[
-    RtkRule {
+pub const RULES: &[RtcoRule] = &[
+    RtcoRule {
         pattern: r"^(?:git|yadm)\s+(?:-[Cc]\s+\S+\s+)*(status|log|diff|show|add|commit|push|pull|branch|fetch|stash|worktree)",
         rtco_cmd: "rtco git",
         rewrite_prefixes: &["git", "yadm"],
@@ -25,7 +25,7 @@ pub const RULES: &[RtkRule] = &[
         ],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^gh\s+(pr|issue|run|repo|api|release)",
         rtco_cmd: "rtco gh",
         rewrite_prefixes: &["gh"],
@@ -34,7 +34,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[("pr", 87.0), ("run", 82.0), ("issue", 80.0)],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^glab\s+(mr|issue|ci|pipeline|api|release)",
         rtco_cmd: "rtco glab",
         rewrite_prefixes: &["glab"],
@@ -43,7 +43,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[("mr", 87.0), ("ci", 82.0), ("issue", 80.0)],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^cargo\s+(build|test|clippy|check|fmt|install)",
         rtco_cmd: "rtco cargo",
         rewrite_prefixes: &["cargo"],
@@ -52,7 +52,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[("test", 90.0), ("check", 80.0)],
         subcmd_status: &[("fmt", RtcoStatus::Passthrough)],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^pnpm\s+(exec|i|install|list|ls|outdated|run|run-script)",
         rtco_cmd: "rtco pnpm",
         rewrite_prefixes: &["pnpm"],
@@ -61,7 +61,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^npm\s+(exec|run|run-script|rum|urn|x)(\s|$)",
         rtco_cmd: "rtco npm",
         rewrite_prefixes: &["npm"],
@@ -70,7 +70,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^npx\s+",
         rtco_cmd: "rtco npx",
         rewrite_prefixes: &["npx"],
@@ -79,7 +79,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^fnm\s+(list-remote|use|install|uninstall|list|ls|current|default)(\s|$)",
         rtco_cmd: "rtco fnm",
         rewrite_prefixes: &["fnm"],
@@ -88,7 +88,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^(cat|head|tail)\s+",
         rtco_cmd: "rtco read",
         rewrite_prefixes: &["cat", "head", "tail"],
@@ -97,7 +97,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^rg\s+",
         rtco_cmd: "rtco rg",
         rewrite_prefixes: &["rg"],
@@ -106,7 +106,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^grep\s+",
         rtco_cmd: "rtco grep",
         rewrite_prefixes: &["grep"],
@@ -115,7 +115,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^ls(\s|$)",
         rtco_cmd: "rtco ls",
         rewrite_prefixes: &["ls"],
@@ -124,7 +124,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^find\s+",
         rtco_cmd: "rtco find",
         rewrite_prefixes: &["find"],
@@ -133,7 +133,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?tsc(\s|$)",
         rtco_cmd: "rtco tsc",
         rewrite_prefixes: &[
@@ -158,7 +158,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?(biome|eslint|lint)(\s|$)",
         rtco_cmd: "rtco lint",
         rewrite_prefixes: &[
@@ -209,7 +209,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?prettier",
         rtco_cmd: "rtco prettier",
         rewrite_prefixes: &[
@@ -234,7 +234,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?next\s+build",
         rtco_cmd: "rtco next",
         rewrite_prefixes: &[
@@ -259,7 +259,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?jest(\s+run)?(\s|$)",
         rtco_cmd: "rtco jest",
         rewrite_prefixes: &[
@@ -299,7 +299,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?vitest(\s+run)?(\s|$)",
         rtco_cmd: "rtco vitest",
         rewrite_prefixes: &[
@@ -339,7 +339,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?playwright",
         rtco_cmd: "rtco playwright",
         rewrite_prefixes: &[
@@ -364,7 +364,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?prisma",
         rtco_cmd: "rtco prisma",
         rewrite_prefixes: &[
@@ -389,7 +389,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^docker\s+(ps|images|logs|run|exec|build|compose\s+(ps|logs|build))",
         rtco_cmd: "rtco docker",
         rewrite_prefixes: &["docker"],
@@ -398,7 +398,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^kubectl\s+(get|logs|describe|apply)",
         rtco_cmd: "rtco kubectl",
         rewrite_prefixes: &["kubectl"],
@@ -407,7 +407,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^tree(\s|$)",
         rtco_cmd: "rtco tree",
         rewrite_prefixes: &["tree"],
@@ -416,7 +416,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^diff\s+",
         rtco_cmd: "rtco diff",
         rewrite_prefixes: &["diff"],
@@ -425,7 +425,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^curl\s+",
         rtco_cmd: "rtco curl",
         rewrite_prefixes: &["curl"],
@@ -434,7 +434,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^wget\s+",
         rtco_cmd: "rtco wget",
         rewrite_prefixes: &["wget"],
@@ -443,7 +443,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^(python3?\s+-m\s+)?mypy(\s|$)",
         rtco_cmd: "rtco mypy",
         rewrite_prefixes: &["python3 -m mypy", "python -m mypy", "mypy"],
@@ -452,7 +452,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^ruff\s+(check|format)",
         rtco_cmd: "rtco ruff",
         rewrite_prefixes: &["ruff"],
@@ -461,7 +461,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[("check", 80.0), ("format", 75.0)],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^(python[0-9.]*\s+-m\s+)?pytest(\s|$)",
         rtco_cmd: "rtco pytest",
         rewrite_prefixes: &["python3 -m pytest", "python -m pytest", "pytest"],
@@ -470,7 +470,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^(pip3?|uv\s+pip)\s+(list|outdated|install|show)",
         rtco_cmd: "rtco pip",
         rewrite_prefixes: &["pip3", "pip", "uv pip"],
@@ -479,7 +479,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[("list", 75.0), ("outdated", 80.0)],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^go\s+(test|build|vet)",
         rtco_cmd: "rtco go",
         rewrite_prefixes: &["go"],
@@ -488,7 +488,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[("test", 90.0), ("build", 80.0), ("vet", 75.0)],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^(?:golangci-lint|golangci)\s+(run)(?:\s|$)",
         rtco_cmd: "rtco golangci-lint run",
         rewrite_prefixes: &["golangci-lint run", "golangci run"],
@@ -497,7 +497,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^bundle\s+(install|update)\b",
         rtco_cmd: "rtco bundle",
         rewrite_prefixes: &["bundle"],
@@ -506,7 +506,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^(?:bundle\s+exec\s+)?(?:bin/)?(?:rake|rails)\s+test",
         rtco_cmd: "rtco rake",
         rewrite_prefixes: &[
@@ -521,7 +521,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[("test", 90.0)],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^(?:bundle\s+exec\s+)?rspec(?:\s|$)",
         rtco_cmd: "rtco rspec",
         rewrite_prefixes: &["bundle exec rspec", "bin/rspec", "rspec"],
@@ -530,7 +530,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^(?:bundle\s+exec\s+)?rubocop(?:\s|$)",
         rtco_cmd: "rtco rubocop",
         rewrite_prefixes: &["bundle exec rubocop", "rubocop"],
@@ -539,7 +539,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^aws\s+",
         rtco_cmd: "rtco aws",
         rewrite_prefixes: &["aws"],
@@ -563,7 +563,7 @@ pub const RULES: &[RtkRule] = &[
         ],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^psql(\s|$)",
         rtco_cmd: "rtco psql",
         rewrite_prefixes: &["psql"],
@@ -572,7 +572,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^sqlite3(\s|$)",
         rtco_cmd: "rtco sqlite",
         rewrite_prefixes: &["sqlite3"],
@@ -581,7 +581,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^ansible-playbook\b",
         rtco_cmd: "rtco ansible-playbook",
         rewrite_prefixes: &["ansible-playbook"],
@@ -590,7 +590,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^brew\s+(install|upgrade)\b",
         rtco_cmd: "rtco brew",
         rewrite_prefixes: &["brew"],
@@ -599,7 +599,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^composer\s+(install|update|require)\b",
         rtco_cmd: "rtco composer",
         rewrite_prefixes: &["composer"],
@@ -609,10 +609,10 @@ pub const RULES: &[RtkRule] = &[
         subcmd_status: &[],
     },
     // PHP interpreter (artisan, scripts, -v, etc.). Routed via fallback passthrough
-    // so any invocation works without a dedicated handler. Restored in rtk#1892 after
+    // so any invocation works without a dedicated handler. Restored in rtco#1892 after
     // a regression silently dropped the rule. Pattern uses `(\s|$)` so it matches
     // `php` alone and `php …` but never `phpunit`, `phpcs`, `phpstan`.
-    RtkRule {
+    RtcoRule {
         pattern: r"^php(\s|$)",
         rtco_cmd: "rtco php",
         rewrite_prefixes: &["php"],
@@ -621,7 +621,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^df(\s|$)",
         rtco_cmd: "rtco df",
         rewrite_prefixes: &["df"],
@@ -630,7 +630,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^dotnet\s+build\b",
         rtco_cmd: "rtco dotnet",
         rewrite_prefixes: &["dotnet"],
@@ -639,7 +639,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^du\b",
         rtco_cmd: "rtco du",
         rewrite_prefixes: &["du"],
@@ -648,7 +648,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^fail2ban-client\b",
         rtco_cmd: "rtco fail2ban-client",
         rewrite_prefixes: &["fail2ban-client"],
@@ -657,7 +657,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^gcloud\b",
         rtco_cmd: "rtco gcloud",
         rewrite_prefixes: &["gcloud"],
@@ -666,7 +666,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^(?:\./gradlew|gradlew\.bat|gradlew|gradle)(?:\s+(test|build|clean|assemble\w*|install\w*|check|lint\w*|dependencies))?(\s|$)",
         rtco_cmd: "rtco gradlew",
         rewrite_prefixes: &["./gradlew", "gradlew.bat", "gradlew", "gradle"],
@@ -675,7 +675,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[("test", 90.0), ("build", 80.0), ("check", 80.0)],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^hadolint\b",
         rtco_cmd: "rtco hadolint",
         rewrite_prefixes: &["hadolint"],
@@ -684,7 +684,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^helm\b",
         rtco_cmd: "rtco helm",
         rewrite_prefixes: &["helm"],
@@ -693,7 +693,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^iptables\b",
         rtco_cmd: "rtco iptables",
         rewrite_prefixes: &["iptables"],
@@ -702,7 +702,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^make\b",
         rtco_cmd: "rtco make",
         rewrite_prefixes: &["make"],
@@ -711,7 +711,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^markdownlint\b",
         rtco_cmd: "rtco markdownlint",
         rewrite_prefixes: &["markdownlint"],
@@ -720,7 +720,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^mix\s+(compile|format)(\s|$)",
         rtco_cmd: "rtco mix",
         rewrite_prefixes: &["mix"],
@@ -729,7 +729,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^mvn\s+(compile|package|clean|install|test|verify|integration-test|failsafe:integration-test)\b",
         rtco_cmd: "rtco mvn",
         rewrite_prefixes: &["mvn"],
@@ -738,7 +738,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^ping\b",
         rtco_cmd: "rtco ping",
         rewrite_prefixes: &["ping"],
@@ -747,7 +747,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^pio\s+run",
         rtco_cmd: "rtco pio",
         rewrite_prefixes: &["pio"],
@@ -756,7 +756,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^poetry\s+(install|lock|update)\b",
         rtco_cmd: "rtco poetry",
         rewrite_prefixes: &["poetry"],
@@ -765,7 +765,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^pre-commit\b",
         rtco_cmd: "rtco pre-commit",
         rewrite_prefixes: &["pre-commit"],
@@ -774,7 +774,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^ps(\s|$)",
         rtco_cmd: "rtco ps",
         rewrite_prefixes: &["ps"],
@@ -783,7 +783,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^quarto\s+render",
         rtco_cmd: "rtco quarto",
         rewrite_prefixes: &["quarto"],
@@ -792,7 +792,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^rsync\b",
         rtco_cmd: "rtco rsync",
         rewrite_prefixes: &["rsync"],
@@ -801,7 +801,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^shellcheck\b",
         rtco_cmd: "rtco shellcheck",
         rewrite_prefixes: &["shellcheck"],
@@ -810,7 +810,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^shopify\s+theme\s+(push|pull)",
         rtco_cmd: "rtco shopify",
         rewrite_prefixes: &["shopify"],
@@ -819,7 +819,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^sops\b",
         rtco_cmd: "rtco sops",
         rewrite_prefixes: &["sops"],
@@ -828,7 +828,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^swift\s+(build|test)\b",
         rtco_cmd: "rtco swift",
         rewrite_prefixes: &["swift"],
@@ -837,7 +837,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[("test", 90.0)],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^systemctl\s+status\b",
         rtco_cmd: "rtco systemctl",
         rewrite_prefixes: &["systemctl"],
@@ -846,7 +846,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^terraform\s+plan",
         rtco_cmd: "rtco terraform",
         rewrite_prefixes: &["terraform"],
@@ -855,7 +855,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^tofu\s+(fmt|init|plan|validate)(\s|$)",
         rtco_cmd: "rtco tofu",
         rewrite_prefixes: &["tofu"],
@@ -864,7 +864,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^trunk\s+build",
         rtco_cmd: "rtco trunk",
         rewrite_prefixes: &["trunk"],
@@ -873,7 +873,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^uv\s+(sync|pip\s+install)\b",
         rtco_cmd: "rtco uv",
         rewrite_prefixes: &["uv"],
@@ -882,7 +882,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^yamllint\b",
         rtco_cmd: "rtco yamllint",
         rewrite_prefixes: &["yamllint"],
@@ -891,7 +891,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^wc(\s|$)",
         rtco_cmd: "rtco wc",
         rewrite_prefixes: &["wc"],
@@ -900,7 +900,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^gt\s+",
         rtco_cmd: "rtco gt",
         rewrite_prefixes: &["gt"],
@@ -909,7 +909,7 @@ pub const RULES: &[RtkRule] = &[
         subcmd_savings: &[],
         subcmd_status: &[],
     },
-    RtkRule {
+    RtcoRule {
         pattern: r"^liquibase(?:\s|$)",
         rtco_cmd: "rtco liquibase",
         rewrite_prefixes: &["liquibase"],

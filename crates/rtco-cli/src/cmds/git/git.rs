@@ -114,7 +114,7 @@ pub fn run(
 /// stat tables, raw mode, machine-readable variants). When any of these is
 /// present, RTCO must NOT inject its `--- Changes ---` decoration — doing so
 /// breaks `for f in $(git diff --name-only); do ...`, `git diff | git apply`,
-/// `git diff --check` predicates, etc. (rtk#1918 / #1869 / #1081).
+/// `git diff --check` predicates, etc. (rtco#1918 / #1869 / #1081).
 fn has_machine_friendly_diff_flag(args: &[String]) -> bool {
     args.iter().any(|a| {
         a == "--name-only"
@@ -154,7 +154,7 @@ fn run_diff(
     // Check if user wants compact diff (default RTCO behavior)
     let wants_compact = !args.iter().any(|arg| arg == "--no-compact");
 
-    // rtk#1918 / #1869 / #1081: when stdout is redirected/piped or a
+    // rtco#1918 / #1869 / #1081: when stdout is redirected/piped or a
     // machine-friendly flag is present, emit raw `git diff` output verbatim
     // so consumers like `git apply`, `patch`, and `for f in $(... --name-only)`
     // round-trip correctly.
@@ -1927,7 +1927,7 @@ mod tests {
 
     #[test]
     fn test_has_machine_friendly_diff_flag_detects_name_only() {
-        // rtk#1918: `--name-only` output must not get the
+        // rtco#1918: `--name-only` output must not get the
         // "--- Changes ---" decoration appended.
         let args = vec!["--name-only".to_string()];
         assert!(has_machine_friendly_diff_flag(&args));
