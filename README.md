@@ -1,16 +1,15 @@
 # rtco — Rust Token Cost Optimizer
 
 <div align="center">
-  <img src="rtco_illustration.webp" alt="rtco — cut LLM token costs 60–90% on every CLI command" width="720">
+  <img src="rtco_illustration.webp" alt="rtco — cut LLM token costs 60–90% on every CLI command">
 </div>
 
 <div align="center">
 
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue.svg)
 ![Rust](https://img.shields.io/badge/Rust-stable-orange.svg)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/quangdang46/rust_token_cost_optimizer/ci.yml)](https://github.com/quangdang46/rust_token_cost_optimizer/actions)
-[![GitHub release](https://img.shields.io/github/v/release/quangdang46/rust_token_cost_optimizer)](https://github.com/quangdang46/rust_token_cost_optimizer/releases)
+![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)
+![Release](https://img.shields.io/github/v/release/quangdang46/rust_token_cost_optimizer)
 
 </div>
 
@@ -18,7 +17,6 @@
 A single Rust binary sits between your coding agent and the shell, filtering and compressing noisy command output in real time — more budget for the work that matters.
 
 <div align="center">
-<h3>Quick Install</h3>
 
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimizer/main/install.sh?$(date +%s)" \
@@ -26,6 +24,39 @@ curl -fsSL "https://raw.githubusercontent.com/quangdang46/rust_token_cost_optimi
 ```
 
 </div>
+
+---
+
+## 🤖 Agent Quickstart
+
+Always prefix commands with `rtco` — even unsupported ones passthrough safely:
+
+```bash
+rtco git log -20        # 80% savings
+rtco cargo test         # 90% savings (failures only)
+rtco cargo clippy --all-targets
+rtco pnpm install       # 90% savings
+rtco gain               # savings dashboard
+rtco gain --history     # per-command breakdown
+rtco proxy <cmd>        # unfiltered passthrough (still tracked)
+```
+
+**RTCO is always safe to use.** Unknown subcommands passthrough with 0% savings but zero risk.
+
+```bash
+# ❌ Wrong
+git add . && git commit -m "msg" && git push
+
+# ✅ Correct
+rtco git add . && rtco git commit -m "msg" && rtco git push
+```
+
+**Output conventions**
+- stdout = filtered/compressed output
+- stderr = diagnostics, raw on error
+- exit code = child process exit code (always propagates)
+
+**Agent wiring:** `rtco init` or `--with-hooks` during install auto-configures Claude Code, Cursor, Copilot, Windsurf, Gemini CLI, and more.
 
 ---
 
