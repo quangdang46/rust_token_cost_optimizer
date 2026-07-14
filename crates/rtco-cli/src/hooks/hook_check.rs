@@ -1,8 +1,7 @@
 //! Detects whether RTCO hooks are installed and warns if they are outdated.
 
 use super::constants::{
-    CLAUDE_DIR, CLAUDE_HOOK_COMMAND, HOOKS_SUBDIR, PRE_TOOL_USE_KEY, REWRITE_HOOK_FILE,
-    SETTINGS_JSON,
+    CLAUDE_DIR, HOOKS_SUBDIR, PRE_TOOL_USE_KEY, REWRITE_HOOK_FILE, SETTINGS_JSON,
 };
 use rtco_core::constants::RTCO_DATA_DIR;
 use std::path::PathBuf;
@@ -83,7 +82,7 @@ fn binary_hook_registered(claude_dir: &std::path::Path) -> bool {
         .filter_map(|entry| entry.get("hooks")?.as_array())
         .flatten()
         .filter_map(|hook| hook.get("command")?.as_str())
-        .any(|cmd| cmd == CLAUDE_HOOK_COMMAND)
+        .any(super::is_claude_hook_command)
 }
 
 /// Check if the installed hook is missing or outdated, warn once per day.

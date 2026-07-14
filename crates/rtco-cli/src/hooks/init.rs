@@ -546,7 +546,8 @@ fn remove_hook_from_json(root: &mut serde_json::Value) -> bool {
             for hook in hooks_array {
                 if let Some(command) = hook.get("command").and_then(|c| c.as_str()) {
                     // Match both legacy script path and new binary command
-                    if command.contains(REWRITE_HOOK_FILE) || command == CLAUDE_HOOK_COMMAND {
+                    if command.contains(REWRITE_HOOK_FILE) || super::is_claude_hook_command(command)
+                    {
                         return false;
                     }
                 }
@@ -1112,7 +1113,9 @@ fn hook_already_present(root: &serde_json::Value, hook_command: &str) -> bool {
         .flatten()
         .filter_map(|hook| hook.get("command")?.as_str())
         .any(|cmd| {
-            cmd == hook_command || cmd == CLAUDE_HOOK_COMMAND || cmd.contains(REWRITE_HOOK_FILE)
+            cmd == hook_command
+                || super::is_claude_hook_command(cmd)
+                || cmd.contains(REWRITE_HOOK_FILE)
         })
 }
 
@@ -2741,11 +2744,36 @@ fn resolve_home_subdir(subdir: &str) -> Result<PathBuf> {
         })
 }
 
+/// Resolve Claude Code's config directory.
+///
+/// Precedence:
+/// 1. `RTCO_CLAUDE_DIR` (local override for tests / custom layouts)
+/// 2. `CLAUDE_CONFIG_DIR` (upstream Claude Code / RTK-compatible)
+/// 3. `$HOME/.claude`
 fn resolve_claude_dir() -> Result<PathBuf> {
-    if let Ok(dir) = std::env::var("RTCO_CLAUDE_DIR") {
-        return Ok(PathBuf::from(dir));
+    resolve_claude_dir_from(
+        std::env::var_os("RTCO_CLAUDE_DIR").map(PathBuf::from),
+        std::env::var_os("CLAUDE_CONFIG_DIR").map(PathBuf::from),
+        dirs::home_dir(),
+    )
+}
+
+fn resolve_claude_dir_from(
+    rtco_claude_dir: Option<PathBuf>,
+    claude_config_dir: Option<PathBuf>,
+    home_dir: Option<PathBuf>,
+) -> Result<PathBuf> {
+    if let Some(path) = rtco_claude_dir.filter(|path| !path.as_os_str().is_empty()) {
+        return Ok(path);
     }
-    resolve_home_subdir(CLAUDE_DIR)
+    if let Some(path) = claude_config_dir.filter(|path| !path.as_os_str().is_empty()) {
+        return Ok(path);
+    }
+    home_dir
+        .map(|h| h.join(CLAUDE_DIR))
+        .context(
+            "Cannot determine Claude config directory. Set $RTCO_CLAUDE_DIR, $CLAUDE_CONFIG_DIR, or $HOME.",
+        )
 }
 
 fn resolve_codex_dir() -> Result<PathBuf> {

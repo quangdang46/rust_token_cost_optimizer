@@ -13,6 +13,7 @@ pub mod content_router;
 pub mod dedup;
 pub mod display_helpers;
 pub mod filter;
+pub mod guard;
 pub mod keyword_detector;
 pub mod line_scorer;
 pub mod metrics;
