@@ -778,7 +778,10 @@ directory = "/tmp/rtk-tee"
 
     #[test]
     fn test_force_tee_hint_respects_env_disable() {
-        // When RTCO_TEE=0, force_tee_hint should return None
+        // When RTCO_TEE=0, force_tee_hint should return None.
+        // Hold TEE_ENV_LOCK so parallel tests cannot clear RTCO_TEE mid-flight
+        // (Windows CI flake source).
+        let _guard = TEE_ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         std::env::set_var("RTCO_TEE", "0");
         let large_output = "x".repeat(1000);
         let hint = force_tee_hint(&large_output, "test_cmd");
@@ -878,17 +881,24 @@ directory = "/tmp/rtk-tee"
         // Build content where lines 4..=10 are hidden (offset = 4, 1-based).
         // The preview should surface the first 3 non-empty hidden lines and
         // include a runnable `cat` command for the saved file.
+        //
+        // Serialise env mutations via TEE_ENV_LOCK and point Config::load() at a
+        // missing path so defaults (tee.enabled=true) always win. Without the
+        // lock, parallel tests setting RTCO_TEE=0 flaked this on Windows CI.
+        let _guard = TEE_ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+
         let lines: Vec<String> = (1..=10).map(|i| format!("item-{i}")).collect();
         let content = lines.join("\n");
 
-        // Use a per-test tee dir so we don't pollute the user environment.
         let tmpdir = tempfile::tempdir().unwrap();
+        let fake_config = tmpdir.path().join("no-such-config.toml");
+        std::env::set_var("RTCO_CONFIG_PATH", &fake_config);
         std::env::set_var("RTCO_TEE_DIR", tmpdir.path());
-        // Make sure no global env is forcing tee off.
         std::env::remove_var("RTCO_TEE");
 
         let hint = force_tee_tail_hint_with_preview(&content, "preview_test", 4);
 
+        std::env::remove_var("RTCO_CONFIG_PATH");
         std::env::remove_var("RTCO_TEE_DIR");
 
         let hint = hint.expect("preview hint should be produced for non-empty content");
@@ -1103,15 +1113,19 @@ directory = "/tmp/rtk-tee"
 
     #[test]
     fn test_truncate_preview_truncates_long_lines() {
+        let _guard = TEE_ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         let long_line = "x".repeat(200);
         let content = format!("visible\n{long_line}\nshort tail");
 
         let tmpdir = tempfile::tempdir().unwrap();
+        let fake_config = tmpdir.path().join("no-such-config.toml");
+        std::env::set_var("RTCO_CONFIG_PATH", &fake_config);
         std::env::set_var("RTCO_TEE_DIR", tmpdir.path());
         std::env::remove_var("RTCO_TEE");
 
         let hint = force_tee_tail_hint_with_preview(&content, "preview_long", 2);
 
+        std::env::remove_var("RTCO_CONFIG_PATH");
         std::env::remove_var("RTCO_TEE_DIR");
 
         let hint = hint.expect("hint should be produced");
@@ -1132,11 +1146,14 @@ directory = "/tmp/rtk-tee"
         let content = "visible-1\n\n\n\nactual-content\nmore-content";
 
         let tmpdir = tempfile::tempdir().unwrap();
+        let fake_config = tmpdir.path().join("no-such-config.toml");
+        std::env::set_var("RTCO_CONFIG_PATH", &fake_config);
         std::env::set_var("RTCO_TEE_DIR", tmpdir.path());
         std::env::remove_var("RTCO_TEE");
 
         let hint = force_tee_tail_hint_with_preview(content, "preview_blanks", 2);
 
+        std::env::remove_var("RTCO_CONFIG_PATH");
         std::env::remove_var("RTCO_TEE_DIR");
 
         let hint = hint.expect("hint should be produced");
