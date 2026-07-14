@@ -1613,8 +1613,12 @@ mod tests {
     /// Sequential counter for unique test database paths.
     static TEST_DB_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-    /// Global lock for tests that must manipulate `RTCO_DB_PATH` (process-global
-    /// env var). Prevents parallel interference with [`test_db_path_env_and_default`].
+    /// Global lock for ANY test that mutates process-global env vars affecting
+    /// tracking (`RTCO_DB_PATH`, `RTCO_TRACK`, `RTCO_CONFIG_PATH`, …).
+    ///
+    /// Previously split into `ENV_LOCK` + `TRACKING_ENV_LOCK`, which raced on
+    /// macOS CI: a `RTCO_TRACK=0` gate test could run while another test was
+    /// mid-`record()`, silently no-oping the INSERT ("cmd1 record not found").
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     /// Create a `Tracker` backed by an isolated temporary database so parallel
@@ -1653,8 +1657,9 @@ mod tests {
         let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let tracker = test_tracker();
 
-        // Use unique test identifier to avoid conflicts with other tests
-        let test_cmd = format!("rtco git status test_{}", std::process::id());
+        // Unique per-call id (pid alone collides within one process).
+        let n = TEST_DB_COUNTER.fetch_add(1, Ordering::SeqCst);
+        let test_cmd = format!("rtco git status test_{}_{}", std::process::id(), n);
 
         tracker
             .record("git status", &test_cmd, 100, 20, 50)
@@ -1675,13 +1680,14 @@ mod tests {
     // 4. track_passthrough doesn't dilute stats (input=0, output=0)
     #[test]
     fn test_track_passthrough_no_dilution() {
+        // Hold ENV_LOCK so parallel gate tests cannot set RTCO_TRACK=0 mid-record.
         let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let tracker = test_tracker();
 
-        // Use unique test identifiers
-        let pid = std::process::id();
-        let cmd1 = format!("rtco cmd1_test_{}", pid);
-        let cmd2 = format!("rtco cmd2_passthrough_test_{}", pid);
+        // Unique per-call ids (pid alone collides when two tests share a process).
+        let n = TEST_DB_COUNTER.fetch_add(1, Ordering::SeqCst);
+        let cmd1 = format!("rtco cmd1_test_{}_{}", std::process::id(), n);
+        let cmd2 = format!("rtco cmd2_passthrough_test_{}_{}", std::process::id(), n);
 
         // Record one real command with 80% savings
         tracker
@@ -1693,17 +1699,43 @@ mod tests {
             .record("cmd2", &cmd2, 0, 0, 5)
             .expect("Failed to record passthrough");
 
+        // Direct count proves inserts landed (not silent tracking_enabled no-op).
+        let count: i64 = tracker
+            .conn
+            .query_row("SELECT COUNT(*) FROM commands", [], |r| r.get(0))
+            .expect("count");
+        assert_eq!(
+            count, 2,
+            "expected both records inserted (tracking may be disabled?)"
+        );
+
         // Verify both records exist in recent history
         let recent = tracker.get_recent(20).expect("Failed to get recent");
 
         let record1 = recent
             .iter()
             .find(|r| r.rtco_cmd == cmd1)
-            .expect("cmd1 record not found");
+            .unwrap_or_else(|| {
+                panic!(
+                    "cmd1 record not found; recent={:?}",
+                    recent
+                        .iter()
+                        .map(|r| r.rtco_cmd.as_str())
+                        .collect::<Vec<_>>()
+                )
+            });
         let record2 = recent
             .iter()
             .find(|r| r.rtco_cmd == cmd2)
-            .expect("passthrough record not found");
+            .unwrap_or_else(|| {
+                panic!(
+                    "passthrough record not found; recent={:?}",
+                    recent
+                        .iter()
+                        .map(|r| r.rtco_cmd.as_str())
+                        .collect::<Vec<_>>()
+                )
+            });
 
         // Verify cmd1 has 80% savings
         assert_eq!(record1.saved_tokens, 800);
@@ -1916,10 +1948,8 @@ mod tests {
     //
     // All tests below set RTCO_CONFIG_PATH to a per-test temp dir so
     // `Config::load()` falls back to defaults (tracking.enabled = true,
-    // hash_project_paths = true). They serialise via `TRACKING_ENV_LOCK` to
-    // avoid env-var races, mirroring `test_db_path_env_and_default`.
-
-    static TRACKING_ENV_LOCK: Mutex<()> = Mutex::new(());
+    // hash_project_paths = true). They serialise via `ENV_LOCK` (shared with
+    // RTCO_DB_PATH tests) to avoid env-var races across the tracking suite.
 
     struct ScopedEnv {
         keys: Vec<(&'static str, Option<OsString>)>,
@@ -2157,7 +2187,7 @@ mod tests {
 
     #[test]
     fn test_tracking_disabled_via_config_skips_insert() {
-        let _guard = TRACKING_ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         let tmp = tempfile::tempdir().expect("tempdir");
         let cfg = write_config(
             tmp.path(),
@@ -2186,7 +2216,7 @@ mod tests {
 
     #[test]
     fn test_tracking_disabled_via_env_skips_insert() {
-        let _guard = TRACKING_ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         let tmp = tempfile::tempdir().expect("tempdir");
         // No config file written — rely on the env var override.
         let cfg = tmp.path().join("nonexistent-config.toml");
@@ -2211,7 +2241,7 @@ mod tests {
 
     #[test]
     fn test_tracking_enabled_default_records() {
-        let _guard = TRACKING_ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         let tmp = tempfile::tempdir().expect("tempdir");
         let cfg = tmp.path().join("missing-config.toml"); // file does not exist → defaults
         let overrides = make_isolated_config_env(&cfg);
@@ -2230,7 +2260,7 @@ mod tests {
 
     #[test]
     fn test_tracking_disabled_still_lets_reset_run() {
-        let _guard = TRACKING_ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         let tmp = tempfile::tempdir().expect("tempdir");
         // Step 1: seed a row while tracking is enabled (no config file yet).
         let cfg_path = tmp.path().join("config.toml");
@@ -2263,7 +2293,7 @@ mod tests {
 
     #[test]
     fn test_parse_failure_also_gated() {
-        let _guard = TRACKING_ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         let tmp = tempfile::tempdir().expect("tempdir");
         let cfg = write_config(
             tmp.path(),
