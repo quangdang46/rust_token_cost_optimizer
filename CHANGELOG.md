@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.2.4...v0.2.5) (2026-07-14)
+
+### Features
+* **core:** add `never_worse` output guard so RTCO never emits more tokens than raw command output
+* **curl:** binary download passthrough (raw bytes, skip UTF-8 lossy conversion) (#1087)
+* **hooks:** detect absolute `rtco hook claude` paths in settings; honour `CLAUDE_CONFIG_DIR`
+* **uv:** add `rtco uv` filter for `uv run` failure-focused output
+* **php:** add PHP ecosystem filters — php, phpunit, phpstan, pest, paratest, ecs, pint
+* **php:** normalize `vendor/bin/*` / `php vendor/bin/*` rewrites to bare tool names
+* **filters:** add Pulumi TOML filters (up/preview/refresh/destroy/stack)
+* **discover:** rewrite rules for uv run and dedicated PHP tools
+
+### Bug Fixes
+* **tracking:** unify ENV_LOCK to stop macOS CI race with `RTCO_TRACK=0` gate tests
+
 ## [0.2.3](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.2.2...v0.2.3) (2026-06-23)
 
 ### Bug Fixes

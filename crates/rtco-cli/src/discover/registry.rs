@@ -2,9 +2,13 @@
 
 use lazy_static::lazy_static;
 use regex::{Regex, RegexSet};
+use rtco_core::utils::composer_bin_dirs;
+use std::path::Path;
 
 use super::lexer::{split_on_operators, tokenize, TokenKind};
 use super::rules::{IGNORED_EXACT, IGNORED_PREFIXES, RULES};
+
+const PHP_TOOL_NAMES: [&str; 6] = ["phpunit", "phpstan", "ecs", "pest", "paratest", "pint"];
 
 /// Result of classifying a command.
 #[derive(Debug, PartialEq)]
@@ -121,6 +125,9 @@ pub fn classify_command(cmd: &str) -> Classification {
     let cmd_normalized = strip_absolute_path(cmd_clean);
     // Strip git global options: git -C /tmp status → git status (#163)
     let cmd_normalized = strip_git_global_opts(&cmd_normalized);
+    // Normalize PHP tool paths: vendor/bin/phpunit, bin/phpunit, or composer
+    // custom bin-dir → phpunit (so one rule matches every Composer layout).
+    let cmd_normalized = normalize_php_tool_command(&cmd_normalized);
     // Strip golangci-lint global options before `run` so classify/rewrite stays
     // aligned with the runtime wrapper behavior.
     let cmd_normalized = strip_golangci_global_opts(&cmd_normalized);
@@ -358,6 +365,79 @@ fn split_token_spans(cmd: &str) -> Vec<(&str, usize, usize)> {
     }
 
     tokens
+}
+
+fn normalize_php_tool_command(cmd: &str) -> String {
+    // Peel `php ` then normalize so `php vendor/bin/phpunit` and
+    // `vendor/bin/phpunit` both collapse to the bare tool name.
+    let unwrapped = strip_php_wrapper(cmd);
+    normalize_php_tool_command_with_dirs(unwrapped, &composer_bin_dirs())
+}
+
+/// Peel a leading `php` interpreter wrapper off a Composer-tool invocation
+/// (`php vendor/bin/phpunit …` → `vendor/bin/phpunit …`).
+fn strip_php_wrapper(cmd: &str) -> &str {
+    cmd.strip_prefix("php ").map_or(cmd, str::trim_start)
+}
+
+fn normalize_php_tool_command_with_dirs(cmd: &str, bin_dirs: &[std::path::PathBuf]) -> String {
+    let first_space = cmd.find(char::is_whitespace);
+    let first_word = match first_space {
+        Some(pos) => &cmd[..pos],
+        None => cmd,
+    };
+
+    let Some(tool) = normalize_php_tool_word(first_word, bin_dirs) else {
+        return cmd.to_string();
+    };
+
+    match first_space {
+        Some(pos) => format!("{}{}", tool, &cmd[pos..]),
+        None => tool.to_string(),
+    }
+}
+
+fn normalize_php_tool_word<'a>(word: &str, bin_dirs: &'a [std::path::PathBuf]) -> Option<&'a str> {
+    let normalized_word = normalize_php_tool_path(word);
+
+    for tool in PHP_TOOL_NAMES {
+        if normalized_word == tool {
+            return Some(tool);
+        }
+
+        if bin_dirs
+            .iter()
+            .any(|bin_dir| matches_php_tool_path(&normalized_word, bin_dir, tool))
+        {
+            return Some(tool);
+        }
+    }
+
+    None
+}
+
+fn matches_php_tool_path(word: &str, bin_dir: &Path, tool: &str) -> bool {
+    let normalized_dir = normalize_php_tool_path(&bin_dir.to_string_lossy());
+    let candidate = format!("{normalized_dir}/{tool}");
+    word == candidate || word.ends_with(&format!("/{candidate}"))
+}
+
+fn normalize_php_tool_path(path: &str) -> String {
+    let mut normalized = path.trim().replace('\\', "/");
+    while let Some(stripped) = normalized.strip_prefix("./") {
+        normalized = stripped.to_string();
+    }
+
+    if let Some((stem, ext)) = normalized.rsplit_once('.') {
+        if ["bat", "cmd", "exe", "ps1"]
+            .iter()
+            .any(|candidate| ext.eq_ignore_ascii_case(candidate))
+        {
+            normalized = stem.to_string();
+        }
+    }
+
+    normalized
 }
 
 /// Normalize absolute binary paths: `/usr/bin/grep -rn foo` → `grep -rn foo` (#485)
@@ -918,9 +998,27 @@ fn rewrite_segment_inner(
         return None;
     }
 
+    // For Composer-resolved PHP tools, normalize the leading invocation
+    // (php wrapper, ./, vendor/bin, composer bin-dir) exactly as
+    // classify_command does, so a small canonical prefix list matches every
+    // invocation form instead of enumerating each literal spelling.
+    let php_normalized;
+    let strip_target: &str = if rule
+        .rtco_cmd
+        .strip_prefix("rtco ")
+        .is_some_and(|t| PHP_TOOL_NAMES.contains(&t))
+    {
+        let unwrapped = strip_php_wrapper(cmd_part);
+        let unwrapped = unwrapped.strip_prefix("./").unwrap_or(unwrapped);
+        php_normalized = normalize_php_tool_command(unwrapped);
+        &php_normalized
+    } else {
+        cmd_part
+    };
+
     // Try each rewrite prefix (longest first) with word-boundary check
     for &prefix in rule.rewrite_prefixes {
-        if let Some(rest) = strip_word_prefix(cmd_part, prefix) {
+        if let Some(rest) = strip_word_prefix(strip_target, prefix) {
             let rewritten = if rest.is_empty() {
                 format!("{}{}", rule.rtco_cmd, redirect_suffix)
             } else {
@@ -1126,6 +1224,35 @@ mod tests {
 
     fn rewrite_command_no_prefixes(cmd: &str, excluded: &[String]) -> Option<String> {
         super::rewrite_command(cmd, excluded, &[])
+    }
+
+    #[test]
+    fn test_rewrite_vendor_bin_phpunit() {
+        assert_eq!(
+            rewrite_command_no_prefixes("vendor/bin/phpunit tests/", &[]),
+            Some("rtco phpunit tests/".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_php_vendor_bin_phpunit() {
+        assert_eq!(
+            rewrite_command_no_prefixes("php vendor/bin/phpunit tests/", &[]),
+            Some("rtco phpunit tests/".into())
+        );
+    }
+
+    #[test]
+    fn test_normalize_php_tool_command_custom_bin_dir() {
+        let dirs = vec![std::path::PathBuf::from("tools/bin")];
+        assert_eq!(
+            normalize_php_tool_command_with_dirs("tools/bin/phpunit tests/", &dirs),
+            "phpunit tests/"
+        );
+        assert_eq!(
+            normalize_php_tool_command_with_dirs("./tools/bin/pest", &dirs),
+            "pest"
+        );
     }
 
     #[test]
