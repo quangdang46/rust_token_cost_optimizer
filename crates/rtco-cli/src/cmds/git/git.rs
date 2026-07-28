@@ -1116,11 +1116,16 @@ fn run_commit(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
 
     if output.status.success() {
         // Extract commit hash from output like "[main abc1234] message"
+        // or "[main (root-commit) abc1234] message" (incl. localized variants)
+        // The hash is always the last whitespace-separated token before ']'.
         let compact = if let Some(line) = stdout.lines().next() {
-            if let Some(hash_start) = line.find(' ') {
-                let hash = line[1..hash_start].split(' ').next_back().unwrap_or("");
+            if let Some(bracket_end) = line.find(']') {
+                let bracket_content = &line[1..bracket_end];
+                let hash = bracket_content.split_whitespace().next_back().unwrap_or("");
                 if !hash.is_empty() && hash.len() >= 7 {
-                    format!("ok {}", &hash[..7.min(hash.len())])
+                    // Git hashes are ASCII; chars().take(7) is safe regardless
+                    let short_hash: String = hash.chars().take(7).collect();
+                    format!("ok {}", short_hash)
                 } else {
                     "ok".to_string()
                 }
