@@ -319,7 +319,13 @@ pub(crate) fn extract_bash_pattern(rule: &str) -> &str {
 /// - `prefix:*` or `prefix *` (trailing `*`, no other wildcards) → prefix match with word boundary
 /// - `* suffix`, `pre * suf` → glob matching where `*` matches any sequence of characters
 /// - `pattern` → exact match or prefix match (cmd must equal pattern or start with `{pattern} `)
-pub(crate) fn command_matches_pattern(cmd: &str, pattern: &str) -> bool {
+pub(crate) fn command_matches_pattern(cmd_str: &str, pattern_str: &str) -> bool {
+    // Normalize whitespace to prevent extra spaces from evading deny rules.
+    let cmd_norm = cmd_str.split_whitespace().collect::<Vec<_>>().join(" ");
+    let pattern_norm = pattern_str.split_whitespace().collect::<Vec<_>>().join(" ");
+    let cmd = cmd_norm.as_str();
+    let pattern = pattern_norm.as_str();
+
     // 1. Global wildcard
     if pattern == "*" {
         return true;
