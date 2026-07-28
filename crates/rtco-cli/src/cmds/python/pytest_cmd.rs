@@ -2,11 +2,13 @@
 
 use rtco_core::runner;
 use rtco_core::truncate::CAP_WARNINGS;
-use rtco_core::utils::{resolved_command, tool_exists, truncate};
+use rtco_core::utils::{resolved_command, strip_ansi, tool_exists, truncate};
 use anyhow::Result;
 
 const MAX_XFAIL: usize = CAP_WARNINGS;
 const MAX_PYTEST_FAILURES: usize = CAP_WARNINGS;
+const PYTEST_NO_TESTS: &str = "Pytest: No tests collected";
+const PYTEST_EXIT_NO_TESTS: i32 = 5;
 
 #[derive(Debug, PartialEq)]
 enum ParseState {
@@ -51,12 +53,20 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
         eprintln!("Running: pytest --tb=short -q {}", args.join(" "));
     }
 
-    runner::run_filtered(
+    runner::run_filtered_with_exit(
         cmd,
         "pytest",
         &args.join(" "),
-        filter_pytest_output,
-        runner::RunOptions::stdout_only().tee("pytest").early_exit_on_failure(),
+        |raw, exit_code| {
+            let clean = strip_ansi(raw);
+            let filtered = filter_pytest_output(&clean);
+            // Any other failure parsed as empty means the run broke before reporting.
+            if exit_code != 0 && exit_code != PYTEST_EXIT_NO_TESTS && filtered == PYTEST_NO_TESTS {
+                return truncate(clean.trim(), rtco_core::config::limits().passthrough_max_chars);
+            }
+            filtered
+        },
+        runner::RunOptions::stdout_only().tee("pytest"),
     )
 }
 
@@ -181,7 +191,7 @@ fn build_pytest_summary(
     } = counts;
 
     if passed == 0 && failed == 0 && skipped == 0 && xfailed == 0 && xpassed == 0 {
-        return "Pytest: No tests collected".to_string();
+        return PYTEST_NO_TESTS.to_string();
     }
 
     let extras_present = skipped > 0 || xfailed > 0 || xpassed > 0 || !xfail_lines.is_empty();
