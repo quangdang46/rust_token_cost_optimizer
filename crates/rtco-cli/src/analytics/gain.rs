@@ -6,7 +6,7 @@ use chrono::Local;
 use colored::Colorize;
 use rtco_core::display_helpers::{format_duration, print_period_table};
 use rtco_core::tracking::{DayStats, MonthStats, Tracker, WeekStats};
-use rtco_core::utils::format_tokens;
+use rtco_core::utils::{format_tokens, truncate};
 use serde::Serialize;
 use std::io::IsTerminal;
 use std::path::PathBuf;
@@ -723,11 +723,7 @@ fn show_failures(tracker: &Tracker) -> Result<()> {
         println!("{}", styled("Top Commands (by frequency)", true));
         println!("{}", "─".repeat(60));
         for (cmd, count) in &summary.top_commands {
-            let cmd_display = if cmd.len() > 50 {
-                format!("{}...", &cmd[..47])
-            } else {
-                cmd.clone()
-            };
+            let cmd_display = truncate(cmd, 50);
             println!("  {:>4}x  {}", count, cmd_display);
         }
         println!();
@@ -737,17 +733,10 @@ fn show_failures(tracker: &Tracker) -> Result<()> {
         println!("{}", styled("Recent Failures (last 10)", true));
         println!("{}", "─".repeat(60));
         for rec in &summary.recent {
-            let ts_short = if rec.timestamp.len() >= 16 {
-                &rec.timestamp[..16]
-            } else {
-                &rec.timestamp
-            };
+            // ISSUE #2787: show the full string when byte 16 is not a char boundary
+            let ts_short = rec.timestamp.get(..16).unwrap_or(&rec.timestamp);
             let status = if rec.fallback_succeeded { "ok" } else { "FAIL" };
-            let cmd_display = if rec.raw_command.len() > 40 {
-                format!("{}...", &rec.raw_command[..37])
-            } else {
-                rec.raw_command.clone()
-            };
+            let cmd_display = truncate(&rec.raw_command, 40);
             println!("  {} [{}] {}", ts_short, status, cmd_display);
         }
         println!();
