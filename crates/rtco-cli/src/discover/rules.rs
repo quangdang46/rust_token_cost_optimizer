@@ -3,11 +3,39 @@ use super::report::RtcoStatus;
 pub struct RtcoRule {
     pub pattern: &'static str,
     pub rtco_cmd: &'static str,
+    /// Whether this command may be rewritten as the final pipeline stage
+    /// (e.g. `git log | grep foo` → `rtco git log | rtco grep foo`).
+    /// Ported from upstream rtk (523c803).
+    pub pipeline_final_safe: bool,
     pub rewrite_prefixes: &'static [&'static str],
     pub category: &'static str,
     pub savings_pct: f64,
     pub subcmd_savings: &'static [(&'static str, f64)],
     pub subcmd_status: &'static [(&'static str, RtcoStatus)],
+}
+
+impl RtcoRule {
+    // `Default::default()` isn't a const fn on stable, so `RULES` (a const array)
+    // can't call it via `..Default::default()` — hence this associated const as the
+    // const-context workaround. Once `const_trait_impl` stabilizes, drop this and
+    // derive/impl `const Default` instead, then switch call sites back to
+    // `..RtcoRule::default()`.
+    pub const DEFAULT: RtcoRule = RtcoRule {
+        pattern: "",
+        rtco_cmd: "",
+        pipeline_final_safe: false,
+        rewrite_prefixes: &[],
+        category: "",
+        savings_pct: 60.0,
+        subcmd_savings: &[],
+        subcmd_status: &[],
+    };
+}
+
+impl Default for RtcoRule {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
 }
 
 pub const RULES: &[RtcoRule] = &[
@@ -24,6 +52,7 @@ pub const RULES: &[RtcoRule] = &[
             ("commit", 59.0),
         ],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^gh\s+(pr|issue|run|repo|api|release)",
@@ -33,6 +62,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 82.0,
         subcmd_savings: &[("pr", 87.0), ("run", 82.0), ("issue", 80.0)],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^glab\s+(mr|issue|ci|pipeline|api|release)",
@@ -42,6 +72,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 82.0,
         subcmd_savings: &[("mr", 87.0), ("ci", 82.0), ("issue", 80.0)],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^cargo\s+(build|test|clippy|check|fmt|install)",
@@ -51,6 +82,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 80.0,
         subcmd_savings: &[("test", 90.0), ("check", 80.0)],
         subcmd_status: &[("fmt", RtcoStatus::Passthrough)],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^pnpm\s+(exec|i|install|list|ls|outdated|run|run-script)",
@@ -60,6 +92,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 80.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^npm\s+(exec|run|run-script|rum|urn|x)(\s|$)",
@@ -69,6 +102,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^npx\s+",
@@ -78,6 +112,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^fnm\s+(list-remote|use|install|uninstall|list|ls|current|default)(\s|$)",
@@ -87,6 +122,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 25.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(cat|head|tail)\s+",
@@ -96,6 +132,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^rg\s+",
@@ -105,6 +142,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 50.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        pipeline_final_safe: true,
     },
     RtcoRule {
         pattern: r"^grep\s+",
@@ -114,6 +152,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 75.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        pipeline_final_safe: true,
     },
     RtcoRule {
         pattern: r"^ls(\s|$)",
@@ -123,6 +162,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^find\s+",
@@ -132,6 +172,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?tsc(\s|$)",
@@ -157,6 +198,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 83.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?(biome|eslint|lint)(\s|$)",
@@ -208,6 +250,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 84.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?prettier",
@@ -233,6 +276,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?next\s+build",
@@ -258,6 +302,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 87.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?jest(\s+run)?(\s|$)",
@@ -298,6 +343,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 99.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?vitest(\s+run)?(\s|$)",
@@ -338,6 +384,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 99.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?playwright",
@@ -363,6 +410,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 94.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^((p?np(m|x)|p?npm\s+(exec|run|run-script)|npm\s+(rum|urn|x)|pnpm\s+dlx)\s+)?prisma",
@@ -388,6 +436,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 88.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^docker\s+(ps|images|logs|run|exec|build|compose\s+(ps|logs|build))",
@@ -397,6 +446,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 85.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^kubectl\s+(get|logs|describe|apply)",
@@ -406,6 +456,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 85.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^tree(\s|$)",
@@ -415,6 +466,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^diff\s+",
@@ -424,6 +476,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^curl\s+",
@@ -433,6 +486,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^wget\s+",
@@ -442,6 +496,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(python3?\s+-m\s+)?mypy(\s|$)",
@@ -451,6 +506,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 80.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^ruff\s+(check|format)",
@@ -460,6 +516,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 80.0,
         subcmd_savings: &[("check", 80.0), ("format", 75.0)],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(python[0-9.]*\s+-m\s+)?pytest(\s|$)",
@@ -469,6 +526,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 90.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(pip3?|uv\s+pip)\s+(list|outdated|install|show)",
@@ -478,6 +536,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 75.0,
         subcmd_savings: &[("list", 75.0), ("outdated", 80.0)],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^go\s+(test|build|vet)",
@@ -487,6 +546,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 85.0,
         subcmd_savings: &[("test", 90.0), ("build", 80.0), ("vet", 75.0)],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(?:golangci-lint|golangci)\s+(run)(?:\s|$)",
@@ -496,6 +556,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 85.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^bundle\s+(install|update)\b",
@@ -505,6 +566,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(?:bundle\s+exec\s+)?(?:bin/)?(?:rake|rails)\s+test",
@@ -520,6 +582,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 85.0,
         subcmd_savings: &[("test", 90.0)],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(?:bundle\s+exec\s+)?rspec(?:\s|$)",
@@ -529,6 +592,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(?:bundle\s+exec\s+)?rubocop(?:\s|$)",
@@ -538,6 +602,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^aws\s+",
@@ -562,6 +627,7 @@ pub const RULES: &[RtcoRule] = &[
             ("secretsmanager", 75.0),
         ],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^psql(\s|$)",
@@ -571,6 +637,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 75.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^sqlite3(\s|$)",
@@ -580,6 +647,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^ansible-playbook\b",
@@ -589,6 +657,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^brew\s+(install|upgrade)\b",
@@ -598,6 +667,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^composer\s+(install|update|require)\b",
@@ -607,8 +677,8 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
-    // Dedicated PHP tool rules (ported from upstream RTK)
     RtcoRule {
         pattern: r"^php\s+artisan(?:\s|$)",
         rtco_cmd: "rtco php",
@@ -617,6 +687,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^php\s+-l(?:\s|$)",
@@ -626,6 +697,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(?:php\s+)?(?:\./)?(?:(?:vendor/)?bin/)?phpunit(?:\s|$)",
@@ -635,6 +707,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 75.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(?:php\s+)?(?:\./)?(?:(?:vendor/)?bin/)?phpstan\s+analy[sz]e\b",
@@ -644,6 +717,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[("analyse", 65.0), ("analyze", 65.0)],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(?:\./)?(?:vendor/bin/)?pest(?:\s|$)",
@@ -653,6 +727,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 80.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(?:\./)?(?:vendor/bin/)?paratest(?:\s|$)",
@@ -662,6 +737,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 80.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(?:\./)?(?:vendor/bin/)?ecs(?:\s|$)",
@@ -671,6 +747,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(?:\./)?(?:vendor/bin/)?pint(?:\s|$)",
@@ -680,11 +757,8 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
-    // PHP interpreter (artisan, scripts, -v, etc.). Routed via fallback passthrough
-    // so any invocation works without a dedicated handler. Restored in rtco#1892 after
-    // a regression silently dropped the rule. Pattern uses `(\s|$)` so it matches
-    // `php` alone and `php …` but never `phpunit`, `phpcs`, `phpstan`.
     RtcoRule {
         pattern: r"^php(\s|$)",
         rtco_cmd: "rtco php",
@@ -693,6 +767,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^df(\s|$)",
@@ -702,6 +777,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^dotnet\s+build\b",
@@ -711,6 +787,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^du\b",
@@ -720,6 +797,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^fail2ban-client\b",
@@ -729,6 +807,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^gcloud\b",
@@ -738,6 +817,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^(?:\./gradlew|gradlew\.bat|gradlew|gradle)(?:\s+(test|build|clean|assemble\w*|install\w*|check|lint\w*|dependencies))?(\s|$)",
@@ -747,6 +827,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 75.0,
         subcmd_savings: &[("test", 90.0), ("build", 80.0), ("check", 80.0)],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^hadolint\b",
@@ -756,6 +837,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^helm\b",
@@ -765,6 +847,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^iptables\b",
@@ -774,6 +857,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^make\b",
@@ -783,6 +867,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^markdownlint\b",
@@ -792,6 +877,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^mix\s+(compile|format)(\s|$)",
@@ -801,6 +887,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^mvn\s+(compile|package|clean|install|test|verify|integration-test|failsafe:integration-test)\b",
@@ -810,6 +897,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^ping\b",
@@ -819,6 +907,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^pio\s+run",
@@ -828,6 +917,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^poetry\s+(install|lock|update)\b",
@@ -837,6 +927,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^pre-commit\b",
@@ -846,6 +937,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^ps(\s|$)",
@@ -855,6 +947,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^quarto\s+render",
@@ -864,6 +957,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^rsync\b",
@@ -873,6 +967,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^shellcheck\b",
@@ -882,6 +977,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^shopify\s+theme\s+(push|pull)",
@@ -891,6 +987,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^sops\b",
@@ -900,6 +997,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^swift\s+(build|test)\b",
@@ -909,6 +1007,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[("test", 90.0)],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^systemctl\s+status\b",
@@ -918,6 +1017,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^terraform\s+plan",
@@ -927,6 +1027,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^tofu\s+(fmt|init|plan|validate)(\s|$)",
@@ -936,6 +1037,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^trunk\s+build",
@@ -945,6 +1047,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^uv\s+run(?:\s|$)",
@@ -954,6 +1057,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^uv\s+(sync|pip\s+install)\b",
@@ -963,6 +1067,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^yamllint\b",
@@ -972,6 +1077,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^wc(\s|$)",
@@ -981,6 +1087,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 60.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^gt\s+",
@@ -990,6 +1097,7 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 70.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
     RtcoRule {
         pattern: r"^liquibase(?:\s|$)",
@@ -999,9 +1107,9 @@ pub const RULES: &[RtcoRule] = &[
         savings_pct: 65.0,
         subcmd_savings: &[],
         subcmd_status: &[],
+        ..RtcoRule::DEFAULT
     },
 ];
-
 pub const IGNORED_PREFIXES: &[&str] = &[
     "cd ",
     "cd\t",

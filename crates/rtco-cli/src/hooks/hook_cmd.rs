@@ -375,6 +375,70 @@ fn print_gemini(decision: &str, rewritten: Option<&str>) {
     let _ = writeln!(io::stdout(), "{}", output);
 }
 
+// ── Vibe hook ─────────────────────────────────────────────────
+
+/// Run the Mistral Vibe CLI pre_tool hook.
+///
+/// Vibe hook contract (https://docs.mistral.ai/vibe/code/cli/hooks):
+/// - stdin: JSON with `tool_name`, `tool_input`, `hook_event_name`, etc.
+/// - Passthrough: exit 0 with empty stdout.
+/// - Rewrite: emit `{"hook_specific_output": {"tool_input": {"command": "..."}}}`.
+/// - Deny: emit `{"decision": "deny", "reason": "..."}`.
+///
+/// Ported from upstream rtk (d480f1e, 1847b07).
+pub fn run_vibe() -> Result<()> {
+    let input = read_stdin_limited()?;
+    if let Some(output) = run_vibe_inner(&input) {
+        let _ = writeln!(io::stdout(), "{output}");
+    }
+    Ok(())
+}
+
+fn run_vibe_inner(input: &str) -> Option<String> {
+    let json: Value = match serde_json::from_str(input) {
+        Ok(v) => v,
+        Err(e) => {
+            let _ = writeln!(io::stderr(), "[rtco hook] Failed to parse JSON input: {e}");
+            return None;
+        }
+    };
+
+    let tool_name = json.get("tool_name").and_then(|v| v.as_str()).unwrap_or("");
+    if tool_name != "bash" {
+        return None;
+    }
+
+    let cmd = json
+        .pointer("/tool_input/command")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    if cmd.is_empty() {
+        return None;
+    }
+
+    match decide_hook_action(cmd, permissions::Host::Vibe) {
+        HookDecision::Deny => {
+            audit_log("deny", cmd, "");
+            Some(r#"{"decision":"deny","reason":"Blocked by RTCO permission rule"}"#.to_string())
+        }
+        HookDecision::AllowRewrite(ref rewritten) | HookDecision::AskRewrite(ref rewritten) => {
+            audit_log("rewrite", cmd, rewritten);
+            Some(vibe_rewrite_json(rewritten))
+        }
+        HookDecision::Defer => None,
+    }
+}
+
+fn vibe_rewrite_json(rewritten: &str) -> String {
+    serde_json::json!({
+        "hook_specific_output": {
+            "tool_input": { "command": rewritten }
+        },
+        "system_message": format!("rtco: rewrote to `{}`", rewritten),
+    })
+    .to_string()
+}
+
 // ── Audit logging ─────────────────────────────────────────────
 
 /// Best-effort audit log when RTCO_HOOK_AUDIT=1.
@@ -572,40 +636,42 @@ pub fn run_cursor() -> Result<()> {
         }
     };
 
-    let verdict = permissions::check_command(&cmd);
-    if verdict == PermissionVerdict::Deny {
-        audit_log("deny", &cmd, "");
-        let _ = writeln!(io::stdout(), "{{}}");
-        return Ok(());
-    }
-
-    let rewritten = match get_rewritten(&cmd) {
-        Some(r) => r,
-        None => {
-            let _ = writeln!(io::stdout(), "{{}}");
-            return Ok(());
+    let output = match decide_hook_action(&cmd, permissions::Host::Cursor) {
+        HookDecision::AllowRewrite(rewritten) => {
+            audit_log("rewrite", &cmd, &rewritten);
+            cursor_allow(&rewritten)
+        }
+        HookDecision::AskRewrite(rewritten) => {
+            audit_log("ask", &cmd, &rewritten);
+            cursor_ask(&rewritten)
+        }
+        other => {
+            if matches!(other, HookDecision::Deny) {
+                audit_log("deny", &cmd, "");
+            }
+            "{}".to_string()
         }
     };
-
-    // Cursor preToolUse currently enforces allow/deny only and can ignore
-    // updated_input when permission is "ask". Use "allow" for rewritten
-    // commands unless the command is explicitly denied above.
-    let decision = "allow";
-
-    audit_log("rewrite", &cmd, &rewritten);
-
-    // `continue: true` mirrors the shape of every other Cursor hook
-    // (afterShellExecution, beforeSubmitPrompt, stop, ...). Cursor's
-    // preToolUse panel renders the JSON it received; without this field
-    // the panel collapses to `Output: {}` even though the rewrite ran,
-    // which makes the hook look broken to users.
-    let output = json!({
-        "continue": true,
-        "permission": decision,
-        "updated_input": { "command": rewritten }
-    });
     let _ = writeln!(io::stdout(), "{output}");
     Ok(())
+}
+
+fn cursor_allow(rewritten: &str) -> String {
+    json!({
+        "continue": true,
+        "permission": "allow",
+        "updated_input": { "command": rewritten }
+    })
+    .to_string()
+}
+
+fn cursor_ask(rewritten: &str) -> String {
+    json!({
+        "continue": true,
+        "permission": "ask",
+        "updated_input": { "command": rewritten }
+    })
+    .to_string()
 }
 
 #[cfg(test)]
@@ -636,21 +702,10 @@ fn run_cursor_inner_with_rules(
     };
 
     let verdict = permissions::check_command_with_rules(&cmd, deny_rules, ask_rules, allow_rules);
-    if verdict == PermissionVerdict::Deny {
-        return "{}".to_string();
-    }
-
-    match get_rewritten(&cmd) {
-        Some(rewritten) => {
-            let decision = "allow";
-            let output = json!({
-                "continue": true,
-                "permission": decision,
-                "updated_input": { "command": rewritten }
-            });
-            output.to_string()
-        }
-        None => "{}".to_string(),
+    match decide_from_verdict(&cmd, verdict) {
+        HookDecision::AllowRewrite(rewritten) => cursor_allow(&rewritten),
+        HookDecision::AskRewrite(rewritten) => cursor_ask(&rewritten),
+        _ => "{}".to_string(),
     }
 }
 
@@ -932,15 +987,31 @@ mod tests {
     }
 
     #[test]
-    fn test_cursor_rewrite_flat_format() {
-        let result = run_cursor_inner(&cursor_input("git status"));
+    fn test_cursor_rewrite_flat_format_allow_rule() {
+        // With an explicit allow rule, the rewrite is auto-allowed.
+        let result = run_cursor_inner_with_rules(
+            &cursor_input("git status"),
+            &[],
+            &[],
+            &["git".to_string()],
+        );
         let v: Value = serde_json::from_str(&result).unwrap();
-        // Cursor preToolUse expects allow/deny for rewrite application.
         assert_eq!(v["permission"], "allow");
         assert_eq!(v["updated_input"]["command"], "rtco git status");
         assert!(v.get("hookSpecificOutput").is_none());
         // `continue: true` keeps the Cursor preToolUse panel from collapsing
         // to `Output: {}`; without it the rewrite is invisible to users.
+        assert_eq!(v["continue"], true);
+    }
+
+    #[test]
+    fn test_cursor_rewrite_flat_format() {
+        // Default (no rule): least-privilege → "ask", mirroring upstream.
+        let result = run_cursor_inner(&cursor_input("git status"));
+        let v: Value = serde_json::from_str(&result).unwrap();
+        assert_eq!(v["permission"], "ask");
+        assert_eq!(v["updated_input"]["command"], "rtco git status");
+        assert!(v.get("hookSpecificOutput").is_none());
         assert_eq!(v["continue"], true);
     }
 
@@ -973,7 +1044,7 @@ mod tests {
         let result = run_cursor_inner(&cursor_input("cargo test"));
         let v: Value = serde_json::from_str(&result).unwrap();
         assert!(v.get("hookSpecificOutput").is_none());
-        assert_eq!(v["permission"], "allow");
+        assert_eq!(v["permission"], "ask");
         assert_eq!(v["continue"], true);
     }
 
@@ -983,7 +1054,7 @@ mod tests {
         let result = run_cursor_inner(&cursor_input(cmd));
         let v: Value = serde_json::from_str(&result).unwrap();
         assert_eq!(v["continue"], true);
-        assert_eq!(v["permission"], "allow");
+        assert_eq!(v["permission"], "ask");
         assert_eq!(
             v["updated_input"]["command"],
             "cd \"/tmp/proj\" && rtco git status"
@@ -1000,7 +1071,7 @@ mod tests {
         let result = run_cursor_inner(&with_single_bom);
         let v: Value = serde_json::from_str(&result).unwrap();
         assert_eq!(v["continue"], true);
-        assert_eq!(v["permission"], "allow");
+        assert_eq!(v["permission"], "ask");
         assert_eq!(v["updated_input"]["command"], "rtco git status");
     }
 
@@ -1015,7 +1086,7 @@ mod tests {
         let result = run_cursor_inner(&with_double_bom);
         let v: Value = serde_json::from_str(&result).unwrap();
         assert_eq!(v["continue"], true);
-        assert_eq!(v["permission"], "allow");
+        assert_eq!(v["permission"], "ask");
         assert_eq!(v["updated_input"]["command"], "rtco git status");
     }
 

@@ -13,6 +13,23 @@ pub const CLAUDE_HOOK_COMMAND: &str = "rtco hook claude";
 /// Native Rust hook command for Cursor (replaces rtco-rewrite.sh).
 pub const CURSOR_HOOK_COMMAND: &str = "rtco hook cursor";
 
+// ── Mistral Vibe CLI ──────────────────────────────────────────
+
+/// Native Rust hook command for Mistral Vibe CLI.
+pub const VIBE_HOOK_COMMAND: &str = "rtco hook vibe";
+/// Vibe config directory (~/.vibe).
+pub const VIBE_DIR: &str = ".vibe";
+/// Vibe hook registry file.
+pub const VIBE_HOOKS_FILE: &str = "hooks.toml";
+/// Vibe prompts subdirectory.
+pub const VIBE_PROMPTS_SUBDIR: &str = "prompts";
+/// Vibe system-prompt fallback file.
+pub const VIBE_PROMPT_FILE: &str = "rtco.md";
+/// Hook name registered in Vibe's hooks.toml.
+pub const VIBE_HOOK_NAME: &str = "rtco-rewrite";
+/// Tool name Vibe sends for bash tool calls.
+pub const VIBE_BASH_MATCH: &str = "bash";
+
 pub const CONFIG_DIR: &str = ".config";
 pub const OPENCODE_SUBDIR: &str = "opencode";
 pub const PLUGIN_SUBDIR: &str = "plugins";

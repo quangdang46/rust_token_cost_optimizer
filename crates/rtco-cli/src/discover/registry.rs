@@ -5,7 +5,9 @@ use regex::{Regex, RegexSet};
 use rtco_core::utils::composer_bin_dirs;
 use std::path::Path;
 
-use super::lexer::{split_on_operators, tokenize, tokenize_with_newlines, TokenKind};
+use super::lexer::{
+    shell_split, split_on_operators, tokenize, tokenize_with_newlines, ParsedToken, TokenKind,
+};
 use super::rules::{IGNORED_EXACT, IGNORED_PREFIXES, RULES};
 
 const PHP_TOOL_NAMES: [&str; 6] = ["phpunit", "phpstan", "ecs", "pest", "paratest", "pint"];
@@ -1005,6 +1007,98 @@ fn rewrite_multiline_block(
     }
 }
 
+/// Where a pipeline starts/stops, so `rewrite_pipeline_final_stage` can
+/// isolate the final `|` stage. Ported from upstream rtk (523c803).
+struct PipelineAnalysis {
+    end_offset: usize,
+    next_clause_offset: Option<usize>,
+    final_stage_start: Option<usize>,
+}
+
+fn analyze_pipeline(
+    cmd: &str,
+    tokens: &[ParsedToken],
+    segment_start: usize,
+    first_pipe_offset: usize,
+) -> PipelineAnalysis {
+    let next_clause_offset = tokens
+        .iter()
+        .find(|token| {
+            token.offset > first_pipe_offset
+                && (token.kind == TokenKind::Operator
+                    || (token.kind == TokenKind::Shellism && token.value == "&"))
+        })
+        .map(|token| token.offset);
+    let end_offset = next_clause_offset.unwrap_or(cmd.len());
+
+    let mut stage_start = segment_start;
+    let mut final_stage_start = None;
+    let mut has_supported_structure = true;
+
+    for token in tokens {
+        if token.offset >= end_offset {
+            break;
+        }
+        if token.offset < first_pipe_offset {
+            continue;
+        }
+        if token.kind != TokenKind::Pipe {
+            continue;
+        }
+
+        if cmd[stage_start..token.offset].trim().is_empty() {
+            has_supported_structure = false;
+        }
+
+        stage_start = token.offset + token.value.len();
+        final_stage_start = Some(stage_start);
+    }
+
+    if cmd[stage_start..end_offset].trim().is_empty() {
+        has_supported_structure = false;
+    }
+
+    PipelineAnalysis {
+        end_offset,
+        next_clause_offset,
+        final_stage_start: if has_supported_structure {
+            final_stage_start
+        } else {
+            None
+        },
+    }
+}
+
+/// Rewrite the final stage of a pipeline (e.g. `git log | grep foo` →
+/// `rtco git log | rtco grep foo`) when the rule is `pipeline_final_safe`.
+/// Ported from upstream rtk (523c803).
+fn rewrite_pipeline_final_stage(
+    cmd: &str,
+    segment_start: usize,
+    analysis: PipelineAnalysis,
+    excluded: &[ExcludePattern],
+    transparent_prefixes: &[String],
+) -> Option<String> {
+    let final_stage_start = analysis.final_stage_start?;
+    let final_stage = cmd[final_stage_start..analysis.end_offset].trim();
+
+    rewrite_segment_inner(
+        final_stage,
+        excluded,
+        transparent_prefixes,
+        RewriteContext::PipelineFinal,
+        0,
+    )
+    .filter(|rewritten| rewritten != final_stage)
+    .map(|rewritten| {
+        format!(
+            "{} {}",
+            cmd[segment_start..final_stage_start].trim(),
+            rewritten
+        )
+    })
+}
+
 /// Rewrite a compound command (with `&&`, `||`, `;`, `|`) by rewriting each segment.
 fn rewrite_compound(
     cmd: &str,
@@ -1046,37 +1140,30 @@ fn rewrite_compound(
                 }
             }
             TokenKind::Pipe => {
-                let seg = cmd[seg_start..tok.offset].trim();
-                let is_pipe_incompatible = seg.starts_with("find ")
-                    || seg == "find"
-                    || seg.starts_with("fd ")
-                    || seg == "fd";
-                let rewritten = if is_pipe_incompatible {
-                    seg.to_string()
-                } else {
-                    rewrite_segment(seg, excluded, transparent_prefixes)
-                        .unwrap_or_else(|| seg.to_string())
-                };
-                if rewritten != seg {
+                let analysis = analyze_pipeline(cmd, &tokens, seg_start, tok.offset);
+                let next_clause_offset = analysis.next_clause_offset;
+                let pipeline = cmd[seg_start..analysis.end_offset].trim();
+                let rewritten_pipeline = rewrite_pipeline_final_stage(
+                    cmd,
+                    seg_start,
+                    analysis,
+                    excluded,
+                    transparent_prefixes,
+                );
+
+                if let Some(rewritten) = rewritten_pipeline {
                     any_changed = true;
+                    result.push_str(&rewritten);
+                } else {
+                    result.push_str(pipeline);
                 }
-                result.push_str(&rewritten);
 
-                let pipe_group_end = tokens.iter().find(|t| {
-                    t.offset > tok.offset
-                        && (t.kind == TokenKind::Operator
-                            || (t.kind == TokenKind::Shellism && t.value == "&"))
-                });
-
-                match pipe_group_end {
-                    Some(next_op) => {
-                        result.push(' ');
-                        result.push_str(cmd[tok.offset..next_op.offset].trim());
-                        seg_start = next_op.offset;
+                match next_clause_offset {
+                    Some(next_clause_offset) => {
+                        seg_start = next_clause_offset;
+                        continue;
                     }
                     None => {
-                        result.push(' ');
-                        result.push_str(cmd[tok.offset..].trim_start());
                         return if any_changed { Some(result) } else { None };
                     }
                 }
@@ -1196,12 +1283,48 @@ fn normalize_transparent_prefixes(prefixes: &[String]) -> Vec<String> {
     normalized
 }
 
+/// Rewrite context — distinguishes a normal command from the final stage of
+/// a pipeline, where only `pipeline_final_safe` rules may be rewritten.
+/// Ported from upstream rtk (523c803).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RewriteContext {
+    Normal,
+    PipelineFinal,
+}
+
+/// Whether grep/rg reads patterns from a file (`-f`/`--file`), in which case
+/// rewriting the final pipeline stage would be unsafe.
+fn search_uses_pattern_file(cmd: &str) -> bool {
+    shell_split(cmd)
+        .into_iter()
+        .skip(1)
+        .take_while(|arg| arg != "--")
+        .any(|arg| {
+            arg == "--file"
+                || arg.starts_with("--file=")
+                || arg
+                    .strip_prefix('-')
+                    .filter(|flags| !flags.starts_with('-'))
+                    .is_some_and(|flags| flags.contains('f'))
+        })
+}
+
+fn pipeline_final_command_is_safe(rtco_cmd: &str, cmd: &str) -> bool {
+    !matches!(rtco_cmd, "rtco grep" | "rtco rg") || !search_uses_pattern_file(cmd)
+}
+
 fn rewrite_segment(
     seg: &str,
     excluded: &[ExcludePattern],
     transparent_prefixes: &[String],
 ) -> Option<String> {
-    rewrite_segment_inner(seg, excluded, transparent_prefixes, 0)
+    rewrite_segment_inner(
+        seg,
+        excluded,
+        transparent_prefixes,
+        RewriteContext::Normal,
+        0,
+    )
 }
 
 fn is_excluded(cmd: &str, excluded: &[ExcludePattern]) -> bool {
@@ -1215,6 +1338,7 @@ fn rewrite_segment_inner(
     seg: &str,
     excluded: &[ExcludePattern],
     transparent_prefixes: &[String],
+    context: RewriteContext,
     depth: usize,
 ) -> Option<String> {
     let trimmed = seg.trim();
@@ -1244,8 +1368,13 @@ fn rewrite_segment_inner(
             );
             return None;
         }
-        let rewritten =
-            rewrite_segment_inner(rest_after_env, excluded, transparent_prefixes, depth + 1)?;
+        let rewritten = rewrite_segment_inner(
+            rest_after_env,
+            excluded,
+            transparent_prefixes,
+            context,
+            depth + 1,
+        )?;
         return Some(format!("{}{}", env_prefix, rewritten));
     }
 
@@ -1254,7 +1383,7 @@ fn rewrite_segment_inner(
             if rest.is_empty() {
                 return None;
             }
-            return rewrite_segment_inner(rest, excluded, transparent_prefixes, depth + 1)
+            return rewrite_segment_inner(rest, excluded, transparent_prefixes, context, depth + 1)
                 .map(|rewritten| format!("{} {}", prefix, rewritten));
         }
     }
@@ -1266,7 +1395,7 @@ fn rewrite_segment_inner(
             if rest.is_empty() {
                 return None;
             }
-            return rewrite_segment_inner(rest, excluded, transparent_prefixes, depth + 1)
+            return rewrite_segment_inner(rest, excluded, transparent_prefixes, context, depth + 1)
                 .map(|rewritten| format!("{} {}", prefix, rewritten));
         }
     }
@@ -1317,6 +1446,11 @@ fn rewrite_segment_inner(
 
     // Find the matching rule (rtco_cmd values are unique across all rules)
     let rule = RULES.iter().find(|r| r.rtco_cmd == rtco_equivalent)?;
+    if context == RewriteContext::PipelineFinal
+        && (!rule.pipeline_final_safe || !pipeline_final_command_is_safe(rule.rtco_cmd, cmd_part))
+    {
+        return None;
+    }
 
     if let Some(parts) = parse_golangci_run_parts(cmd_part) {
         let rewritten = if parts.global_segment.is_empty() {
@@ -2218,10 +2352,10 @@ mod tests {
 
     #[test]
     fn test_rewrite_pipe_first_only() {
-        // After a pipe, the filter command stays raw
+        // Producer stays raw; the pipeline-safe final grep stage is rewritten.
         assert_eq!(
             rewrite_command_no_prefixes("git log -10 | grep feat", &[]),
-            Some("rtco git log -10 | grep feat".into())
+            Some("git log -10 | rtco grep feat".into())
         );
     }
 
@@ -2408,9 +2542,10 @@ mod tests {
 
     #[test]
     fn test_rewrite_redirect_2_gt_amp_1_with_pipe() {
+        // Producer stays raw and `head` is not pipeline_final_safe → passthrough.
         assert_eq!(
             rewrite_command_no_prefixes("cargo test 2>&1 | head", &[]),
-            Some("rtco cargo test 2>&1 | head".into())
+            None
         );
     }
 
@@ -3854,10 +3989,11 @@ mod tests {
 
     #[test]
     fn test_rewrite_compound_pipe_raw_filter() {
-        // Pipe: rewrite first segment only, pass through rest unchanged
+        // Producers stay raw; only a pipeline-safe final stage is rewritten
+        // (upstream 523c803 pipeline_final_safe).
         assert_eq!(
             rewrite_command_no_prefixes("cargo test | grep FAILED", &[]),
-            Some("rtco cargo test | grep FAILED".into())
+            Some("cargo test | rtco grep FAILED".into())
         );
     }
 
@@ -3865,7 +4001,7 @@ mod tests {
     fn test_rewrite_compound_pipe_git_grep() {
         assert_eq!(
             rewrite_command_no_prefixes("git log -10 | grep feat", &[]),
-            Some("rtco git log -10 | grep feat".into())
+            Some("git log -10 | rtco grep feat".into())
         );
     }
 
@@ -4885,7 +5021,7 @@ mod tests {
     fn test_rewrite_pipe_then_and() {
         assert_eq!(
             rewrite_command_no_prefixes("git log | head -5 && git stash", &[]),
-            Some("rtco git log | head -5 && rtco git stash".into())
+            Some("git log | head -5 && rtco git stash".into())
         );
     }
 
@@ -4893,7 +5029,7 @@ mod tests {
     fn test_rewrite_pipe_then_semicolon() {
         assert_eq!(
             rewrite_command_no_prefixes("cargo test | head; git status", &[]),
-            Some("rtco cargo test | head; rtco git status".into())
+            Some("cargo test | head; rtco git status".into())
         );
     }
 
@@ -4901,7 +5037,7 @@ mod tests {
     fn test_rewrite_pipe_then_or() {
         assert_eq!(
             rewrite_command_no_prefixes("cargo test | grep FAIL || git stash", &[]),
-            Some("rtco cargo test | grep FAIL || rtco git stash".into())
+            Some("cargo test | rtco grep FAIL || rtco git stash".into())
         );
     }
 
@@ -4912,15 +5048,17 @@ mod tests {
                 "RUST_BACKTRACE=1 cargo test 2>&1 | grep FAILED && git stash",
                 &[]
             ),
-            Some("RUST_BACKTRACE=1 rtco cargo test 2>&1 | grep FAILED && rtco git stash".into())
+            Some("RUST_BACKTRACE=1 cargo test 2>&1 | rtco grep FAILED && rtco git stash".into())
         );
     }
 
     #[test]
     fn test_rewrite_and_then_pipe() {
+        // The `&&` clause is rewritten normally; only the pipeline producer
+        // stays raw, and the safe final grep stage is rewritten.
         assert_eq!(
             rewrite_command_no_prefixes("git status && cargo test | grep FAIL", &[]),
-            Some("rtco git status && rtco cargo test | grep FAIL".into())
+            Some("rtco git status && cargo test | rtco grep FAIL".into())
         );
     }
 
@@ -4928,7 +5066,45 @@ mod tests {
     fn test_rewrite_multi_pipe_then_and() {
         assert_eq!(
             rewrite_command_no_prefixes("git log | head | tail && git status", &[]),
-            Some("rtco git log | head | tail && rtco git status".into())
+            Some("git log | head | tail && rtco git status".into())
+        );
+    }
+
+    #[test]
+    fn test_pipeline_final_safe_rule_set() {
+        let safe_rules: Vec<_> = RULES
+            .iter()
+            .filter(|rule| rule.pipeline_final_safe)
+            .map(|rule| rule.rtco_cmd)
+            .collect();
+
+        assert_eq!(safe_rules, vec!["rtco rg", "rtco grep"]);
+    }
+
+    #[test]
+    fn test_pipeline_final_search_pattern_file_is_unsafe() {
+        for command in [
+            "grep -f patterns.txt input.txt",
+            "grep -rfpatterns.txt input",
+            "grep --file patterns.txt input.txt",
+            "grep --file=patterns.txt input.txt",
+            "rg -f patterns.txt input.txt",
+            "rg --file=patterns.txt input.txt",
+        ] {
+            assert!(search_uses_pattern_file(command), "{command}");
+        }
+
+        assert!(!search_uses_pattern_file("grep -- -f"));
+        assert!(!search_uses_pattern_file("grep -F pattern"));
+    }
+
+    #[test]
+    fn test_pipeline_final_pattern_file_passes_through() {
+        // grep reading patterns from a file is not pipeline-final-safe: the
+        // rewritten `rtco grep` would not see the `-f` file path the same way.
+        assert_eq!(
+            rewrite_command_no_prefixes("git log | grep -f patterns.txt", &[]),
+            None
         );
     }
 

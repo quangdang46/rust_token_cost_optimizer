@@ -21,6 +21,7 @@ use cmds::php::{ecs_cmd, paratest_cmd, pest_cmd, php_cmd, phpstan_cmd, phpunit_c
 use cmds::python::{mypy_cmd, pip_cmd, pytest_cmd, ruff_cmd, uv_cmd};
 use cmds::ruby::{rake_cmd, rspec_cmd, rubocop_cmd};
 use cmds::rust::{cargo_cmd, runner};
+use cmds::scala::sbt_cmd;
 use cmds::system::{
     deps, env_cmd, find_cmd, format_cmd, grep_cmd, json_cmd, local_llm, log_cmd, ls, pipe_cmd,
     read, summary, tree, wc_cmd,
@@ -51,6 +52,8 @@ pub enum AgentTarget {
     Pi,
     /// Hermes CLI
     Hermes,
+    /// Mistral Vibe CLI
+    Vibe,
 }
 
 /// Config subcommands
@@ -815,6 +818,14 @@ enum Commands {
         args: Vec<String>,
     },
 
+    /// SBT (Scala Build Tool) with compact output (test, compile, run — ScalaTest/munit filtered)
+    #[command(name = "sbt")]
+    Sbt {
+        /// SBT tasks and arguments (e.g., test, compile, run, Test/test, --info)
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+
     /// Show hook rewrite audit metrics (requires RTCO_HOOK_AUDIT=1)
     #[command(name = "hook-audit")]
     HookAudit {
@@ -854,6 +865,8 @@ enum HookCommands {
     Gemini,
     /// Process Copilot preToolUse hook (VS Code + Copilot CLI, reads JSON from stdin)
     Copilot,
+    /// Process Mistral Vibe CLI pre_tool hook (reads JSON from stdin)
+    Vibe,
     /// Check how a command would be rewritten by the hook engine (dry-run)
     Check {
         /// Target agent
@@ -1485,21 +1498,26 @@ fn main() {
     std::process::exit(code);
 }
 
-fn uninstall_init_dispatch<UninstallHermes, UninstallStandard>(
+#[allow(clippy::too_many_arguments)]
+fn uninstall_init_dispatch<UninstallHermes, UninstallVibe, UninstallStandard>(
     agent: Option<AgentTarget>,
     global: bool,
     gemini: bool,
     codex: bool,
     ctx: hooks::init::InitContext,
     uninstall_hermes: UninstallHermes,
+    uninstall_vibe: UninstallVibe,
     uninstall_standard: UninstallStandard,
 ) -> Result<()>
 where
     UninstallHermes: FnOnce(hooks::init::InitContext) -> Result<()>,
+    UninstallVibe: FnOnce(hooks::init::InitContext) -> Result<()>,
     UninstallStandard: FnOnce(bool, bool, bool, bool, bool, hooks::init::InitContext) -> Result<()>,
 {
     if agent == Some(AgentTarget::Hermes) {
         uninstall_hermes(ctx)
+    } else if agent == Some(AgentTarget::Vibe) {
+        uninstall_vibe(ctx)
     } else {
         let cursor = agent == Some(AgentTarget::Cursor);
         let pi = agent == Some(AgentTarget::Pi);
@@ -1967,6 +1985,7 @@ fn run_cli() -> Result<i32> {
                     codex,
                     ctx,
                     hooks::init::uninstall_hermes,
+                    hooks::init::uninstall_vibe,
                     hooks::init::uninstall,
                 )?;
             } else if gemini {
@@ -1996,6 +2015,15 @@ fn run_cli() -> Result<i32> {
                 hooks::init::run_antigravity_mode(ctx)?;
             } else if agent == Some(AgentTarget::Hermes) {
                 hooks::init::run_hermes_mode(ctx)?;
+            } else if agent == Some(AgentTarget::Vibe) {
+                let patch_mode = if auto_patch {
+                    hooks::init::PatchMode::Auto
+                } else if no_patch {
+                    hooks::init::PatchMode::Skip
+                } else {
+                    hooks::init::PatchMode::Ask
+                };
+                hooks::init::run_vibe_mode(global, hook_only, patch_mode, ctx)?;
             } else {
                 let install_opencode = opencode;
                 let install_claude = !opencode;
@@ -2327,6 +2355,8 @@ fn run_cli() -> Result<i32> {
 
         Commands::Mvn { args } => mvn_cmd::run(&args, cli.verbose)?,
 
+        Commands::Sbt { args } => sbt_cmd::run(&args, cli.verbose)?,
+
         Commands::HookAudit { since } => {
             hooks::hook_audit_cmd::run(since, cli.verbose)?;
             0
@@ -2347,6 +2377,10 @@ fn run_cli() -> Result<i32> {
             }
             HookCommands::Copilot => {
                 hooks::hook_cmd::run_copilot()?;
+                0
+            }
+            HookCommands::Vibe => {
+                hooks::hook_cmd::run_vibe()?;
                 0
             }
             HookCommands::Check { agent: _, command } => {
@@ -2683,7 +2717,8 @@ fn is_operational_command(cmd: &Commands) -> bool {
         | Commands::Format { .. }
         | Commands::Mypy { .. }
         | Commands::Gradlew { .. }
-        | Commands::Mvn { .. } => true,
+        | Commands::Mvn { .. }
+        | Commands::Sbt { .. } => true,
         _ => false,
     }
 }
@@ -2885,6 +2920,9 @@ mod tests {
                 assert_eq!(ctx.verbose, 2);
                 assert!(ctx.dry_run);
                 Ok(())
+            },
+            |_| {
+                unreachable!("vibe uninstall should not fire for Hermes");
             },
             |_, _, _, _, _, _| {
                 standard_called.set(true);

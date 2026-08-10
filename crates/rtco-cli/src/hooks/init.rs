@@ -16,7 +16,8 @@ use super::constants::{
     GEMINI_HOOK_FILE, HERMES_DIR, HERMES_PLUGINS_SUBDIR, HERMES_PLUGIN_INIT_FILE,
     HERMES_PLUGIN_MANIFEST_FILE, HERMES_PLUGIN_NAME, HOOKS_JSON, HOOKS_SUBDIR,
     PI_CODING_AGENT_DIR_ENV, PI_DIR, PI_EXTENSIONS_SUBDIR, PI_LOCAL_DIR, PI_PLUGIN_FILE,
-    PRE_TOOL_USE_KEY, REWRITE_HOOK_FILE, SETTINGS_JSON,
+    PRE_TOOL_USE_KEY, REWRITE_HOOK_FILE, SETTINGS_JSON, VIBE_BASH_MATCH, VIBE_DIR, VIBE_HOOKS_FILE,
+    VIBE_HOOK_COMMAND, VIBE_HOOK_NAME, VIBE_PROMPTS_SUBDIR, VIBE_PROMPT_FILE,
 };
 use super::integrity;
 
@@ -3997,6 +3998,325 @@ fn run_copilot_at(base: &Path, ctx: InitContext) -> Result<()> {
     }
 
     Ok(())
+}
+
+// ── Mistral Vibe CLI (port from upstream rtk d480f1e, 1847b07) ──────────────
+
+fn resolve_vibe_dir() -> Result<PathBuf> {
+    resolve_home_subdir(VIBE_DIR)
+}
+
+/// Entry point for `rtco init -g --agent vibe`.
+///
+/// Installs a `pre_tool` hook into `~/.vibe/hooks.toml` (Vibe CLI's hook
+/// registry, see https://docs.mistral.ai/vibe/code/cli/hooks) that routes
+/// bash tool calls through the native `rtco hook vibe` binary. When not
+/// `hook_only`, also drops an `~/.vibe/prompts/rtco.md` system prompt file
+/// as a belt-and-suspenders fallback if the hook is disabled.
+pub fn run_vibe_mode(
+    global: bool,
+    hook_only: bool,
+    patch_mode: PatchMode,
+    ctx: InitContext,
+) -> Result<()> {
+    if !global {
+        anyhow::bail!("Vibe support is global-only. Use: rtco init -g --agent vibe");
+    }
+    let vibe_dir = resolve_vibe_dir()?;
+    run_vibe_mode_at(&vibe_dir, hook_only, patch_mode, ctx)
+}
+
+fn run_vibe_mode_at(
+    vibe_dir: &Path,
+    hook_only: bool,
+    patch_mode: PatchMode,
+    ctx: InitContext,
+) -> Result<()> {
+    let InitContext { dry_run, .. } = ctx;
+    if !dry_run {
+        fs::create_dir_all(vibe_dir)
+            .with_context(|| format!("Failed to create Vibe config dir: {}", vibe_dir.display()))?;
+    }
+
+    let hooks_path = vibe_dir.join(VIBE_HOOKS_FILE);
+    let hook_outcome = patch_vibe_hooks_toml(&hooks_path, patch_mode, ctx)?;
+
+    if !hook_only {
+        let prompts_dir = vibe_dir.join(VIBE_PROMPTS_SUBDIR);
+        if !dry_run {
+            fs::create_dir_all(&prompts_dir).with_context(|| {
+                format!("Failed to create prompts dir: {}", prompts_dir.display())
+            })?;
+        }
+        let prompt_path = prompts_dir.join(VIBE_PROMPT_FILE);
+        write_if_changed(&prompt_path, RTCO_SLIM, VIBE_PROMPT_FILE, ctx)?;
+    }
+
+    if dry_run {
+        print_dry_run_footer();
+    } else if let Some(summary_verb) = hook_outcome.summary_verb() {
+        println!("\nMistral Vibe CLI hook {summary_verb} (global).\n");
+        println!("  Hook registry: {}", hooks_path.display());
+        if !hook_only {
+            println!(
+                "  Prompt: {}",
+                vibe_dir
+                    .join(VIBE_PROMPTS_SUBDIR)
+                    .join(VIBE_PROMPT_FILE)
+                    .display()
+            );
+        }
+        println!("  Restart Vibe. Test with: git status\n");
+    }
+    Ok(())
+}
+
+/// Outcome of `patch_vibe_hooks_toml`. Distinguishes installed / already-present /
+/// skipped so the caller can decide whether the "installed" summary is truthful.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum VibeHookPatchOutcome {
+    Installed,
+    AlreadyPresent,
+    Skipped,
+}
+
+impl VibeHookPatchOutcome {
+    fn summary_verb(self) -> Option<&'static str> {
+        match self {
+            Self::Installed => Some("installed"),
+            Self::AlreadyPresent => Some("already present"),
+            Self::Skipped => None,
+        }
+    }
+}
+
+/// Append the RTCO `[[hooks]]` entry to `~/.vibe/hooks.toml` if not already present.
+///
+/// Uses append-based patching (string level) rather than parse-serialize round-trip
+/// to preserve any user comments and formatting in the file.
+fn patch_vibe_hooks_toml(
+    hooks_path: &Path,
+    patch_mode: PatchMode,
+    ctx: InitContext,
+) -> Result<VibeHookPatchOutcome> {
+    let InitContext { verbose, dry_run } = ctx;
+
+    let existing = if hooks_path.exists() {
+        fs::read_to_string(hooks_path)
+            .with_context(|| format!("Failed to read {}", hooks_path.display()))?
+    } else {
+        String::new()
+    };
+
+    if vibe_hooks_toml_has_rtco(&existing) {
+        if verbose > 0 {
+            eprintln!("Vibe hooks.toml already has RTCO hook");
+        }
+        return Ok(VibeHookPatchOutcome::AlreadyPresent);
+    }
+
+    if patch_mode == PatchMode::Skip {
+        println!(
+            "\nManual setup needed: add RTCO hook to {}\n\
+             See: https://github.com/quangdang46/rust_token_cost_optimizer#mistral-vibe",
+            hooks_path.display()
+        );
+        return Ok(VibeHookPatchOutcome::Skipped);
+    }
+
+    if patch_mode == PatchMode::Ask {
+        if dry_run {
+            println!(
+                "[dry-run] would prompt before patching {}",
+                hooks_path.display()
+            );
+        } else {
+            print!("Patch {} with RTCO hook? [y/N] ", hooks_path.display());
+            std::io::stdout().flush().ok();
+            let mut answer = String::new();
+            std::io::stdin().read_line(&mut answer).ok();
+            if !matches!(answer.trim().to_lowercase().as_str(), "y" | "yes") {
+                println!(
+                    "Skipped. Re-run with --auto-patch, or add the hook manually to {}",
+                    hooks_path.display()
+                );
+                return Ok(VibeHookPatchOutcome::Skipped);
+            }
+        }
+    }
+
+    let entry = vibe_hook_entry();
+    let new_content = if existing.is_empty() {
+        entry.clone()
+    } else if existing.ends_with("\n\n") {
+        format!("{existing}{entry}")
+    } else if existing.ends_with('\n') {
+        format!("{existing}\n{entry}")
+    } else {
+        format!("{existing}\n\n{entry}")
+    };
+
+    if dry_run {
+        println!(
+            "[dry-run] would patch Vibe hooks.toml: {}",
+            hooks_path.display()
+        );
+        if verbose > 0 {
+            println!("[dry-run] appended entry:\n{entry}");
+        }
+    } else {
+        atomic_write(hooks_path, &new_content)
+            .with_context(|| format!("Failed to write {}", hooks_path.display()))?;
+    }
+    Ok(VibeHookPatchOutcome::Installed)
+}
+
+/// TOML entry emitted for the Vibe pre_tool hook. Mirrors the shape documented
+/// at https://docs.mistral.ai/vibe/code/cli/hooks.
+fn vibe_hook_entry() -> String {
+    format!(
+        r#"[[hooks]]
+name = "{name}"
+type = "pre_tool"
+match = "{match_glob}"
+command = "{command}"
+timeout = 10.0
+strict = false
+description = "Rewrite bash commands through the rtco proxy to save tokens."
+"#,
+        name = VIBE_HOOK_NAME,
+        match_glob = VIBE_BASH_MATCH,
+        command = VIBE_HOOK_COMMAND,
+    )
+}
+
+/// Detect an existing RTCO entry by looking for the hook `name` field. Scanning
+/// the raw string is enough because `name` is required by Vibe and must be
+/// unique, so a substring match is both necessary and sufficient.
+fn vibe_hooks_toml_has_rtco(content: &str) -> bool {
+    let needle = format!(r#"name = "{VIBE_HOOK_NAME}""#);
+    content.contains(&needle)
+}
+
+/// Public entry point for `rtco init -g --agent vibe --uninstall`.
+pub fn uninstall_vibe(ctx: InitContext) -> Result<()> {
+    let InitContext { dry_run, .. } = ctx;
+    let vibe_dir = match resolve_vibe_dir() {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("RTCO Vibe uninstall skipped: could not resolve ~/.vibe/ ({e})");
+            return Ok(());
+        }
+    };
+    let removed = uninstall_vibe_at(&vibe_dir, ctx)?;
+
+    if removed.is_empty() {
+        println!("RTCO Vibe support was not installed (nothing to remove)");
+    } else {
+        let header = if dry_run {
+            "[dry-run] would uninstall RTCO for Mistral Vibe CLI:"
+        } else {
+            "RTCO uninstalled for Mistral Vibe CLI:"
+        };
+        println!("{}", header);
+        for item in removed {
+            println!("  - {}", item);
+        }
+        if !dry_run {
+            println!("\nRestart Vibe CLI to apply changes.");
+        }
+    }
+
+    if dry_run {
+        print_dry_run_footer();
+    }
+    Ok(())
+}
+
+/// Remove the RTCO hook entry (and, when non-empty, the surrounding blank
+/// lines) from `~/.vibe/hooks.toml` and the sibling `~/.vibe/prompts/rtco.md`
+/// prompt file. Leaves any other user-declared hooks intact.
+fn uninstall_vibe_at(vibe_dir: &Path, ctx: InitContext) -> Result<Vec<String>> {
+    let InitContext { verbose, dry_run } = ctx;
+    let mut removed = Vec::new();
+
+    let prompt_path = vibe_dir.join(VIBE_PROMPTS_SUBDIR).join(VIBE_PROMPT_FILE);
+    if prompt_path.exists() {
+        if dry_run {
+            println!(
+                "[dry-run] would remove Vibe RTCO prompt: {}",
+                prompt_path.display()
+            );
+        } else {
+            // nosemgrep: filesystem-deletion -- uninstall path removes only RTCO's own prompt file
+            fs::remove_file(&prompt_path)
+                .with_context(|| format!("Failed to remove {}", prompt_path.display()))?;
+        }
+        removed.push(format!("Vibe prompt: {}", prompt_path.display()));
+    }
+
+    let hooks_path = vibe_dir.join(VIBE_HOOKS_FILE);
+    if hooks_path.exists() {
+        let content = fs::read_to_string(&hooks_path)
+            .with_context(|| format!("Failed to read {}", hooks_path.display()))?;
+        if let Some(new_content) = strip_vibe_rtco_entry(&content) {
+            if dry_run {
+                println!(
+                    "[dry-run] would remove RTCO hook from Vibe hooks.toml: {}",
+                    hooks_path.display()
+                );
+            } else if new_content.trim().is_empty() {
+                // nosemgrep: filesystem-deletion -- uninstall removes hooks.toml only when it becomes empty after stripping the RTCO entry
+                fs::remove_file(&hooks_path)
+                    .with_context(|| format!("Failed to remove {}", hooks_path.display()))?;
+            } else {
+                atomic_write(&hooks_path, &new_content)
+                    .with_context(|| format!("Failed to write {}", hooks_path.display()))?;
+            }
+            removed.push(format!("Vibe hook: {}", hooks_path.display()));
+        } else if verbose > 0 {
+            eprintln!(
+                "Vibe hooks.toml has no RTCO entry: {}",
+                hooks_path.display()
+            );
+        }
+    }
+
+    Ok(removed)
+}
+
+fn strip_vibe_rtco_entry(content: &str) -> Option<String> {
+    let needle = format!(r#"name = "{VIBE_HOOK_NAME}""#);
+    if !content.contains(&needle) {
+        return None;
+    }
+
+    let lines: Vec<&str> = content.lines().collect();
+    let mut sections: Vec<(usize, usize)> = Vec::new();
+    let mut current_start: Option<usize> = None;
+    for (i, line) in lines.iter().enumerate() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("[[hooks]]") || trimmed.starts_with('[') {
+            if let Some(start) = current_start.take() {
+                sections.push((start, i));
+            }
+            if trimmed.starts_with("[[hooks]]") {
+                current_start = Some(i);
+            }
+        }
+    }
+    if let Some(start) = current_start {
+        sections.push((start, lines.len()));
+    }
+
+    let target = sections
+        .iter()
+        .find(|(start, end)| lines[*start..*end].iter().any(|l| l.contains(&needle)))?;
+
+    let mut kept: Vec<&str> = Vec::with_capacity(lines.len());
+    kept.extend(&lines[..target.0]);
+    kept.extend(&lines[target.1..]);
+    Some(kept.join("\n"))
 }
 
 #[cfg(test)]
