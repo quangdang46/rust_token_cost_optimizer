@@ -257,18 +257,26 @@ try {
         Die "failed to download $archive -- pin a release that exists or build from source."
     }
 
-    # Tolerant sidecar parser: accepts either a bare hash or
-    # `<hash>  <filename>` (GNU sha256sum -c format).
-    $sumPath = "$archivePath.sha256"
-    if (Get-FileWithRetry -Url "$base/$archive.sha256" -OutPath $sumPath -MaxRetries 1 -TimeoutSec 30) {
-        $expected = (Get-Content -LiteralPath $sumPath -Raw).Trim().Split()[0]
-        $actual   = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLower()
+    # Verify against the release manifest (checksums.txt), matching the
+    # install.sh behavior. Refuse to install an unverified binary unless
+    # explicitly opted out via RTCO_SKIP_CHECKSUM=1.
+    if ($env:RTCO_SKIP_CHECKSUM -eq "1") {
+        Write-Warn "RTCO_SKIP_CHECKSUM=1 set -- SKIPPING checksum verification (NOT RECOMMENDED)"
+    } else {
+        $sumPath = Join-Path $tempDir "checksums.txt"
+        if (-not (Get-FileWithRetry -Url "$base/checksums.txt" -OutPath $sumPath -MaxRetries 1 -TimeoutSec 30)) {
+            Die "could not download checksums.txt -- refusing to install unverified binary (set RTCO_SKIP_CHECKSUM=1 to bypass at your own risk)"
+        }
+        # GNU sha256sum format: "<hash>  <filename>"
+        $expected = (Get-Content -LiteralPath $sumPath | Where-Object { $_ -match "\s+$([regex]::Escape($archive))$" } | ForEach-Object { ($_ -split '\s+')[0] }) | Select-Object -First 1
+        if (-not $expected) {
+            Die "checksum for $archive not found in checksums.txt -- refusing to install"
+        }
+        $actual = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLower()
         if ($expected.ToLower() -ne $actual) {
             Die "checksum mismatch for $archive`n  expected: $expected`n  actual:   $actual"
         }
         Write-Info "checksum verified"
-    } else {
-        Write-Warn "no checksum sidecar -- skipping verification"
     }
 
     $extractDir = Join-Path $tempDir 'extract'

@@ -198,7 +198,7 @@ fn write_tee_file(
         return None;
     }
 
-    std::fs::create_dir_all(tee_dir).ok()?;
+    crate::utils::create_private_dir(tee_dir).ok()?;
 
     let slug = sanitize_slug(command_slug);
     let epoch = std::time::SystemTime::now()
@@ -243,7 +243,12 @@ fn write_tee_file(
         body.into_owned()
     };
 
-    std::fs::write(&filepath, content).ok()?;
+    let mut opts = std::fs::OpenOptions::new();
+    opts.write(true).create(true).truncate(true);
+    let mut file = crate::utils::open_private(&mut opts, &filepath).ok()?;
+    use std::io::Write;
+    file.write_all(content.as_bytes()).ok()?;
+    file.flush().ok()?;
 
     // Rotate old files
     cleanup_old_files(tee_dir, max_files);
@@ -292,11 +297,74 @@ fn display_path(path: &std::path::Path) -> String {
     path.display().to_string()
 }
 
+/// True when a path needs shell quoting to survive being embedded in a
+/// `cat` / `tail` hint: whitespace, backslashes (Windows), and shell
+/// metacharacters. Ported from upstream rtk (commits 991ed97, b1f35f6).
+fn needs_shell_quoting(path: &str) -> bool {
+    path.chars().any(|c| {
+        c.is_whitespace()
+            || matches!(
+                c,
+                '\'' | '"'
+                    | '\\'
+                    | '$'
+                    | '`'
+                    | '!'
+                    | '#'
+                    | '&'
+                    | '('
+                    | ')'
+                    | ';'
+                    | '<'
+                    | '>'
+                    | '?'
+                    | '['
+                    | ']'
+                    | '{'
+                    | '}'
+                    | '|'
+                    | '*'
+            )
+    })
+}
+
+/// Escape a path for embedding inside a double-quoted shell string.
+fn escape_double_quoted_path(path: &str) -> String {
+    let mut escaped = String::with_capacity(path.len());
+    for c in path.chars() {
+        if matches!(c, '\\' | '"' | '$' | '`') {
+            escaped.push('\\');
+        }
+        escaped.push(c);
+    }
+    escaped
+}
+
+/// Render a path for use in a shell hint. When quoting is needed, prefers
+/// a `$HOME`-relative form (so spaces/backslashes in the home dir are
+/// handled inside a quoted string) and double-quotes otherwise.
+fn display_shell_path(path: &std::path::Path) -> String {
+    let display = display_path(path);
+    if !needs_shell_quoting(&display) {
+        return display;
+    }
+
+    if let Some(relative) = display.strip_prefix("~/") {
+        let relative = relative.replace(std::path::MAIN_SEPARATOR, "/");
+        return format!("\"$HOME/{}\"", escape_double_quoted_path(&relative));
+    }
+
+    format!("\"{}\"", escape_double_quoted_path(&display))
+}
+
 fn format_hint(path: &std::path::Path) -> String {
     // Surface the recovery action inline so an AI consumer knows exactly which
     // command to run if it needs the full output. Without this, models often
     // ignore the path entirely and proceed with partial context.
-    format!("[full output saved — run: cat {}]", display_path(path))
+    format!(
+        "[full output saved — run: cat {}]",
+        display_shell_path(path)
+    )
 }
 
 /// Convenience: tee + format hint in one call.
@@ -330,7 +398,9 @@ fn force_tee_path_with_policy(
     }
 
     let tee_dir = get_tee_dir(&config)?;
-    let tee_dir = std::fs::create_dir_all(&tee_dir).ok().and(Some(tee_dir))?;
+    let tee_dir = crate::utils::create_private_dir(&tee_dir)
+        .ok()
+        .and(Some(tee_dir))?;
 
     write_tee_file(
         content,
@@ -358,7 +428,7 @@ pub fn force_tee_tail_hint(
     Some(format!(
         "[see remaining: tail -n +{} {}]",
         line_offset,
-        display_path(&path)
+        display_shell_path(&path)
     ))
 }
 
@@ -722,6 +792,55 @@ mod tests {
             hint.contains("456_go_test.log"),
             "hint must include the path, got: {hint}"
         );
+    }
+
+    #[test]
+    fn test_display_shell_path_quotes_paths_with_spaces() {
+        // Ported from upstream rtk b1f35f6 (PR #2325).
+        let path = PathBuf::from("/tmp/rtk/Application Support/123_go_test.log");
+        let shown = display_shell_path(&path);
+        assert_eq!(shown, "\"/tmp/rtk/Application Support/123_go_test.log\"");
+    }
+
+    #[test]
+    fn test_display_shell_path_quotes_backslashes() {
+        // Ported from upstream rtk 991ed97. Windows tee dirs always contain
+        // backslashes; the hint must be shell-safe.
+        #[cfg(windows)]
+        let path = PathBuf::from(r"C:\Users\Jane\AppData\Local\rtco\tee\123_cargo_test.log");
+        #[cfg(not(windows))]
+        let path =
+            PathBuf::from("/Users/Jane/Library/Application Support/rtco/tee/123_cargo_test.log");
+        let shown = display_shell_path(&path);
+        assert!(
+            shown.starts_with('"'),
+            "hint path must be quoted, got: {shown}"
+        );
+        assert!(
+            shown.ends_with('"'),
+            "hint path must be quoted, got: {shown}"
+        );
+    }
+
+    #[test]
+    fn test_display_shell_path_uses_home_var_for_home_paths_with_spaces() {
+        // Ported from upstream rtk 5de188b. A home-relative path that needs
+        // quoting renders as "$HOME/<rel>" with MAIN_SEPARATOR normalized.
+        let home = std::env::temp_dir().join("John Doe");
+        let path = home.join("rtco/tee/123_cargo_test.log");
+        let shown = display_shell_path(&path);
+        assert!(shown.starts_with("\"$HOME/"), "got: {shown}");
+        assert!(shown.ends_with('"'), "got: {shown}");
+        assert!(
+            shown.contains("John Doe"),
+            "home dir must be inside the quoted string, got: {shown}"
+        );
+    }
+
+    #[test]
+    fn test_display_shell_path_plain_path_unchanged() {
+        let path = PathBuf::from("/tmp/rtk/tee/123_cargo_test.log");
+        assert_eq!(display_shell_path(&path), "/tmp/rtk/tee/123_cargo_test.log");
     }
 
     #[test]

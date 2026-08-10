@@ -94,17 +94,21 @@ else
 fi
 
 # ===========================================================================
-# Post-install MCP/hooks auto-config tests
+# Post-install hooks auto-config tests
 # ===========================================================================
+#
+# NOTE: install.sh gained --with-mcp/--provider/--dry-run in v0.2.0 and
+# lost them again in commit 0ba9092 (MCP server + auto-config removed).
+# The only post-install flags that remain are --with-hooks / --no-hooks.
+# These tests cover the current hooks-only behaviour.
 
-echo "==> Help text contains the new flags"
+echo "==> Help text contains the flags"
 
-# All of the new flags must appear in the --help output. The first arg
+# The remaining flags must appear in the --help output. The first arg
 # of `bash` consumes the script; we forward --help through.
 HELP_OUT=$(bash "$INSTALL_SH" --help 2>&1 || true)
 
-for flag in --with-mcp --no-mcp --with-hooks --no-hooks \
-            --provider --all-providers --dry-run; do
+for flag in --with-hooks --no-hooks; do
     if printf '%s' "$HELP_OUT" | grep -qF -e "$flag"; then
         pass "help text advertises $flag"
     else
@@ -112,25 +116,25 @@ for flag in --with-mcp --no-mcp --with-hooks --no-hooks \
     fi
 done
 
-echo "==> Arg parsing (rejects unknown positional as shift-only)"
+# The removed MCP/provider flags must NOT be advertised (they would
+# mislead users into thinking install.sh still configures an MCP server).
+for flag in --with-mcp --no-mcp --provider --all-providers --dry-run; do
+    if printf '%s' "$HELP_OUT" | grep -qF -e "$flag"; then
+        fail "help text still advertises removed flag $flag"
+    else
+        pass "removed flag $flag is absent from help text"
+    fi
+done
 
-# install.sh should accept the new flags and not error out at parse time.
-# We don't run the full install — just exercise the while-args loop by
-# running with --help at the end of a flag chain.
-if bash "$INSTALL_SH" --with-mcp --with-hooks --provider claude,cursor \
-    --all-providers --dry-run --help >/dev/null 2>&1; then
-    pass "arg parser accepts the full MCP/hooks flag chain"
-else
-    fail "arg parser rejected the full MCP/hooks flag chain"
-fi
+echo "==> Arg parsing (tolerates --with-hooks/--no-hooks)"
 
-# Conflicting flag combinations: --no-mcp + --with-mcp is a parse-time
-# conflict that we don't strictly enforce, but at minimum the script
-# must not crash.
-if bash "$INSTALL_SH" --with-mcp --no-mcp --help >/dev/null 2>&1; then
-    pass "arg parser tolerates --with-mcp + --no-mcp (no crash)"
+# install.sh should accept the remaining flags and not error out at
+# parse time. We don't run the full install — just exercise the
+# while-args loop by running with --help at the end of a flag chain.
+if bash "$INSTALL_SH" --with-hooks --no-hooks --help >/dev/null 2>&1; then
+    pass "arg parser tolerates --with-hooks + --no-hooks (no crash)"
 else
-    fail "arg parser crashed on --with-mcp + --no-mcp"
+    fail "arg parser crashed on --with-hooks + --no-hooks"
 fi
 
 echo "==> Regression guard (configure_post_install function present)"
@@ -141,19 +145,19 @@ else
     fail "install.sh is missing configure_post_install"
 fi
 
-if grep -qF 'rtco' "$INSTALL_SH" && grep -qF 'init --mcp' "$INSTALL_SH"; then
-    pass "configure_post_install invokes 'rtco init --mcp'"
+if grep -qF 'rtco' "$INSTALL_SH" && grep -qF 'init --hooks' "$INSTALL_SH"; then
+    pass "configure_post_install invokes 'rtco init --hooks'"
 else
-    fail "configure_post_install does not invoke 'rtco init --mcp'"
+    fail "configure_post_install does not invoke 'rtco init --hooks'"
 fi
 
-echo "==> Regression guard (uninstall cleans providers)"
+echo "==> Regression guard (uninstall cleans hooks)"
 
-# The uninstall branch should attempt to clean MCP/hooks before
-# removing the binary. The check below is structural — we don't run
-# the actual uninstall because that would delete the user's binary.
-if grep -qF 'init --uninstall --mcp --hooks' "$INSTALL_SH"; then
-    pass "uninstall branch calls 'rtco init --uninstall --mcp --hooks'"
+# The uninstall branch should attempt to clean hooks before removing
+# the binary. The check below is structural — we don't run the actual
+# uninstall because that would delete the user's binary.
+if grep -qF 'init --uninstall --hooks' "$INSTALL_SH"; then
+    pass "uninstall branch calls 'rtco init --uninstall --hooks'"
 else
     fail "uninstall branch does not call provider cleanup"
 fi
@@ -166,28 +170,28 @@ if [ -f "$INSTALL_PS1" ]; then
     else
         fail "install.ps1 is missing Invoke-PostInstallConfig"
     fi
-    if grep -qF 'WithMcp' "$INSTALL_PS1" && grep -qF 'WithHooks' "$INSTALL_PS1"; then
-        pass "install.ps1 advertises -WithMcp and -WithHooks"
+    if grep -qF 'WithHooks' "$INSTALL_PS1"; then
+        pass "install.ps1 advertises -WithHooks"
     else
-        fail "install.ps1 is missing -WithMcp or -WithHooks"
+        fail "install.ps1 is missing -WithHooks"
     fi
-    if grep -qF 'init --uninstall --mcp --hooks' "$INSTALL_PS1"; then
-        pass "install.ps1 uninstall cleans providers"
+    if grep -qF 'init --uninstall --hooks' "$INSTALL_PS1"; then
+        pass "install.ps1 uninstall cleans hooks"
     else
-        fail "install.ps1 uninstall does not clean providers"
+        fail "install.ps1 uninstall does not clean hooks"
     fi
 fi
 
 # ===========================================================================
-# Behavioural tests for --with-mcp / --provider / --uninstall / --dry-run
+# Behavioural tests for --with-hooks / --no-hooks
 # ===========================================================================
 #
 # These tests use a fake `rtco` binary (scripts/test-fake-rtco.sh) that
-# simulates the post-install `init --mcp` behaviour by writing the
-# expected provider config files to $HOME. We source install.sh (which
-# exposes configure_post_install without running main) and invoke it
-# directly with controlled flag vars. This avoids network access and
-# keeps the tests fast & deterministic.
+# simulates the post-install `init --hooks` behaviour by recording its args
+# and writing a marker file to $HOME. We source install.sh (which exposes
+# configure_post_install without running main) and invoke it directly with
+# controlled flag vars. This avoids network access and keeps the tests
+# fast & deterministic.
 
 # Per-test sandbox state. Cleared on teardown.
 SB_HOME=""
@@ -195,10 +199,12 @@ SB_DEST=""
 SB_OLDHOME=""
 SB_OLDPATH=""
 SB_OLDQUIET=""
+SB_LOG=""
 
 setup_sandbox() {
     SB_HOME=$(mktemp -d)
     SB_DEST=$(mktemp -d)
+    SB_LOG=$(mktemp)
     SB_OLDHOME="$HOME"
     SB_OLDPATH="$PATH"
     SB_OLDQUIET="${QUIET:-0}"
@@ -206,6 +212,7 @@ setup_sandbox() {
     export PATH="$SB_DEST:$PATH"
     export DEST="$SB_DEST"
     export QUIET=1
+    export RTCO_INVOCATION_LOG="$SB_LOG"
     cp "$FAKE_RTCO" "$SB_DEST/rtco"
     chmod +x "$SB_DEST/rtco"
 }
@@ -214,13 +221,16 @@ teardown_sandbox() {
     if [ -n "$SB_OLDHOME" ]; then export HOME="$SB_OLDHOME"; fi
     if [ -n "$SB_OLDPATH" ]; then export PATH="$SB_OLDPATH"; fi
     export QUIET="$SB_OLDQUIET"
+    unset RTCO_INVOCATION_LOG
     if [ -n "$SB_HOME" ] && [ -d "$SB_HOME" ]; then rm -rf "$SB_HOME"; fi
     if [ -n "$SB_DEST" ] && [ -d "$SB_DEST" ]; then rm -rf "$SB_DEST"; fi
+    if [ -n "$SB_LOG" ] && [ -f "$SB_LOG" ]; then rm -f "$SB_LOG"; fi
     SB_HOME=""
     SB_DEST=""
     SB_OLDHOME=""
     SB_OLDPATH=""
     SB_OLDQUIET=""
+    SB_LOG=""
 }
 
 # Invoke configure_post_install with the given KEY=VALUE flag assignments
@@ -231,13 +241,14 @@ teardown_sandbox() {
 # resets to defaults) with the test's own values BEFORE calling the
 # function. install.sh's arg-parser loop would consume $@ if we let it,
 # so we save the test args into a side array and pass it via env vars.
-# Usage: run_configure WITH_MCP=1 PROVIDERS=claude ...
+# Usage: run_configure WITH_HOOKS=1 NO_HOOKS=0 ...
 run_configure() {
     (
         export PATH="$SB_DEST:$PATH"
         export HOME="$SB_HOME"
         export DEST="$SB_DEST"
         export QUIET=1
+        export RTCO_INVOCATION_LOG="$SB_LOG"
         # Encode args as a colon-separated string in RTCO_TEST_KV
         # (colon is a non-POSIX-safe char; we use \x1f as separator).
         _kv=""
@@ -264,119 +275,44 @@ run_configure() {
     ) >/dev/null 2>&1
 }
 
-# --- Test 1: --with-mcp writes expected provider config --------------
-echo "==> Behavioural: --with-mcp writes expected provider config"
+# --- Test 1: --with-hooks invokes `rtco init --hooks` ----------------
+echo "==> Behavioural: --with-hooks invokes 'rtco init --hooks'"
 
 setup_sandbox
-# Pre-populate ~/.claude.json so we can assert it gets *modified*
-# (not just created) by the install hook.
-printf '{}' > "$SB_HOME/.claude.json"
-run_configure WITH_MCP=1 NO_MCP=0 WITH_HOOKS=0 NO_HOOKS=0 \
-              PROVIDERS=claude ALL_PROVIDERS=0 DRY_RUN=0
-if [ -f "$SB_HOME/.claude.json" ] \
-    && grep -q '"command": "rtco"' "$SB_HOME/.claude.json" \
-    && grep -q '"mcpServers"' "$SB_HOME/.claude.json"; then
-    pass "with-mcp writes mcpServers.rtco.command to claude.json"
+run_configure WITH_HOOKS=1 NO_HOOKS=0
+if grep -qF 'init --hooks' "$SB_LOG"; then
+    pass "with-hooks invokes 'rtco init --hooks'"
 else
-    fail "with-mcp did not write expected mcpServers entry to claude.json"
+    fail "with-hooks did not invoke 'rtco init --hooks' (log: $(cat "$SB_LOG" 2>/dev/null))"
+fi
+if [ -f "$SB_HOME/.rtco-test/hooks-installed" ]; then
+    pass "with-hooks wrote the hooks marker file"
+else
+    fail "with-hooks did not write the hooks marker file"
 fi
 teardown_sandbox
 
-# --- Test 2: default (no --with-mcp) does not touch configs ---------
-echo "==> Behavioural: default (no --with-mcp) does not touch configs"
+# --- Test 2: default (neither flag) does not invoke rtco -------------
+echo "==> Behavioural: default (no flags) does not invoke rtco"
 
 setup_sandbox
-printf '{}' > "$SB_HOME/.claude.json"
-PRE_CLAUDE_SHA=$(shasum -a 256 "$SB_HOME/.claude.json" | awk '{print $1}')
-PRE_CURSOR="$SB_HOME/.cursor/mcp.json"
-run_configure WITH_MCP=0 NO_MCP=1 WITH_HOOKS=0 NO_HOOKS=0 \
-              PROVIDERS="" ALL_PROVIDERS=0 DRY_RUN=0
-POST_CLAUDE_SHA=$(shasum -a 256 "$SB_HOME/.claude.json" | awk '{print $1}')
-if [ "$PRE_CLAUDE_SHA" = "$POST_CLAUDE_SHA" ] && [ ! -f "$PRE_CURSOR" ]; then
-    pass "no-mcp default leaves existing config unchanged and writes no new files"
+run_configure WITH_HOOKS=0 NO_HOOKS=0
+if [ ! -s "$SB_LOG" ]; then
+    pass "default leaves config untouched (no rtco invocation)"
 else
-    fail "no-mcp default modified filesystem unexpectedly"
+    fail "default unexpectedly invoked rtco: $(cat "$SB_LOG")"
 fi
 teardown_sandbox
 
-# --- Test 3: --uninstall cleans mcpServers entries -----------------
-echo "==> Behavioural: --uninstall cleans mcpServers entries"
+# --- Test 3: --no-hooks overrides --with-hooks ----------------------
+echo "==> Behavioural: --no-hooks overrides --with-hooks"
 
 setup_sandbox
-# Pre-write a config with both rtco and other entries; the other
-# entries must be preserved by the uninstall step.
-cat > "$SB_HOME/.claude.json" <<'JSON'
-{
-  "numStartups": 3,
-  "mcpServers": {
-    "rtco": {"type": "stdio", "command": "rtco", "args": ["mcp"]},
-    "other": {"type": "stdio", "command": "other", "args": ["serve"]}
-  }
-}
-JSON
-# Re-run the install hook to ensure the rtco entry is on disk
-# (idempotent re-write).
-run_configure WITH_MCP=1 NO_MCP=0 WITH_HOOKS=0 NO_HOOKS=0 \
-              PROVIDERS=claude ALL_PROVIDERS=0 DRY_RUN=0
-# Now invoke the same binary the install.sh --uninstall branch invokes.
-"$SB_DEST/rtco" init --uninstall --mcp --hooks --all-providers >/dev/null 2>&1
-if ! grep -q '"rtco"' "$SB_HOME/.claude.json" \
-    && grep -q '"other"' "$SB_HOME/.claude.json" \
-    && grep -q '"numStartups": 3' "$SB_HOME/.claude.json"; then
-    pass "uninstall removes rtco entry but preserves other mcpServers and top-level keys"
+run_configure WITH_HOOKS=1 NO_HOOKS=1
+if [ ! -s "$SB_LOG" ]; then
+    pass "no-hooks overrides with-hooks (no rtco invocation)"
 else
-    fail "uninstall did not clean mcpServers correctly"
-    echo "       actual: $(cat "$SB_HOME/.claude.json")"
-fi
-teardown_sandbox
-
-# --- Test 4: --provider subset only touches listed providers -------
-echo "==> Behavioural: --provider subset only touches listed providers"
-
-setup_sandbox
-printf '{}' > "$SB_HOME/.claude.json"
-mkdir -p "$SB_HOME/.cursor"
-printf '{}' > "$SB_HOME/.cursor/mcp.json"
-PRE_GEMINI="$SB_HOME/.gemini/settings.json"
-PRE_CODEX="$SB_HOME/.codex/config.toml"
-run_configure WITH_MCP=1 NO_MCP=0 WITH_HOOKS=0 NO_HOOKS=0 \
-              PROVIDERS=claude,cursor ALL_PROVIDERS=0 DRY_RUN=0
-CLAUDE_OK=0
-CURSOR_OK=0
-if [ -f "$SB_HOME/.claude.json" ] && grep -q '"rtco"' "$SB_HOME/.claude.json"; then
-    CLAUDE_OK=1
-fi
-if [ -f "$SB_HOME/.cursor/mcp.json" ] && grep -q '"rtco"' "$SB_HOME/.cursor/mcp.json"; then
-    CURSOR_OK=1
-fi
-if [ "$CLAUDE_OK" -eq 1 ] && [ "$CURSOR_OK" -eq 1 ] \
-    && [ ! -f "$PRE_GEMINI" ] && [ ! -f "$PRE_CODEX" ]; then
-    pass "--provider claude,cursor touches only claude and cursor configs"
-else
-    fail "--provider subset wrote to unlisted providers (gemini=$([ -f "$PRE_GEMINI" ] && echo present || echo absent), codex=$([ -f "$PRE_CODEX" ] && echo present || echo absent))"
-fi
-teardown_sandbox
-
-# --- Test 5: --dry-run writes nothing and returns 0 -----------------
-echo "==> Behavioural: --dry-run writes nothing and returns 0"
-
-setup_sandbox
-printf '{}' > "$SB_HOME/.claude.json"
-PRE_CLAUDE_SHA=$(shasum -a 256 "$SB_HOME/.claude.json" | awk '{print $1}')
-run_configure WITH_MCP=1 NO_MCP=0 WITH_HOOKS=0 NO_HOOKS=0 \
-              PROVIDERS=claude,cursor,gemini,codex,copilot \
-              ALL_PROVIDERS=0 DRY_RUN=1
-RC=$?
-POST_CLAUDE_SHA=$(shasum -a 256 "$SB_HOME/.claude.json" | awk '{print $1}')
-if [ "$RC" -eq 0 ] \
-    && [ "$PRE_CLAUDE_SHA" = "$POST_CLAUDE_SHA" ] \
-    && [ ! -f "$SB_HOME/.cursor/mcp.json" ] \
-    && [ ! -f "$SB_HOME/.gemini/settings.json" ] \
-    && [ ! -f "$SB_HOME/.codex/config.toml" ] \
-    && [ ! -f "$SB_HOME/.config/Code/User/settings.json" ]; then
-    pass "dry-run returned 0 and left the filesystem untouched"
-else
-    fail "dry-run wrote to filesystem or returned non-zero (rc=$RC, claude_changed=$([ "$PRE_CLAUDE_SHA" != "$POST_CLAUDE_SHA" ] && echo yes || echo no))"
+    fail "no-hooks did not override with-hooks: $(cat "$SB_LOG")"
 fi
 teardown_sandbox
 

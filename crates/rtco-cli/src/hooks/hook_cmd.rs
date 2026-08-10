@@ -113,7 +113,10 @@ fn detect_format(v: &Value) -> HookFormat {
         .or_else(|| v.get("tool"))
         .and_then(|t| t.as_str())
     {
-        if matches!(tool_name, "runTerminalCommand" | "Bash" | "bash") {
+        if matches!(
+            tool_name,
+            "runTerminalCommand" | "run_in_terminal" | "Bash" | "bash"
+        ) {
             if let Some(cmd) = v
                 .pointer("/tool_input/command")
                 .or_else(|| v.pointer("/input/command"))
@@ -212,14 +215,14 @@ fn handle_vscode(cmd: &str) -> Result<()> {
     // heuristics don't flag our silent rewrites as injection
     let _ = writeln!(io::stderr(), "[rtco] processing command: {}", cmd);
 
-    let (decision, rewritten) = match decide_hook_action(cmd, permissions::Host::Claude) {
+    let (allow, rewritten) = match decide_hook_action(cmd, permissions::Host::Claude) {
         HookDecision::Deny => {
             audit_log("deny", cmd, "");
             return Ok(());
         }
         HookDecision::Defer => return Ok(()),
-        HookDecision::AllowRewrite(r) => ("allow", r),
-        HookDecision::AskRewrite(r) => ("ask", r),
+        HookDecision::AllowRewrite(r) => (true, r),
+        HookDecision::AskRewrite(r) => (false, r),
     };
 
     audit_log("rewrite", cmd, &rewritten);
@@ -231,14 +234,20 @@ fn handle_vscode(cmd: &str) -> Result<()> {
         "RTCO passthrough".to_string()
     };
 
-    let output = json!({
-        "hookSpecificOutput": {
-            "hookEventName": PRE_TOOL_USE_KEY,
-            "permissionDecision": decision,
-            "permissionDecisionReason": rewrite_reason,
-            "updatedInput": { "command": rewritten }
-        }
-    });
+    // Upstream rtk fix (0fcd6ad): emit `permissionDecision` ONLY for an
+    // explicit AllowRewrite. Asserting "ask" on AskRewrite/Default makes
+    // Copilot CLI 1.0.66+ force a blocking dialog with no "remember" option
+    // on every rewritten command — leaving the host's native prompt flow in
+    // control is the correct behaviour.
+    let mut hook_output = serde_json::Map::new();
+    hook_output.insert("hookEventName".into(), PRE_TOOL_USE_KEY.into());
+    if allow {
+        hook_output.insert("permissionDecision".into(), json!("allow"));
+    }
+    hook_output.insert("permissionDecisionReason".into(), json!(rewrite_reason));
+    hook_output.insert("updatedInput".into(), json!({ "command": rewritten }));
+
+    let output = json!({ "hookSpecificOutput": hook_output });
     let _ = writeln!(io::stdout(), "{output}");
     Ok(())
 }
@@ -387,13 +396,11 @@ fn sanitize_log_field(s: &str) -> String {
 fn audit_log_inner(action: &str, original: &str, rewritten: &str) -> Option<()> {
     let home = dirs::home_dir()?;
     let dir = home.join(".local").join("share").join("rtco");
-    std::fs::create_dir_all(&dir).ok()?;
+    rtco_core::utils::create_private_dir(&dir).ok()?;
     let path = dir.join("hook-audit.log");
-    let mut file = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)
-        .ok()?;
+    let mut opts = std::fs::OpenOptions::new();
+    opts.create(true).append(true);
+    let mut file = rtco_core::utils::open_private(&mut opts, &path).ok()?;
     let ts = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S");
     writeln!(
         file,
@@ -681,6 +688,16 @@ mod tests {
     fn test_detect_vscode_run_terminal_command() {
         assert!(matches!(
             detect_format(&vscode_input("runTerminalCommand", "cargo test")),
+            HookFormat::VsCode { .. }
+        ));
+    }
+
+    #[test]
+    fn test_detect_vscode_run_in_terminal() {
+        // VS Code Copilot Chat's actual terminal tool name is snake_case
+        // `run_in_terminal` (upstream rtk fix 1ebc271).
+        assert!(matches!(
+            detect_format(&vscode_input("run_in_terminal", "git status")),
             HookFormat::VsCode { .. }
         ));
     }

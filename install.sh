@@ -209,9 +209,10 @@ build_from_source() {
 # is not on PATH yet (e.g. user hasn't sourced the new shell) we log a
 # warning and exit 0.
 configure_post_install() {
-    local do_hooks="$WITH_HOOKS"
-    if [ "$WITH_HOOKS" -eq 0 ] && [ "$NO_HOOKS" -eq 0 ]; then
-        do_hooks=0
+    # --no-hooks wins over --with-hooks; neither flag defaults to no hooks.
+    local do_hooks=0
+    if [ "$NO_HOOKS" -eq 0 ] && [ "$WITH_HOOKS" -eq 1 ]; then
+        do_hooks=1
     fi
     if [ "$do_hooks" -eq 0 ]; then
         return 0
@@ -260,19 +261,29 @@ main() {
 
         log_info "Downloading ${archive}"
         if download_file "$url" "$TMP/$archive"; then
-            # Verify checksum if sidecar exists
-            if download_file "${url}.sha256" "$TMP/checksum.sha256" 2>/dev/null; then
+            # Verify checksum against the release manifest (checksums.txt).
+            # Refuse to install an unverified binary unless explicitly opted out.
+            if [ "${RTCO_SKIP_CHECKSUM:-0}" = "1" ]; then
+                log_warn "RTCO_SKIP_CHECKSUM=1 set — SKIPPING checksum verification (NOT RECOMMENDED)"
+            else
+                local checksums_url="https://github.com/${OWNER}/${REPO}/releases/download/${VERSION}/checksums.txt"
+                if ! download_file "$checksums_url" "$TMP/checksums.txt" 2>/dev/null; then
+                    die "Could not download checksums.txt — refusing to install unverified binary (set RTCO_SKIP_CHECKSUM=1 to bypass at your own risk)"
+                fi
                 local expected actual
-                expected=$(awk '{print $1}' "$TMP/checksum.sha256")
+                expected=$(grep "[[:space:]]${archive}\$" "$TMP/checksums.txt" | awk '{print $1}')
+                if [ -z "$expected" ]; then
+                    die "checksum for ${archive} not found in checksums.txt — refusing to install"
+                fi
                 if command -v sha256sum >/dev/null 2>&1; then
                     actual=$(sha256sum "$TMP/$archive" | awk '{print $1}')
-                else
+                elif command -v shasum >/dev/null 2>&1; then
                     actual=$(shasum -a 256 "$TMP/$archive" | awk '{print $1}')
+                else
+                    die "Neither sha256sum nor shasum available — cannot verify checksum"
                 fi
                 [ "$expected" = "$actual" ] || die "Checksum mismatch for $archive (expected $expected, got $actual)"
                 log_info "Checksum verified"
-            else
-                log_warn "No checksum sidecar — skipping verification"
             fi
             # Extract
             case "$archive" in

@@ -5,7 +5,7 @@ use regex::{Regex, RegexSet};
 use rtco_core::utils::composer_bin_dirs;
 use std::path::Path;
 
-use super::lexer::{split_on_operators, tokenize, TokenKind};
+use super::lexer::{split_on_operators, tokenize, tokenize_with_newlines, TokenKind};
 use super::rules::{IGNORED_EXACT, IGNORED_PREFIXES, RULES};
 
 const PHP_TOOL_NAMES: [&str; 6] = ["phpunit", "phpstan", "ecs", "pest", "paratest", "pint"];
@@ -531,6 +531,10 @@ lazy_static! {
     /// `git diff \<NL>HEAD~1`.
     static ref LINE_CONTINUATION_RE: Regex =
         Regex::new(r"(?m)[ \t\x0B\x0C]*\\\r?\n[ \t\x0B\x0C]*").unwrap();
+
+    /// Bare `\<NL>` join, used by the heredoc/$(( guard before
+    /// `collapse_line_continuations` (which consumes surrounding whitespace).
+    static ref BASH_JOIN_RE: Regex = Regex::new(r"\\\r?\n").unwrap();
 }
 
 /// Replace every bash line continuation with a single space, mirroring what
@@ -607,6 +611,15 @@ pub fn rewrite_command(
     excluded: &[String],
     transparent_prefixes: &[String],
 ) -> Option<String> {
+    // Bash joins `\<NL>` with nothing, so `<<` or `$((` can arrive split across
+    // a continuation; the space-join below would erase them (#3188 review).
+    if cmd.contains('\\') {
+        let joined = BASH_JOIN_RE.replace_all(cmd, "");
+        if has_heredoc(&joined) || joined.contains("$((") {
+            return None;
+        }
+    }
+
     // Bash line continuations (`\<NL>`, `\<CRLF>`) and the leading whitespace that
     // follows are syntactically equivalent to a single space, but `cmd.trim()` does
     // not unwrap them so a leading backslash-newline used to defeat the whole matcher.
@@ -623,6 +636,13 @@ pub fn rewrite_command(
 
     let compiled = compile_exclude_patterns(excluded);
     let normalized_prefixes = normalize_transparent_prefixes(transparent_prefixes);
+
+    // Multi-line blocks (bash scripts, heredoc-free pipelines across lines):
+    // rewrite each line independently through the single-line path. Ported
+    // from upstream rtk (#1243, #3319).
+    if trimmed.contains('\n') {
+        return rewrite_multiline_block(trimmed, &compiled, &normalized_prefixes);
+    }
 
     // Simple (non-compound) already-RTCO command — return as-is.
     // For compound commands that start with "rtco" (e.g. "rtco git add . && cargo test"),
@@ -647,6 +667,342 @@ pub fn rewrite_command(
     }
 
     rewrite_compound(trimmed, &compiled, &normalized_prefixes)
+}
+
+/// Rewrite a single (newline-free) line, dispatching compound lines
+/// (`&&`, `||`, `;`, `|`) to `rewrite_compound` and simple lines to
+/// `rewrite_segment`. Mirrors upstream rtk's `rewrite_single`, used by the
+/// multi-line block rewriter to rewrite each line independently.
+fn rewrite_single_line(
+    line: &str,
+    excluded: &[ExcludePattern],
+    transparent_prefixes: &[String],
+) -> Option<String> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let has_compound = trimmed.contains("&&")
+        || trimmed.contains("||")
+        || trimmed.contains(';')
+        || trimmed.contains('|')
+        || trimmed.contains(" & ");
+    if !has_compound && (trimmed.starts_with("rtco ") || trimmed == "rtco") {
+        return Some(trimmed.to_string());
+    }
+    if has_compound {
+        rewrite_compound(trimmed, excluded, transparent_prefixes)
+    } else {
+        rewrite_segment(trimmed, excluded, transparent_prefixes)
+    }
+}
+
+// ── Multi-line block rewriting (port from upstream rtk #1243, #3319) ────────
+
+/// Byte-offset iterator over a string that tracks single/double-quote state,
+/// so newline split-point detection and balance checks ignore quoted text.
+struct QuoteScan<'a> {
+    bytes: &'a [u8],
+    i: usize,
+    in_single: bool,
+    in_double: bool,
+}
+
+impl<'a> QuoteScan<'a> {
+    fn new(s: &'a str) -> Self {
+        Self {
+            bytes: s.as_bytes(),
+            i: 0,
+            in_single: false,
+            in_double: false,
+        }
+    }
+
+    fn balanced(&self) -> bool {
+        !self.in_single && !self.in_double
+    }
+}
+
+impl Iterator for QuoteScan<'_> {
+    type Item = (usize, u8, bool, bool);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.i < self.bytes.len() {
+            let i = self.i;
+            let b = self.bytes[i];
+            if b == b'\\' && !self.in_single {
+                self.i += 2;
+                continue;
+            }
+            let item = (i, b, self.in_single, self.in_double);
+            match b {
+                b'\'' if !self.in_double => self.in_single = !self.in_single,
+                b'"' if !self.in_single => self.in_double = !self.in_double,
+                _ => {}
+            }
+            self.i += 1;
+            return Some(item);
+        }
+        None
+    }
+}
+
+const BLOCK_KEYWORDS: &[&str] = &[
+    "for", "while", "until", "if", "then", "else", "elif", "fi", "do", "done", "case", "esac",
+    "select", "function", "coproc", "{", "}", "(", ")",
+];
+
+/// Byte offset where an unquoted `#` at the start of a word begins a trailing
+/// comment, if any. The lexer has no comment state, so the independence checks
+/// must ignore comment text themselves: `git log | # keep pipeline` continues
+/// the pipeline across the newline even though the line ends in comment text.
+fn comment_start(line: &str) -> Option<usize> {
+    let bytes = line.as_bytes();
+    // `#` starts a comment at any word start, incl. after an operator
+    // byte — but not after `{`: `${#var}` is an expansion (#3188 review).
+    QuoteScan::new(line).find_map(|(i, b, in_single, in_double)| {
+        (b == b'#'
+            && !in_single
+            && !in_double
+            && (i == 0
+                || bytes[i - 1].is_ascii_whitespace()
+                || matches!(bytes[i - 1], b'|' | b'&' | b';' | b'(' | b')')))
+        .then_some(i)
+    })
+}
+
+/// Unquoted `(`/`)` or `{`/`}` that don't balance within the line: an array
+/// literal (`arr=(one`), function body (`foo() {`), or group spans lines, so
+/// the lines around it are not independent commands.
+fn line_has_unbalanced_grouping(code: &str) -> bool {
+    let mut paren = 0i32;
+    let mut brace = 0i32;
+    for (_, b, in_single, in_double) in QuoteScan::new(code) {
+        if in_single || in_double {
+            continue;
+        }
+        match b {
+            b'(' => paren += 1,
+            b')' => paren -= 1,
+            b'{' => brace += 1,
+            b'}' => brace -= 1,
+            _ => {}
+        }
+        if paren < 0 || brace < 0 {
+            return true;
+        }
+    }
+    paren != 0 || brace != 0
+}
+
+/// Unquoted `[[` / `]]` words that don't balance within the line: bash allows
+/// a conditional expression to span lines (`[[ -f a &&` / `-f b ]]`), so the
+/// surrounding lines are not independent commands.
+fn line_has_unbalanced_test_brackets(code: &str) -> bool {
+    let bytes = code.as_bytes();
+    let mut depth = 0i32;
+    for (i, b, in_single, in_double) in QuoteScan::new(code) {
+        if in_single || in_double || !matches!(b, b'[' | b']') {
+            continue;
+        }
+        let word_start = i == 0 || bytes[i - 1].is_ascii_whitespace();
+        let word_end = bytes.get(i + 2).is_none_or(|c| c.is_ascii_whitespace());
+        if bytes.get(i + 1) == Some(&b) && word_start && word_end {
+            depth += if b == b'[' { 1 } else { -1 };
+            if depth < 0 {
+                return true;
+            }
+        }
+    }
+    depth != 0
+}
+
+/// Only `\'` inside `$'…'` diverges: bash keeps the string open, the lexer
+/// closes it — an extra split point the newline-count check can't see (#3188).
+fn ansi_c_quote_defeats_lexer(cmd: &str) -> bool {
+    let bytes = cmd.as_bytes();
+    let mut ansi_span = false;
+    let mut backslash_run = 0u32;
+    for (i, b, in_single, in_double) in QuoteScan::new(cmd) {
+        if b == b'\'' && !in_double {
+            if !in_single {
+                ansi_span = i > 0 && bytes[i - 1] == b'$';
+                backslash_run = 0;
+            } else if ansi_span && backslash_run % 2 == 1 {
+                return true;
+            }
+        } else if in_single {
+            if b == b'\\' {
+                backslash_run += 1;
+            } else {
+                backslash_run = 0;
+            }
+        }
+    }
+    false
+}
+
+fn quotes_balanced(cmd: &str) -> bool {
+    let mut scan = QuoteScan::new(cmd);
+    scan.by_ref().for_each(drop);
+    scan.balanced()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LineRole {
+    Passive,
+    Independent,
+    ContinuesNext,
+    Unsafe,
+}
+
+fn classify_line(line: &str) -> LineRole {
+    if line.is_empty() || line.starts_with('#') {
+        return LineRole::Passive;
+    }
+    let comment = comment_start(line);
+    let code = comment.map_or(line, |i| line[..i].trim_end());
+    let first = code.split_whitespace().next().unwrap_or("");
+    if BLOCK_KEYWORDS.contains(&first) {
+        return LineRole::Unsafe;
+    }
+    const CONTINUATION_OPS: [&str; 4] = ["&&", "||", "|&", "|"];
+    if CONTINUATION_OPS.iter().any(|op| code.starts_with(op))
+        || code.starts_with("((")
+        || code.ends_with("))")
+        || line_has_unbalanced_grouping(code)
+        || line_has_unbalanced_test_brackets(code)
+    {
+        return LineRole::Unsafe;
+    }
+    if CONTINUATION_OPS.iter().any(|op| code.ends_with(op)) {
+        // An operator behind a trailing comment can't be joined textually:
+        // the comment-blind tokenizer would read the comment as command words.
+        return if comment.is_some() {
+            LineRole::Unsafe
+        } else {
+            LineRole::ContinuesNext
+        };
+    }
+    LineRole::Independent
+}
+
+/// Rewrite each line of a multi-line block independently (issue #1243).
+///
+/// Split points are the newline tokens the quote-aware lexer emits, so a
+/// newline inside a quoted string (e.g. a multi-line commit message) never
+/// becomes a boundary. Lines continued by a trailing `&&`/`||`/`|`/`|&` are
+/// joined and rewritten as one logical command through the single-line path —
+/// joining is not byte-preserving: separators inside a joined unit collapse
+/// to single spaces; any line [`classify_line`] marks unsafe passes the whole
+/// block through. Blank lines and comment lines are preserved verbatim, as is
+/// indentation and the original separator bytes (`\n` vs `\r\n`).
+///
+/// If any newline byte was swallowed by quote state, the block passes through
+/// untouched.
+fn rewrite_multiline_block(
+    cmd: &str,
+    excluded: &[ExcludePattern],
+    transparent_prefixes: &[String],
+) -> Option<String> {
+    let newline_offsets: Vec<usize> = tokenize_with_newlines(cmd)
+        .iter()
+        .filter(|t| t.kind == TokenKind::Operator && t.value == "\n")
+        .map(|t| t.offset)
+        .collect();
+
+    if ansi_c_quote_defeats_lexer(cmd) {
+        return None;
+    }
+
+    // The lexer emits one newline token per `\r` and per `\n` (CRLF = two
+    // tokens), so the parity check must count both bytes individually.
+    let raw_breaks = cmd.chars().filter(|c| matches!(c, '\n' | '\r')).count();
+    if raw_breaks != newline_offsets.len() {
+        // Every newline swallowed by quote state with quotes balanced at EOF
+        // is one logical command (a multi-line commit message), not a hidden
+        // extra line; rewrite it whole.
+        if newline_offsets.is_empty() && quotes_balanced(cmd) {
+            return rewrite_single_line(cmd, excluded, transparent_prefixes);
+        }
+        return None;
+    }
+
+    let mut segments = Vec::with_capacity(newline_offsets.len() + 1);
+    let mut start = 0;
+    for &off in &newline_offsets {
+        segments.push((start, &cmd[start..off]));
+        start = off + 1;
+    }
+    segments.push((start, &cmd[start..]));
+
+    let roles: Vec<LineRole> = segments
+        .iter()
+        .map(|(_, seg)| classify_line(seg.trim()))
+        .collect();
+    if roles.contains(&LineRole::Unsafe) {
+        return None;
+    }
+
+    let mut any_changed = false;
+    let mut result = String::with_capacity(cmd.len() + 32);
+    let mut i = 0;
+    while i < segments.len() {
+        if i > 0 {
+            let off = newline_offsets[i - 1];
+            result.push_str(&cmd[off..off + 1]);
+        }
+        let (seg_off, seg) = segments[i];
+
+        if roles[i] == LineRole::Passive {
+            result.push_str(seg);
+            i += 1;
+            continue;
+        }
+
+        let mut end = i;
+        while roles[end] == LineRole::ContinuesNext {
+            let mut next = end + 1;
+            while next < segments.len() && segments[next].1.trim().is_empty() {
+                next += 1;
+            }
+            if next >= segments.len() {
+                break;
+            }
+            if roles[next] == LineRole::Passive {
+                // Comment line inside a continuation: the comment-blind
+                // tokenizer would join it as command words (#3188 review).
+                return None;
+            }
+            end = next;
+        }
+
+        // A joined unit is rebuilt through the single-line path: interior
+        // newlines and blank lines collapse to single spaces, not preserved.
+        let unit = if end == i {
+            seg
+        } else {
+            let (last_off, last_seg) = segments[end];
+            &cmd[seg_off..last_off + last_seg.len()]
+        };
+        let line = unit.trim();
+        match rewrite_single_line(line, excluded, transparent_prefixes) {
+            Some(rewritten) if rewritten != line => {
+                any_changed = true;
+                let indent = &seg[..seg.len() - seg.trim_start().len()];
+                result.push_str(indent);
+                result.push_str(&rewritten);
+            }
+            _ => result.push_str(unit),
+        }
+        i = end + 1;
+    }
+
+    if any_changed {
+        Some(result)
+    } else {
+        None
+    }
 }
 
 /// Rewrite a compound command (with `&&`, `||`, `;`, `|`) by rewriting each segment.
@@ -4638,6 +4994,178 @@ mod tests {
             collapse_line_continuations("git diff HEAD~1"),
             std::borrow::Cow::<str>::Borrowed("git diff HEAD~1"),
         );
+    }
+
+    // --- multi-line block rewriting (port from upstream rtk #1243, #3319) ---
+    mod multiline_blocks {
+        use super::rewrite_command_no_prefixes;
+
+        #[test]
+        fn test_rewrites_each_line() {
+            assert_eq!(
+                rewrite_command_no_prefixes("git status\ngit log --oneline -3", &[]),
+                Some("rtco git status\nrtco git log --oneline -3".into())
+            );
+        }
+
+        #[test]
+        fn test_preserves_blank_lines_comments_and_indentation() {
+            assert_eq!(
+                rewrite_command_no_prefixes("git status\n\n# check history\n  git log -3", &[]),
+                Some("rtco git status\n\n# check history\n  rtco git log -3".into())
+            );
+        }
+
+        #[test]
+        fn test_compound_line_inside_block() {
+            assert_eq!(
+                rewrite_command_no_prefixes("cd /tmp && git status\ngrep -rn foo src", &[]),
+                Some("cd /tmp && rtco git status\nrtco grep -rn foo src".into())
+            );
+        }
+
+        #[test]
+        fn test_crlf_separators_preserved() {
+            assert_eq!(
+                rewrite_command_no_prefixes("git status\r\ngit log -3", &[]),
+                Some("rtco git status\r\nrtco git log -3".into())
+            );
+        }
+
+        #[test]
+        fn test_newline_inside_quotes_rewrites_as_one_command() {
+            // The quoted body is never treated as a command line of its own;
+            // the whole thing is one logical command and gets one prefix.
+            assert_eq!(
+                rewrite_command_no_prefixes("git commit -m \"subject\ngit status in body\"", &[]),
+                Some("rtco git commit -m \"subject\ngit status in body\"".into())
+            );
+            assert_eq!(
+                rewrite_command_no_prefixes("git commit -m 'multi\nline\nmessage'", &[]),
+                Some("rtco git commit -m 'multi\nline\nmessage'".into())
+            );
+        }
+
+        #[test]
+        fn test_unbalanced_swallowed_newline_passes_through() {
+            assert_eq!(
+                rewrite_command_no_prefixes("git commit -m \"subject\ngit status", &[]),
+                None
+            );
+        }
+
+        #[test]
+        fn test_comment_apostrophe_swallowing_newline_passes_through() {
+            // The lexer has no comment state: the apostrophe in `don't` opens
+            // a quote that swallows the newline and hides the next line. The
+            // block must pass through so native permission handling sees the
+            // original command — never a partially rewritten one.
+            assert_eq!(
+                rewrite_command_no_prefixes("git status # don't\nrm -rf /tmp/x", &[]),
+                None
+            );
+        }
+
+        #[test]
+        fn test_comment_apostrophe_hidden_in_later_segment_passes_through() {
+            // Same hazard when a clean split point precedes the contaminated
+            // line: the swallowed-newline check is global, not per-segment.
+            assert_eq!(
+                rewrite_command_no_prefixes("git log -3\ngit status # don't\nrm -rf /tmp/x", &[]),
+                None
+            );
+        }
+
+        #[test]
+        fn test_comment_with_balanced_quotes_still_rewrites() {
+            // Both apostrophes close before the newline, so the split is safe
+            // and the trailing comment rides along untouched.
+            assert_eq!(
+                rewrite_command_no_prefixes(
+                    "git status # isn't it what's expected\ngit log -3",
+                    &[]
+                ),
+                Some("rtco git status # isn't it what's expected\nrtco git log -3".into())
+            );
+        }
+
+        #[test]
+        fn test_arithmetic_spanning_lines_passes_through() {
+            // `(( x = ls ))` is arithmetic evaluation; injecting `rtco` before
+            // `ls` would splice a command into arithmetic context.
+            assert_eq!(rewrite_command_no_prefixes("(( x =\nls ))", &[]), None);
+        }
+
+        #[test]
+        fn test_array_assignment_spanning_lines_passes_through() {
+            // The inner line is an array element, not a command; rewriting it
+            // would mutate the array's contents.
+            assert_eq!(
+                rewrite_command_no_prefixes("arr=(one\ngit status\ntwo)", &[]),
+                None
+            );
+        }
+
+        #[test]
+        fn test_function_definition_spanning_lines_passes_through() {
+            assert_eq!(
+                rewrite_command_no_prefixes("foo() {\n  git status\n}", &[]),
+                None
+            );
+        }
+
+        #[test]
+        fn test_continuation_operator_behind_comment_passes_through() {
+            // Bash continues the pipeline across the newline even though the
+            // line ends in comment text; the next line is a pipeline stage,
+            // not an independent command.
+            assert_eq!(
+                rewrite_command_no_prefixes("git log | # keep pipeline\ngrep -f patterns.txt", &[]),
+                None
+            );
+            assert_eq!(
+                rewrite_command_no_prefixes("git status && # continue\ngit log -3", &[]),
+                None
+            );
+        }
+
+        #[test]
+        fn test_ansi_c_escaped_quote_passes_through() {
+            // Inside $'...' bash treats \' as a literal quote that does not
+            // close the string, so the second line is string content — the
+            // lexer can't see that, so the block forgoes the rewrite.
+            assert_eq!(
+                rewrite_command_no_prefixes("x=$'foo\\'\ngit status\n'", &[]),
+                None
+            );
+        }
+
+        #[test]
+        fn test_ansi_c_without_escaped_quote_still_rewrites() {
+            assert_eq!(
+                rewrite_command_no_prefixes("echo $'a\\tb'\ngit status", &[]),
+                Some("echo $'a\\tb'\nrtco git status".into())
+            );
+        }
+
+        #[test]
+        fn test_balanced_grouping_within_a_line_still_rewrites() {
+            // `${HOME}` braces (quoted or not) must not trip the
+            // unbalanced-grouping bail.
+            assert_eq!(
+                rewrite_command_no_prefixes("echo ${HOME}\ngit status", &[]),
+                Some("echo ${HOME}\nrtco git status".into())
+            );
+            assert_eq!(
+                rewrite_command_no_prefixes("echo \"${HOME}\"\ngit status", &[]),
+                Some("echo \"${HOME}\"\nrtco git status".into())
+            );
+        }
+
+        #[test]
+        fn test_no_rewritable_line_passes_through() {
+            assert_eq!(rewrite_command_no_prefixes("echo one\necho two", &[]), None);
+        }
     }
 
     // --- line-continuation handling (issue #1564) -------------------

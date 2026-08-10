@@ -73,9 +73,9 @@ jobs:
             echo "No archive files found" && exit 1
           fi
           if command -v sha256sum &> /dev/null; then
-            sha256sum "${files[@]}" > rtco-SHA256SUMS.txt
+            sha256sum "${files[@]}" > checksums.txt
           elif command -v shasum &> /dev/null; then
-            shasum -a 256 "${files[@]}" > rtco-SHA256SUMS.txt
+            shasum -a 256 "${files[@]}" > checksums.txt
           else
             echo "No SHA256 tool found" && exit 1
           fi
@@ -86,5 +86,5 @@ jobs:
           files: |
             rtco-*.tar.gz
             rtco-*.zip
-            rtco-SHA256SUMS.txt
+            checksums.txt
           generate_release_notes: true

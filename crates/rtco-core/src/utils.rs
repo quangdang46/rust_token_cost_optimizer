@@ -498,6 +498,46 @@ pub fn human_bytes(bytes: u64) -> String {
     }
 }
 
+/// Create a directory owner-only (0700 on Unix), tightening one that already exists.
+///
+/// On non-Unix platforms this is a plain `create_dir_all`.
+pub fn create_private_dir(path: &std::path::Path) -> std::io::Result<()> {
+    fs::create_dir_all(path)?;
+    set_owner_only(path, 0o700);
+    Ok(())
+}
+
+/// Restrict an existing file to owner-only access (0600 on Unix).
+pub fn restrict_file(path: &std::path::Path) {
+    set_owner_only(path, 0o600);
+}
+
+/// Open a file owner-only (0600 on Unix), applied at creation so content is
+/// never briefly readable under a permissive umask. `mode` is ignored for a
+/// file that already exists, so an older one is still tightened afterwards.
+pub fn open_private(
+    opts: &mut fs::OpenOptions,
+    path: &std::path::Path,
+) -> std::io::Result<std::fs::File> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.mode(0o600);
+    }
+    let file = opts.open(path)?;
+    set_owner_only(path, 0o600);
+    Ok(file)
+}
+
+#[cfg(unix)]
+fn set_owner_only(path: &std::path::Path, mode: u32) {
+    use std::os::unix::fs::PermissionsExt;
+    let _ = fs::set_permissions(path, fs::Permissions::from_mode(mode));
+}
+
+#[cfg(not(unix))]
+fn set_owner_only(_path: &std::path::Path, _mode: u32) {}
+
 /// Conservative normalization for deduplication: split a line at the first `:` or `=`,
 /// keep the prefix (key) verbatim, and normalize the suffix (value) by replacing
 /// contiguous digit runs with `N` and hex-looking runs (>=8 hex chars) with `H`,

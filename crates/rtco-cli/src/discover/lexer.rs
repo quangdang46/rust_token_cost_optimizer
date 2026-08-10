@@ -18,6 +18,14 @@ pub fn tokenize(input: &str) -> Vec<ParsedToken> {
     tokenize_inner(input, false)
 }
 
+/// Like [`tokenize`] but emits a `\n` operator token for each newline that
+/// sits outside quotes. Newlines inside quoted strings stay part of their
+/// argument, so callers can use the emitted offsets as safe line-split points.
+/// Ported from upstream rtk (multi-line rewrite support, #1243).
+pub fn tokenize_with_newlines(input: &str) -> Vec<ParsedToken> {
+    tokenize_inner(input, true)
+}
+
 fn tokenize_inner(input: &str, emit_newline: bool) -> Vec<ParsedToken> {
     let mut tokens = Vec::new();
     let mut current = String::new();

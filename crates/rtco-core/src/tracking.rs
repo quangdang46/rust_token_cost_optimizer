@@ -297,10 +297,11 @@ impl Tracker {
     /// test-only constructors: schema creation, migrations, and index setup.
     fn open_path(db_path: PathBuf) -> Result<Self> {
         if let Some(parent) = db_path.parent() {
-            std::fs::create_dir_all(parent)?;
+            crate::utils::create_private_dir(parent)?;
         }
 
         let conn = Connection::open(&db_path)?;
+        crate::utils::restrict_file(&db_path);
         // WAL mode + busy_timeout for concurrent access (multiple Claude Code instances).
         // Non-fatal: NFS/read-only filesystems may not support WAL.
         let _ = conn.execute_batch(

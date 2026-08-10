@@ -276,6 +276,12 @@ if verbose > 0 {
         ));
     }
 
+    // Grep transparency (#3182): be faithful to plain grep. Line numbers are
+    // shown only when `-n`/`--line-number` is requested; the filename only
+    // when recursing/multi-file (or forced with -H).
+    let show_file = show_file(&[path.to_string()], extra_args);
+    let show_line = show_line(extra_args);
+
     let mut shown = 0;
     let mut files: Vec<_> = by_file.iter().collect();
     files.sort_by_key(|(f, _)| *f);
@@ -291,7 +297,18 @@ if verbose > 0 {
             if shown >= max_results {
                 break;
             }
-            rtco_output.push_str(&format!("{}:{}:{}\n", file_display, line_num, content));
+            let mut line = String::new();
+            if show_file {
+                line.push_str(&file_display);
+                line.push(':');
+            }
+            if show_line {
+                line.push_str(&line_num.to_string());
+                line.push(':');
+            }
+            line.push_str(content);
+            line.push('\n');
+            rtco_output.push_str(&line);
             shown += 1;
         }
     }
@@ -348,6 +365,37 @@ fn has_format_flag(extra_args: &[String]) -> bool {
                 | "--null"
         )
     })
+}
+
+fn has_short_flag(extra_args: &[String], flag: char) -> bool {
+    extra_args.iter().any(|arg| {
+        arg.len() == 2 && arg.starts_with('-') && arg.chars().nth(1) == Some(flag)
+    })
+}
+
+/// True when the match display should include the line number: only when
+/// `-n`/`--line-number` is explicitly requested, and never when
+/// `-N`/`--no-line-number` negates it. Ported from upstream rtk PR #3182
+/// (grep transparency): plain grep does not print line numbers by default.
+fn show_line(extra_args: &[String]) -> bool {
+    (has_short_flag(extra_args, 'n') || extra_args.iter().any(|f| f == "--line-number"))
+        && !has_short_flag(extra_args, 'N')
+        && !extra_args.iter().any(|f| f == "--no-line-number")
+}
+
+/// True when the match display should include the filename. grep prints the
+/// filename only when recursing or searching multiple files; rtco mirrors
+/// that (unless the user forces `-H`/`--with-filename` or suppresses it with
+/// `-h`/`--no-filename`). Ported from upstream rtk PR #3182.
+fn show_file(paths: &[String], extra_args: &[String]) -> bool {
+    paths.len() > 1
+        || paths.iter().any(|p| std::path::Path::new(p).is_dir())
+        || has_short_flag(extra_args, 'H')
+        || has_short_flag(extra_args, 'r')
+        || has_short_flag(extra_args, 'R')
+        || extra_args
+            .iter()
+            .any(|f| f == "--with-filename" || f == "--recursive")
 }
 
 fn clean_line(line: &str, max_len: usize, context_re: Option<&Regex>, pattern: &str) -> String {
@@ -661,5 +709,42 @@ mod tests {
             );
         }
         // If rg is not installed, skip gracefully (test still passes)
+    }
+
+    // --- Grep transparency (#3182) ---
+
+    #[test]
+    fn test_show_line_default_false() {
+        // Plain grep does not print line numbers unless -n is given.
+        assert!(!show_line(&[]));
+    }
+
+    #[test]
+    fn test_show_line_with_n_flag() {
+        assert!(show_line(&["-n".to_string()]));
+        assert!(show_line(&["--line-number".to_string()]));
+        assert!(show_line(&["-i".to_string(), "-n".to_string()]));
+    }
+
+    #[test]
+    fn test_show_line_negated() {
+        // -N / --no-line-number wins even when -n is present.
+        assert!(!show_line(&["-n".to_string(), "-N".to_string()]));
+        assert!(!show_line(&["--line-number".to_string(), "--no-line-number".to_string()]));
+    }
+
+    #[test]
+    fn test_show_file_single_file_default_false() {
+        // grep on a single file does NOT print the filename by default.
+        assert!(!show_file(&["src/main.rs".to_string()], &[]));
+    }
+
+    #[test]
+    fn test_show_file_recursive_or_multi() {
+        assert!(show_file(&[".".to_string()], &[])); // dir → show file
+        assert!(show_file(&["a.rs".to_string(), "b.rs".to_string()], &[])); // multi
+        assert!(show_file(&[".".to_string()], &["-r".to_string()]));
+        assert!(show_file(&[".".to_string()], &["-H".to_string()]));
+        assert!(show_file(&[".".to_string()], &["--with-filename".to_string()]));
     }
 }
