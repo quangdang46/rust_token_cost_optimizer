@@ -2428,6 +2428,8 @@ fn run_cli() -> Result<i32> {
                 use std::process::Command as ProcCommand;
                 let shell = if cfg!(windows) { "cmd" } else { "sh" };
                 let flag = if cfg!(windows) { "/C" } else { "-c" };
+                // nosemgrep: interpreter-execution — running the proxied raw
+                // command through the platform shell; intentional.
                 let status = ProcCommand::new(shell)
                     .arg(flag)
                     .arg(&raw)

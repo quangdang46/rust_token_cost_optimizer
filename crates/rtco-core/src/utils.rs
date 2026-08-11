@@ -251,6 +251,8 @@ pub fn ruby_exec(tool: &str) -> Command {
         c.arg("exec").arg(tool);
         return c;
     }
+    // nosemgrep: dynamic-command-execution — spawning the tool the user
+    // asked rtco to proxy; name is a resolved/validated tool name.
     Command::new(tool)
 }
 
@@ -380,6 +382,8 @@ pub fn resolve_binary(name: &str) -> Result<PathBuf> {
 /// A `Command` configured with the resolved binary path.
 pub fn resolved_command(name: &str) -> Command {
     match resolve_binary(name) {
+        // nosemgrep: dynamic-command-execution — resolves the requested tool
+        // to its on-disk path before spawning it; intentional.
         Ok(path) => Command::new(path),
         Err(e) => {
             // On Windows, resolution failure likely means a .CMD/.BAT wrapper
@@ -392,6 +396,8 @@ pub fn resolved_command(name: &str) -> Command {
                 );
             }
 
+            // nosemgrep: dynamic-command-execution — fallback to the raw name
+            // so the proxied command still runs; intentional.
             Command::new(name)
         }
     }
@@ -982,6 +988,8 @@ mod tests {
             )
             .expect("should resolve fake-exec-test");
 
+            // nosemgrep: dynamic-command-execution — test resolves a fake
+            // tool and executes it to verify Windows .cmd wrapper handling.
             let output = Command::new(&resolved).output();
 
             assert!(
