@@ -4,7 +4,7 @@
     ".": {
       "release-type": "simple",
       "package-name": "rtco",
-      "tag-name": "v${version}",
+      "include-component-in-tag": false,
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
       "extra-files": [
