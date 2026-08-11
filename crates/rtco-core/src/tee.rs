@@ -826,8 +826,11 @@ mod tests {
     fn test_display_shell_path_uses_home_var_for_home_paths_with_spaces() {
         // Ported from upstream rtk 5de188b. A home-relative path that needs
         // quoting renders as "$HOME/<rel>" with MAIN_SEPARATOR normalized.
-        let home = std::env::temp_dir().join("John Doe");
-        let path = home.join("rtco/tee/123_cargo_test.log");
+        // Use a real home-relative path: temp_dir() is NOT under $HOME on
+        // macOS (/var/folders/...) or Windows, so it would not render as
+        // "$HOME/..." there.
+        let home = dirs::home_dir().expect("home dir available");
+        let path = home.join("John Doe/rtco/tee/123_cargo_test.log");
         let shown = display_shell_path(&path);
         assert!(shown.starts_with("\"$HOME/"), "got: {shown}");
         assert!(shown.ends_with('"'), "got: {shown}");
