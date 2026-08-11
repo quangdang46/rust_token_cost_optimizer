@@ -208,7 +208,7 @@ fn write_tee_file(
     let filename = format!("{}_{}.log", epoch, slug);
     let filepath = tee_dir.join(filename);
 
-    // Layer 2: content-level redactor. Single-pass over `lazy_static!`-cached
+    // Layer 2: content-level redactor. Single-pass over `LazyLock`-cached
     // regex; a no-op (byte-identical, no header) when the input has no
     // credential-shaped substrings.
     //

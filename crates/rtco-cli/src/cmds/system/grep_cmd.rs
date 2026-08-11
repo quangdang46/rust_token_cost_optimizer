@@ -7,6 +7,7 @@ use rtco_core::utils::resolved_command;
 use anyhow::{Context, Result};
 use regex::Regex;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 /// Check if a file path targets a .env file (security restriction #2428)
 fn is_env_file(path: &str) -> bool {
@@ -340,9 +341,7 @@ if verbose > 0 {
 /// Returns `None` for lines that do not match the expected shape (e.g. rg
 /// `-A`/`-B` context lines that use `-` as separator).
 fn parse_match_line(line: &str) -> Option<(String, usize, &str)> {
-    lazy_static::lazy_static! {
-        static ref MATCH_LINE_RE: Regex = Regex::new(r"^([^\x00]+)\x00(\d+):(.*)$").unwrap();
-    }
+    static MATCH_LINE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([^\x00]+)\x00(\d+):(.*)$").unwrap());
     MATCH_LINE_RE.captures(line).and_then(|caps| {
         let (_, [file, line_num, content]) = caps.extract();
         let line_num: usize = line_num.parse().ok()?;

@@ -12,22 +12,19 @@
 
 use anyhow::Result;
 
-use lazy_static::lazy_static;
 use regex::Regex;
+use std::sync::LazyLock;
 
-lazy_static! {
-    /// Matches standard grep output: `file:line:content` or `file:content`
-    static ref GREP_LINE_RE: Regex =
-        Regex::new(r"^(.+?):(\d+):(.+)$").unwrap();
+/// Matches standard grep output: `file:line:content` or `file:content`
+static GREP_LINE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(.+?):(\d+):(.+)$").unwrap());
 
-    /// Matches `file:content` format (no line number — e.g., rg -l or grep -l)
-    static ref GREP_FILE_CONTENT_RE: Regex =
-        Regex::new(r"^(.+?):(.+)$").unwrap();
+/// Matches `file:content` format (no line number — e.g., rg -l or grep -l)
+static GREP_FILE_CONTENT_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(.+?):(.+)$").unwrap());
 
-    /// Matches `file:line:col:content` (e.g., rg --json or some verbose formats)
-    static ref GREP_COL_RE: Regex =
-        Regex::new(r"^(.+?):(\d+):(\d+):(.+)$").unwrap();
-}
+/// Matches `file:line:col:content` (e.g., rg --json or some verbose formats)
+static GREP_COL_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(.+?):(\d+):(\d+):(.+)$").unwrap());
 
 /// Default maximum files to include.
 const DEFAULT_MAX_FILES: usize = 20;

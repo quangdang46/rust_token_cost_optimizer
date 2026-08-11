@@ -163,10 +163,8 @@ fn filter_minitest_output(output: &str) -> String {
 }
 
 fn is_failure_header(line: &str) -> bool {
-    lazy_static::lazy_static! {
-        static ref RE_FAILURE: regex::Regex =
-            regex::Regex::new(r"^\d+\)\s+(Failure|Error):$").unwrap();
-    }
+    static RE_FAILURE: std::sync::LazyLock<regex::Regex> =
+        std::sync::LazyLock::new(|| regex::Regex::new(r"^\d+\)\s+(Failure|Error):$").unwrap());
     RE_FAILURE.is_match(line)
 }
 

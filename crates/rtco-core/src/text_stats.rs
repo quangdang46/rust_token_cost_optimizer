@@ -215,8 +215,10 @@ fn detect_content_type(text: &str) -> ContentType {
 /// Count UUID-like patterns (8-4-4-4-12 hex strings) in text.
 fn count_uuid_like(text: &str) -> usize {
     static UUID_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
-        regex::Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
-            .unwrap()
+        regex::Regex::new(
+            r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+        )
+        .unwrap()
     });
     UUID_RE.find_iter(text).count()
 }

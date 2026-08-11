@@ -1,5 +1,4 @@
 //! Applies TOML-defined filter rules to command output.
-use lazy_static::lazy_static;
 use regex::{Regex, RegexSet};
 ///
 /// Provides a declarative pipeline of 8 stages that can be configured
@@ -27,6 +26,7 @@ use regex::{Regex, RegexSet};
 use rtco_core::constants::{FILTERS_TOML, RTCO_DATA_DIR};
 use serde::Deserialize;
 use std::collections::BTreeMap;
+use std::sync::LazyLock;
 
 // Built-in filters: concatenated from src/filters/*.toml by build.rs at compile time.
 const BUILTIN_TOML: &str = include_str!(concat!(env!("OUT_DIR"), "/builtin_filters.toml"));
@@ -406,9 +406,7 @@ fn compile_filter(name: String, def: TomlFilterDef) -> Result<CompiledFilter, St
 // Singleton (lazy-loaded, one-time cost)
 // ---------------------------------------------------------------------------
 
-lazy_static! {
-    static ref REGISTRY: TomlFilterRegistry = TomlFilterRegistry::load();
-}
+static REGISTRY: LazyLock<TomlFilterRegistry> = LazyLock::new(TomlFilterRegistry::load);
 
 // ---------------------------------------------------------------------------
 // Public API — pure functions (testable without global state)
@@ -693,7 +691,7 @@ mod tests {
     use super::*;
 
     // Helper: build a CompiledFilter from inline TOML for tests.
-    // Never touches the lazy_static registry.
+    // Never touches the LazyLock registry.
     fn make_filters(toml: &str) -> Vec<CompiledFilter> {
         TomlFilterRegistry::parse_and_compile(toml, "test").expect("test TOML should be valid")
     }

@@ -33,7 +33,6 @@ static ERROR_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         Regex::new(r"^.*\.go:\d+:.*$").unwrap(),
     ]
 });
-}
 
 struct ErrorStreamFilter {
     in_error_block: bool,

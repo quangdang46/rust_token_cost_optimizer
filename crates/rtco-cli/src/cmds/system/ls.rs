@@ -5,19 +5,16 @@ use rtco_core::runner::{self, RunOptions};
 use rtco_core::truncate::{reduced, CAP_WARNINGS};
 use rtco_core::utils::resolved_command;
 use anyhow::Result;
-use lazy_static::lazy_static;
 use regex::Regex;
 use std::io::IsTerminal;
+use std::sync::LazyLock;
 
-lazy_static! {
-    /// Matches the date+time portion in `ls -la` output, which serves as a
-    /// stable anchor regardless of owner/group column width.
-    /// E.g.: " Mar 31 16:18 " or " Dec 25  2024 "
-    static ref LS_DATE_RE: Regex = Regex::new(
-        r"\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+(?:\d{4}|\d{2}:\d{2})\s+"
-    )
-    .unwrap();
-}
+/// Matches the date+time portion in `ls -la` output, which serves as a
+/// stable anchor regardless of owner/group column width.
+/// E.g.: " Mar 31 16:18 " or " Dec 25  2024 "
+static LS_DATE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+(?:\d{4}|\d{2}:\d{2})\s+").unwrap()
+});
 
 pub fn run(args: &[String], verbose: u8) -> Result<i32> {
     let show_all = args
