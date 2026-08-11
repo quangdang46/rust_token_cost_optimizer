@@ -67,10 +67,11 @@ rules:
     pattern: ureq::$METHOD(...)
     paths:
       exclude:
-        - /src/core/telemetry.rs
+        - crates/rtco-core/src/telemetry.rs
+        - crates/rtco-cli/src/telemetry_cmd.rs
     message: >
-      ureq usage outside of src/core/telemetry.rs.
-      HTTP calls are restricted to the telemetry module to prevent data exfiltration.
+      ureq usage outside of the telemetry modules.
+      HTTP calls are restricted to telemetry to prevent data exfiltration.
     languages: [rust]
     severity: ERROR
 
