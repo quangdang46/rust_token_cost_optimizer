@@ -323,7 +323,7 @@ mod tests {
     fn test_redact_credential_heuristic() {
         // Synthetic fixtures: chosen so GitHub's secret-scanner does not
         // (correctly) reject the commit. Each starts with a credential-prefix
-        // RTK recognises and is followed by 16+ chars that match the regex.
+        // RTCO recognises and is followed by 16+ chars that match the regex.
         let inputs_and_haystacks = [
             // ghp_<20 ZZ…> — not a real PAT, but matches our prefix regex.
             "echo ghp_ZZZZZZZZZZZZZZZZZZZZ",

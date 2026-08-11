@@ -57,20 +57,20 @@ pub fn run(file1: &Path, file2: &Path, verbose: u8) -> Result<i32> {
         return Ok(0);
     }
 
-    let mut rtk = String::new();
-    rtk.push_str(&format!("{} → {}\n", file1.display(), file2.display()));
-    rtk.push_str(&format!(
+    let mut rtco = String::new();
+    rtco.push_str(&format!("{} → {}\n", file1.display(), file2.display()));
+    rtco.push_str(&format!(
         "   +{} added, -{} removed, ~{} modified\n\n",
         diff.added, diff.removed, diff.modified
     ));
-    rtk.push_str(&format_diff_changes(&diff));
+    rtco.push_str(&format_diff_changes(&diff));
 
-    print!("{}", rtk);
+    print!("{}", rtco);
     timer.track(
         &format!("diff {} {}", file1.display(), file2.display()),
         "rtco diff",
         &raw,
-        &rtk,
+        &rtco,
     );
     // GNU diff convention: exit 1 when files differ (#2446).
     Ok(1)

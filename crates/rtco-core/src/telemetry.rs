@@ -335,7 +335,7 @@ fn build_meta_usage(tracker: &tracking::Tracker) -> serde_json::Value {
 /// Check if user has a config.toml file.
 fn detect_has_config() -> bool {
     dirs::config_dir()
-        .map(|d| d.join("rtk/config.toml").exists())
+        .map(|d| d.join("rtco/config.toml").exists())
         .unwrap_or(false)
 }
 
@@ -355,11 +355,11 @@ fn detect_hook_type() -> String {
 
     // Check in order of popularity
     let checks = [
-        (home.join(".claude/hooks/rtk-rewrite.sh"), "claude"),
-        (home.join(".claude/hooks/rtk-rewrite.json"), "claude"),
-        (home.join(".gemini/hooks/rtk-hook.sh"), "gemini"),
+        (home.join(".claude/hooks/rtco-rewrite.sh"), "claude"),
+        (home.join(".claude/hooks/rtco-rewrite.json"), "claude"),
+        (home.join(".gemini/hooks/rtco-hook-gemini.sh"), "gemini"),
         (home.join(".codex/AGENTS.md"), "codex"),
-        (home.join(".cursor/hooks/rtk-rewrite.json"), "cursor"),
+        (home.join(".cursor/hooks/rtco-rewrite.json"), "cursor"),
     ];
 
     for (path, name) in &checks {
@@ -370,7 +370,7 @@ fn detect_hook_type() -> String {
 
     // Check project-level hooks
     if let Ok(cwd) = std::env::current_dir() {
-        if cwd.join(".claude/hooks/rtk-rewrite.sh").exists() {
+        if cwd.join(".claude/hooks/rtco-rewrite.sh").exists() {
             return "claude".to_string();
         }
     }
@@ -392,9 +392,9 @@ fn count_custom_toml_filters() -> usize {
         }
     }
 
-    // Global: ~/.config/rtk/filters/*.toml
+    // Global: ~/.config/rtco/filters/*.toml
     if let Some(config_dir) = dirs::config_dir() {
-        if let Ok(entries) = std::fs::read_dir(config_dir.join("rtk/filters")) {
+        if let Ok(entries) = std::fs::read_dir(config_dir.join("rtco/filters")) {
             count += entries
                 .filter_map(|e| e.ok())
                 .filter(|e| e.path().extension().is_some_and(|ext| ext == "toml"))
@@ -418,7 +418,7 @@ fn detect_install_method() -> &'static str {
 }
 
 fn install_method_from_path(path: &str) -> &'static str {
-    if path.contains("/Cellar/rtk/") || path.contains("/homebrew/") {
+    if path.contains("/Cellar/rtco/") || path.contains("/homebrew/") {
         "homebrew"
     } else if path.contains("/.cargo/bin/") || path.contains("\\.cargo\\bin\\") {
         "cargo"
@@ -480,7 +480,7 @@ mod tests {
     }
 
     #[test]
-    fn test_salt_file_path_is_in_rtk_dir() {
+    fn test_salt_file_path_is_in_rtco_dir() {
         let path = salt_file_path();
         assert!(path.to_string_lossy().contains("rtco"));
         assert!(path.to_string_lossy().contains(".device_salt"));
@@ -495,40 +495,40 @@ mod tests {
     #[test]
     fn test_install_method_unix_paths() {
         assert_eq!(
-            install_method_from_path("/opt/homebrew/Cellar/rtk/0.28.0/bin/rtk"),
+            install_method_from_path("/opt/homebrew/Cellar/rtco/0.2.5/bin/rtco"),
             "homebrew"
         );
         assert_eq!(
-            install_method_from_path("/usr/local/homebrew/bin/rtk"),
+            install_method_from_path("/usr/local/homebrew/bin/rtco"),
             "homebrew"
         );
         assert_eq!(
-            install_method_from_path("/home/user/.cargo/bin/rtk"),
+            install_method_from_path("/home/user/.cargo/bin/rtco"),
             "cargo"
         );
         assert_eq!(
-            install_method_from_path("/home/user/.local/bin/rtk"),
+            install_method_from_path("/home/user/.local/bin/rtco"),
             "script"
         );
         assert_eq!(
-            install_method_from_path("/nix/store/abc123-rtk/bin/rtk"),
+            install_method_from_path("/nix/store/abc123-rtco/bin/rtco"),
             "nix"
         );
-        assert_eq!(install_method_from_path("/usr/bin/rtk"), "other");
+        assert_eq!(install_method_from_path("/usr/bin/rtco"), "other");
     }
 
     #[test]
     fn test_install_method_windows_paths() {
         assert_eq!(
-            install_method_from_path("C:\\Users\\user\\.cargo\\bin\\rtk.exe"),
+            install_method_from_path("C:\\Users\\user\\.cargo\\bin\\rtco.exe"),
             "cargo"
         );
         assert_eq!(
-            install_method_from_path("C:\\Users\\user\\.local\\bin\\rtk.exe"),
+            install_method_from_path("C:\\Users\\user\\.local\\bin\\rtco.exe"),
             "script"
         );
         assert_eq!(
-            install_method_from_path("C:\\Program Files\\rtk\\rtk.exe"),
+            install_method_from_path("C:\\Program Files\\rtco\\rtco.exe"),
             "other"
         );
     }

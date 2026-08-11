@@ -175,7 +175,7 @@ pub struct GainSummary {
 
 /// Daily statistics for token savings and execution metrics.
 ///
-/// Serializable to JSON for export via `rtk gain --daily --format json`.
+/// Serializable to JSON for export via `rtco gain --daily --format json`.
 ///
 /// # JSON Schema
 ///
@@ -213,7 +213,7 @@ pub struct DayStats {
 
 /// Weekly statistics for token savings and execution metrics.
 ///
-/// Serializable to JSON for export via `rtk gain --weekly --format json`.
+/// Serializable to JSON for export via `rtco gain --weekly --format json`.
 /// Weeks start on Sunday (SQLite default).
 #[derive(Debug, Serialize)]
 pub struct WeekStats {
@@ -239,7 +239,7 @@ pub struct WeekStats {
 
 /// Monthly statistics for token savings and execution metrics.
 ///
-/// Serializable to JSON for export via `rtk gain --monthly --format json`.
+/// Serializable to JSON for export via `rtco gain --monthly --format json`.
 #[derive(Debug, Serialize)]
 pub struct MonthStats {
     /// Month identifier (YYYY-MM)
@@ -667,7 +667,7 @@ impl Tracker {
         Ok(())
     }
 
-    /// Get parse failure summary for `rtk gain --failures`.
+    /// Get parse failure summary for `rtco gain --failures`.
     pub fn get_parse_failure_summary(&self) -> Result<ParseFailureSummary> {
         let total: i64 = self
             .conn

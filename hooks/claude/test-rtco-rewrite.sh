@@ -373,9 +373,9 @@ test_audit_log "audit: rewrite git status" \
   "git status" \
   "rewrite"
 
-test_audit_log "audit: skip already_rtk" \
+test_audit_log "audit: skip already_rtco" \
   "rtco git status" \
-  "skip:already_rtk"
+  "skip:already_rtco"
 
 test_audit_log "audit: skip heredoc" \
   "cat <<'EOF'

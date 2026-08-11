@@ -297,12 +297,12 @@ fn merge_monthly(cc: Option<Vec<CcusagePeriod>>, rtco: Vec<MonthStats>) -> Vec<P
 
 // ── Helpers ──
 
-/// Convert Saturday week_start (legacy rtk) to ISO Monday
+/// Convert Saturday week_start (legacy rtco) to ISO Monday
 /// Example: "2026-01-18" (Sat) -> "2026-01-20" (Mon)
 fn convert_saturday_to_monday(saturday: &str) -> Option<String> {
     let sat_date = NaiveDate::parse_from_str(saturday, "%Y-%m-%d").ok()?;
 
-    // rtk uses Saturday as week start, ISO uses Monday
+    // rtco uses Saturday as week start, ISO uses Monday
     // Saturday + 2 days = Monday
     let monday = sat_date + chrono::TimeDelta::try_days(2)?;
 
@@ -428,10 +428,10 @@ fn display_text(
 fn display_summary(tracker: &Tracker, verbose: u8) -> Result<()> {
     let cc_monthly =
         ccusage::fetch(Granularity::Monthly).context("Failed to fetch ccusage monthly data")?;
-    let rtk_monthly = tracker
+    let rtco_monthly = tracker
         .get_by_month()
         .context("Failed to load monthly token savings from database")?;
-    let periods = merge_monthly(cc_monthly, rtk_monthly);
+    let periods = merge_monthly(cc_monthly, rtco_monthly);
 
     if periods.is_empty() {
         println!("No data available. Run some rtco commands to start tracking.");
@@ -543,10 +543,10 @@ fn display_summary(tracker: &Tracker, verbose: u8) -> Result<()> {
 fn display_daily(tracker: &Tracker, verbose: u8) -> Result<()> {
     let cc_daily =
         ccusage::fetch(Granularity::Daily).context("Failed to fetch ccusage daily data")?;
-    let rtk_daily = tracker
+    let rtco_daily = tracker
         .get_all_days()
         .context("Failed to load daily token savings from database")?;
-    let periods = merge_daily(cc_daily, rtk_daily);
+    let periods = merge_daily(cc_daily, rtco_daily);
 
     println!("Daily Economics");
     println!("════════════════════════════════════════════════════");
@@ -557,10 +557,10 @@ fn display_daily(tracker: &Tracker, verbose: u8) -> Result<()> {
 fn display_weekly(tracker: &Tracker, verbose: u8) -> Result<()> {
     let cc_weekly =
         ccusage::fetch(Granularity::Weekly).context("Failed to fetch ccusage weekly data")?;
-    let rtk_weekly = tracker
+    let rtco_weekly = tracker
         .get_by_week()
         .context("Failed to load weekly token savings from database")?;
-    let periods = merge_weekly(cc_weekly, rtk_weekly);
+    let periods = merge_weekly(cc_weekly, rtco_weekly);
 
     println!("Weekly Economics");
     println!("════════════════════════════════════════════════════");
@@ -571,10 +571,10 @@ fn display_weekly(tracker: &Tracker, verbose: u8) -> Result<()> {
 fn display_monthly(tracker: &Tracker, verbose: u8) -> Result<()> {
     let cc_monthly =
         ccusage::fetch(Granularity::Monthly).context("Failed to fetch ccusage monthly data")?;
-    let rtk_monthly = tracker
+    let rtco_monthly = tracker
         .get_by_month()
         .context("Failed to load monthly token savings from database")?;
-    let periods = merge_monthly(cc_monthly, rtk_monthly);
+    let periods = merge_monthly(cc_monthly, rtco_monthly);
 
     println!("Monthly Economics");
     println!("════════════════════════════════════════════════════");
@@ -686,28 +686,28 @@ fn export_json(
     if all || daily {
         let cc = ccusage::fetch(Granularity::Daily)
             .context("Failed to fetch ccusage daily data for JSON export")?;
-        let rtk = tracker
+        let rtco = tracker
             .get_all_days()
             .context("Failed to load daily token savings for JSON export")?;
-        export.daily = Some(merge_daily(cc, rtk));
+        export.daily = Some(merge_daily(cc, rtco));
     }
 
     if all || weekly {
         let cc = ccusage::fetch(Granularity::Weekly)
             .context("Failed to fetch ccusage weekly data for export")?;
-        let rtk = tracker
+        let rtco = tracker
             .get_by_week()
             .context("Failed to load weekly token savings for export")?;
-        export.weekly = Some(merge_weekly(cc, rtk));
+        export.weekly = Some(merge_weekly(cc, rtco));
     }
 
     if all || monthly {
         let cc = ccusage::fetch(Granularity::Monthly)
             .context("Failed to fetch ccusage monthly data for export")?;
-        let rtk = tracker
+        let rtco = tracker
             .get_by_month()
             .context("Failed to load monthly token savings for export")?;
-        let periods = merge_monthly(cc, rtk);
+        let periods = merge_monthly(cc, rtco);
         export.totals = Some(compute_totals(&periods));
         export.monthly = Some(periods);
     }
@@ -733,10 +733,10 @@ fn export_csv(
     if all || daily {
         let cc = ccusage::fetch(Granularity::Daily)
             .context("Failed to fetch ccusage daily data for JSON export")?;
-        let rtk = tracker
+        let rtco = tracker
             .get_all_days()
             .context("Failed to load daily token savings for JSON export")?;
-        let periods = merge_daily(cc, rtk);
+        let periods = merge_daily(cc, rtco);
         for p in periods {
             print_csv_row(&p);
         }
@@ -745,10 +745,10 @@ fn export_csv(
     if all || weekly {
         let cc = ccusage::fetch(Granularity::Weekly)
             .context("Failed to fetch ccusage weekly data for export")?;
-        let rtk = tracker
+        let rtco = tracker
             .get_by_week()
             .context("Failed to load weekly token savings for export")?;
-        let periods = merge_weekly(cc, rtk);
+        let periods = merge_weekly(cc, rtco);
         for p in periods {
             print_csv_row(&p);
         }
@@ -757,10 +757,10 @@ fn export_csv(
     if all || monthly {
         let cc = ccusage::fetch(Granularity::Monthly)
             .context("Failed to fetch ccusage monthly data for export")?;
-        let rtk = tracker
+        let rtco = tracker
             .get_by_month()
             .context("Failed to load monthly token savings for export")?;
-        let periods = merge_monthly(cc, rtk);
+        let periods = merge_monthly(cc, rtco);
         for p in periods {
             print_csv_row(&p);
         }
@@ -919,7 +919,7 @@ mod tests {
             },
         }];
 
-        let rtk = vec![MonthStats {
+        let rtco = vec![MonthStats {
             month: "2026-01".to_string(),
             commands: 10,
             input_tokens: 800,
@@ -930,7 +930,7 @@ mod tests {
             avg_time_ms: 0,
         }];
 
-        let merged = merge_monthly(Some(cc), rtk);
+        let merged = merge_monthly(Some(cc), rtco);
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0].label, "2026-01");
         assert_eq!(merged[0].cc_cost, Some(12.34));
@@ -958,8 +958,8 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_monthly_only_rtk() {
-        let rtk = vec![MonthStats {
+    fn test_merge_monthly_only_rtco() {
+        let rtco = vec![MonthStats {
             month: "2026-01".to_string(),
             commands: 10,
             input_tokens: 800,
@@ -970,7 +970,7 @@ mod tests {
             avg_time_ms: 0,
         }];
 
-        let merged = merge_monthly(None, rtk);
+        let merged = merge_monthly(None, rtco);
         assert_eq!(merged.len(), 1);
         assert!(merged[0].cc_cost.is_none());
         assert_eq!(merged[0].rtco_commands, Some(10));
@@ -978,7 +978,7 @@ mod tests {
 
     #[test]
     fn test_merge_monthly_sorted() {
-        let rtk = vec![
+        let rtco = vec![
             MonthStats {
                 month: "2026-03".to_string(),
                 commands: 5,
@@ -1001,7 +1001,7 @@ mod tests {
             },
         ];
 
-        let merged = merge_monthly(None, rtk);
+        let merged = merge_monthly(None, rtco);
         assert_eq!(merged.len(), 2);
         assert_eq!(merged[0].label, "2026-01");
         assert_eq!(merged[1].label, "2026-03");

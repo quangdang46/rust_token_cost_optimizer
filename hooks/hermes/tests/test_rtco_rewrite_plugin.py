@@ -29,7 +29,7 @@ class FakeCompletedProcess:
         self.stderr = stderr
 
 
-def load_plugin_module(path=PLUGIN_PATH, module_name="rtk_rewrite_plugin"):
+def load_plugin_module(path=PLUGIN_PATH, module_name="rtco_rewrite_plugin"):
     spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
         raise ImportError(f"Unable to load Hermes plugin from {path}")
@@ -38,9 +38,9 @@ def load_plugin_module(path=PLUGIN_PATH, module_name="rtk_rewrite_plugin"):
     return module
 
 
-def write_fake_rtk(bin_dir):
-    fake_rtk = bin_dir / "rtco"
-    fake_rtk.write_text(
+def write_fake_rtco(bin_dir):
+    fake_rtco = bin_dir / "rtco"
+    fake_rtco.write_text(
         "\n".join(
             [
                 f"#!{sys.executable}",
@@ -54,15 +54,15 @@ def write_fake_rtk(bin_dir):
             ]
         )
     )
-    fake_rtk.chmod(fake_rtk.stat().st_mode | stat.S_IXUSR)
-    return fake_rtk
+    fake_rtco.chmod(fake_rtco.stat().st_mode | stat.S_IXUSR)
+    return fake_rtco
 
 
-class RtkRewritePluginTest(unittest.TestCase):
+class RtcoRewritePluginTest(unittest.TestCase):
     def load_callback(self):
         module = load_plugin_module()
-        module._rtk_available = None
-        module._rtk_missing_warned = False
+        module._rtco_available = None
+        module._rtco_missing_warned = False
         ctx = FakeContext()
 
         with mock.patch.object(module.shutil, "which", return_value="/usr/bin/rtco"):
@@ -71,10 +71,10 @@ class RtkRewritePluginTest(unittest.TestCase):
         self.assertIn("pre_tool_call", ctx.hooks)
         return module, ctx.hooks["pre_tool_call"]
 
-    def test_missing_rtk_skips_registering_pre_tool_call(self):
+    def test_missing_rtco_skips_registering_pre_tool_call(self):
         module = load_plugin_module()
-        module._rtk_available = None
-        module._rtk_missing_warned = False
+        module._rtco_available = None
+        module._rtco_missing_warned = False
         ctx = FakeContext()
 
         with mock.patch.object(module.shutil, "which", return_value=None):
@@ -87,40 +87,40 @@ class RtkRewritePluginTest(unittest.TestCase):
             stderr.getvalue(),
         )
 
-    def test_missing_rtk_warns_only_once(self):
+    def test_missing_rtco_warns_only_once(self):
         module = load_plugin_module()
-        module._rtk_available = None
-        module._rtk_missing_warned = False
+        module._rtco_available = None
+        module._rtco_missing_warned = False
 
         with mock.patch.object(module.shutil, "which", return_value=None):
             with mock.patch.object(module.sys, "stderr", new_callable=io.StringIO) as stderr:
-                self.assertFalse(module._check_rtk())
-                self.assertFalse(module._check_rtk())
+                self.assertFalse(module._check_rtco())
+                self.assertFalse(module._check_rtco())
 
         self.assertEqual(
             "rtco: hermes plugin warning: rtco binary not found in PATH; Hermes hook not registered\n",
             stderr.getvalue(),
         )
 
-    def test_check_rtk_found_is_quiet(self):
+    def test_check_rtco_found_is_quiet(self):
         module = load_plugin_module()
-        module._rtk_available = None
-        module._rtk_missing_warned = False
+        module._rtco_available = None
+        module._rtco_missing_warned = False
 
         with mock.patch.object(module.shutil, "which", return_value="/usr/bin/rtco"):
             with mock.patch.object(module.sys, "stderr", new_callable=io.StringIO) as stderr:
-                self.assertTrue(module._check_rtk())
+                self.assertTrue(module._check_rtco())
 
         self.assertEqual("", stderr.getvalue())
 
-    def test_check_rtk_caches_result_across_calls(self):
+    def test_check_rtco_caches_result_across_calls(self):
         module = load_plugin_module()
-        module._rtk_available = None
-        module._rtk_missing_warned = False
+        module._rtco_available = None
+        module._rtco_missing_warned = False
 
         with mock.patch.object(module.shutil, "which", return_value="/usr/bin/rtco") as which:
-            self.assertTrue(module._check_rtk())
-            self.assertTrue(module._check_rtk())
+            self.assertTrue(module._check_rtco())
+            self.assertTrue(module._check_rtco())
 
         which.assert_called_once_with("rtco")
 
@@ -291,9 +291,9 @@ class RtkRewritePluginTest(unittest.TestCase):
                 self.assertEqual({"command": "git status"}, args)
 
 
-class InstalledRtkRewritePluginTest(unittest.TestCase):
+class InstalledRtcoRewritePluginTest(unittest.TestCase):
     @unittest.skipUnless(shutil.which("cargo"), "cargo is required for installed flow")
-    def test_cargo_init_installs_importable_plugin_that_rewrites_with_fake_rtk(self):
+    def test_cargo_init_installs_importable_plugin_that_rewrites_with_fake_rtco(self):
         repo_root = Path(__file__).resolve().parents[3]
         self.assertTrue((repo_root / "Cargo.toml").exists(), "repo_root must point at the repository root")
         real_home = Path(os.path.expanduser("~"))
@@ -301,7 +301,7 @@ class InstalledRtkRewritePluginTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home, tempfile.TemporaryDirectory() as bin_dir:
             home_path = Path(home)
             fake_bin = Path(bin_dir)
-            write_fake_rtk(fake_bin)
+            write_fake_rtco(fake_bin)
 
             env = os.environ.copy()
             env["HOME"] = str(home_path)
@@ -336,7 +336,7 @@ class InstalledRtkRewritePluginTest(unittest.TestCase):
             self.assertTrue(init_path.exists(), "installed plugin __init__.py must exist")
             self.assertTrue(manifest_path.exists(), "installed plugin.yaml must exist")
 
-            module = load_plugin_module(init_path, "installed_rtk_rewrite_plugin")
+            module = load_plugin_module(init_path, "installed_rtco_rewrite_plugin")
             ctx = FakeContext()
             with mock.patch.dict(os.environ, {"PATH": env["PATH"]}):
                 module.register(ctx)

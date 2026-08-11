@@ -328,7 +328,7 @@ pub fn run_gemini() -> Result<()> {
     if permissions::check_command(cmd) == PermissionVerdict::Deny {
         let _ = writeln!(
             io::stdout(),
-            r#"{{"decision":"deny","reason":"Blocked by RTK permission rule"}}"#
+            r#"{{"decision":"deny","reason":"Blocked by RTCO permission rule"}}"#
         );
         return Ok(());
     }
@@ -787,7 +787,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_rewritten_already_rtk() {
+    fn test_get_rewritten_already_rtco() {
         assert!(get_rewritten("rtco git status").is_none());
     }
 
@@ -915,7 +915,7 @@ mod tests {
     }
 
     #[test]
-    fn test_claude_already_rtk_passthrough() {
+    fn test_claude_already_rtco_passthrough() {
         assert!(run_claude_inner(&claude_input("rtco git status")).is_none());
     }
 
@@ -1034,7 +1034,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cursor_already_rtk_passthrough() {
+    fn test_cursor_already_rtco_passthrough() {
         let result = run_cursor_inner(&cursor_input("rtco git status"));
         assert_eq!(result, "{}");
     }

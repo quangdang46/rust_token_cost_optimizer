@@ -49,7 +49,7 @@ tool_input() {
 test_deny() {
   local description="$1"
   local input_cmd="$2"
-  local expected_rtk="$3"
+  local expected_rtco="$3"
   TOTAL=$((TOTAL + 1))
 
   local output
@@ -59,12 +59,12 @@ test_deny() {
   decision=$(echo "$output" | jq -r '.permissionDecision // empty' 2>/dev/null)
   reason=$(echo "$output" | jq -r '.permissionDecisionReason // empty' 2>/dev/null)
 
-  if [ "$decision" = "deny" ] && echo "$reason" | grep -qF "$expected_rtk"; then
-    printf "  ${GREEN}DENY${RESET} %s ${DIM}→ %s${RESET}\n" "$description" "$expected_rtk"
+  if [ "$decision" = "deny" ] && echo "$reason" | grep -qF "$expected_rtco"; then
+    printf "  ${GREEN}DENY${RESET} %s ${DIM}→ %s${RESET}\n" "$description" "$expected_rtco"
     PASS=$((PASS + 1))
   else
     printf "  ${RED}FAIL${RESET} %s\n" "$description"
-    printf "       expected decision: deny, reason containing: %s\n" "$expected_rtk"
+    printf "       expected decision: deny, reason containing: %s\n" "$expected_rtco"
     printf "       actual decision:   %s\n" "$decision"
     printf "       actual reason:     %s\n" "$reason"
     FAIL=$((FAIL + 1))
@@ -75,7 +75,7 @@ test_deny() {
 test_vscode_rewrite() {
   local description="$1"
   local input_cmd="$2"
-  local expected_rtk="$3"
+  local expected_rtco="$3"
   TOTAL=$((TOTAL + 1))
 
   local output
@@ -85,12 +85,12 @@ test_vscode_rewrite() {
   decision=$(echo "$output" | jq -r '.hookSpecificOutput.permissionDecision // empty' 2>/dev/null)
   updated_cmd=$(echo "$output" | jq -r '.hookSpecificOutput.updatedInput.command // empty' 2>/dev/null)
 
-  if [ "$decision" = "allow" ] && echo "$updated_cmd" | grep -qF "$expected_rtk"; then
+  if [ "$decision" = "allow" ] && echo "$updated_cmd" | grep -qF "$expected_rtco"; then
     printf "  ${GREEN}REWRITE${RESET} %s ${DIM}→ %s${RESET}\n" "$description" "$updated_cmd"
     PASS=$((PASS + 1))
   else
     printf "  ${RED}FAIL${RESET} %s\n" "$description"
-    printf "       expected decision: allow, updatedInput containing: %s\n" "$expected_rtk"
+    printf "       expected decision: allow, updatedInput containing: %s\n" "$expected_rtco"
     printf "       actual decision:   %s\n" "$decision"
     printf "       actual updatedInput: %s\n" "$updated_cmd"
     FAIL=$((FAIL + 1))

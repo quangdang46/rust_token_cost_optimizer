@@ -11,30 +11,30 @@ import sys
 
 ACCEPTED_REWRITE_RETURN_CODES = {0, 3}
 EXPECTED_PASSTHROUGH_RETURN_CODES = {1, 2}
-_rtk_available = None
-_rtk_missing_warned = False
+_rtco_available = None
+_rtco_missing_warned = False
 
 
 def register(ctx):
     """Register the Hermes pre-tool callback."""
-    if not _check_rtk():
+    if not _check_rtco():
         return
 
     ctx.register_hook("pre_tool_call", _pre_tool_call)
 
 
-def _check_rtk():
+def _check_rtco():
     """Return whether the rtco binary is in PATH, warning once when missing."""
-    global _rtk_available, _rtk_missing_warned
+    global _rtco_available, _rtco_missing_warned
 
-    if _rtk_available is None:
-        _rtk_available = shutil.which("rtco") is not None
+    if _rtco_available is None:
+        _rtco_available = shutil.which("rtco") is not None
 
-    if not _rtk_available and not _rtk_missing_warned:
+    if not _rtco_available and not _rtco_missing_warned:
         _warn("rtco binary not found in PATH; Hermes hook not registered")
-        _rtk_missing_warned = True
+        _rtco_missing_warned = True
 
-    return _rtk_available
+    return _rtco_available
 
 
 def _pre_tool_call(tool_name=None, args=None, **_kwargs):

@@ -1,6 +1,6 @@
 //! Detects if someone tampered with the installed hook file.
 //!
-//! RTK installs a PreToolUse hook (`rtk-rewrite.sh`) that auto-approves
+//! RTCO installs a PreToolUse hook (`rtco-rewrite.sh`) that auto-approves
 //! rewritten commands with `permissionDecision: "allow"`. Because this
 //! hook bypasses Claude Code's permission prompts, any unauthorized
 //! modification represents a command injection vector.
@@ -8,7 +8,7 @@
 //! This module provides:
 //! - SHA-256 hash computation and storage at install time
 //! - Runtime verification before command execution
-//! - Manual verification via `rtk verify`
+//! - Manual verification via `rtco verify`
 //!
 //! Reference: SA-2025-RTK-001 (Finding F-01)
 
@@ -19,7 +19,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Filename for the stored hash (dotfile alongside hook)
-const HASH_FILENAME: &str = ".rtk-hook.sha256";
+const HASH_FILENAME: &str = ".rtco-hook.sha256";
 
 /// Result of hook integrity verification
 #[derive(Debug, PartialEq)]
@@ -62,7 +62,7 @@ pub fn hash_path_for(hook_path: &Path) -> PathBuf {
 ///
 /// Format is compatible with `sha256sum -c`:
 /// ```text
-/// <hex_hash>  rtk-rewrite.sh
+/// <hex_hash>  rtco-rewrite.sh
 /// ```
 ///
 /// The hash file is set to read-only (0o444) as a speed bump
@@ -186,7 +186,7 @@ fn read_stored_hash(path: &Path) -> Result<String> {
     Ok(hash.to_string())
 }
 
-/// Resolve the default hook path (~/.claude/hooks/rtk-rewrite.sh)
+/// Resolve the default hook path (~/.claude/hooks/rtco-rewrite.sh)
 pub fn resolve_hook_path() -> Result<PathBuf> {
     dirs::home_dir()
         .map(|h| {
@@ -197,7 +197,7 @@ pub fn resolve_hook_path() -> Result<PathBuf> {
         .context("Cannot determine home directory. Is $HOME set?")
 }
 
-/// Run integrity check and print results (for `rtk verify` subcommand)
+/// Run integrity check and print results (for `rtco verify` subcommand)
 pub fn run_verify(verbose: u8) -> Result<()> {
     let hook_path = resolve_hook_path()?;
     let hash_file = hash_path(&hook_path);
@@ -242,7 +242,7 @@ pub fn run_verify(verbose: u8) -> Result<()> {
             eprintln!("  The hook file has been modified outside of `rtco init`.");
             eprintln!("  This could indicate tampering or a manual edit.");
             eprintln!();
-            eprintln!("  To restore: rtk init -g --auto-patch");
+            eprintln!("  To restore: rtco init -g --auto-patch");
             eprintln!("  To inspect: cat {}", hook_path.display());
             std::process::exit(1);
         }
@@ -275,7 +275,7 @@ pub fn run_verify(verbose: u8) -> Result<()> {
 /// checking is a no-op — there is no script to tamper with.
 ///
 /// No env-var bypass is provided — if the hook is legitimately modified,
-/// re-run `rtk init -g --auto-patch` to re-establish the baseline.
+/// re-run `rtco init -g --auto-patch` to re-establish the baseline.
 pub fn runtime_check() -> Result<()> {
     let hook_path = resolve_hook_path()?;
 
@@ -294,7 +294,7 @@ pub fn runtime_check() -> Result<()> {
             // Silently skip to avoid noise for users who haven't re-run init
         }
         IntegrityStatus::Tampered { expected, actual } => {
-            eprintln!("rtk: hook integrity check FAILED");
+            eprintln!("rtco: hook integrity check FAILED");
             eprintln!(
                 "  Expected hash: {}...",
                 expected.get(..16).unwrap_or(&expected)
@@ -304,15 +304,15 @@ pub fn runtime_check() -> Result<()> {
                 actual.get(..16).unwrap_or(&actual)
             );
             eprintln!();
-            eprintln!("  The hook at ~/.claude/hooks/rtk-rewrite.sh has been modified.");
-            eprintln!("  This may indicate tampering. RTK will not execute.");
+            eprintln!("  The hook at ~/.claude/hooks/rtco-rewrite.sh has been modified.");
+            eprintln!("  This may indicate tampering. RTCO will not execute.");
             eprintln!();
-            eprintln!("  To restore:  rtk init -g --auto-patch");
-            eprintln!("  To inspect:  rtk verify");
+            eprintln!("  To restore:  rtco init -g --auto-patch");
+            eprintln!("  To inspect:  rtco verify");
             std::process::exit(1);
         }
         IntegrityStatus::OrphanedHash => {
-            eprintln!("rtk: warning: hash file exists but hook is missing");
+            eprintln!("rtco: warning: hash file exists but hook is missing");
             eprintln!("  Run `rtco init -g` to reinstall.");
             // Don't block — hook is gone, nothing to exploit
         }
@@ -357,7 +357,7 @@ mod tests {
     #[test]
     fn test_store_and_verify_ok() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
+        let hook = temp.path().join("rtco-rewrite.sh");
         fs::write(&hook, "#!/bin/bash\necho test\n").unwrap();
 
         store_hash(&hook).unwrap();
@@ -369,7 +369,7 @@ mod tests {
     #[test]
     fn test_verify_detects_tampering() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
+        let hook = temp.path().join("rtco-rewrite.sh");
         fs::write(&hook, "#!/bin/bash\necho original\n").unwrap();
 
         store_hash(&hook).unwrap();
@@ -391,7 +391,7 @@ mod tests {
     #[test]
     fn test_verify_no_baseline() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
+        let hook = temp.path().join("rtco-rewrite.sh");
         fs::write(&hook, "#!/bin/bash\necho test\n").unwrap();
 
         // No hash file stored
@@ -402,7 +402,7 @@ mod tests {
     #[test]
     fn test_verify_not_installed() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
+        let hook = temp.path().join("rtco-rewrite.sh");
         // Don't create hook file
 
         let status = verify_hook_at(&hook).unwrap();
@@ -412,13 +412,13 @@ mod tests {
     #[test]
     fn test_verify_orphaned_hash() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
-        let hash_file = temp.path().join(".rtk-hook.sha256");
+        let hook = temp.path().join("rtco-rewrite.sh");
+        let hash_file = temp.path().join(".rtco-hook.sha256");
 
         // Create hash but no hook
         fs::write(
             &hash_file,
-            "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2  rtk-rewrite.sh\n",
+            "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2  rtco-rewrite.sh\n",
         )
         .unwrap();
 
@@ -429,27 +429,27 @@ mod tests {
     #[test]
     fn test_store_hash_creates_sha256sum_format() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
+        let hook = temp.path().join("rtco-rewrite.sh");
         fs::write(&hook, "test content").unwrap();
 
         store_hash(&hook).unwrap();
 
-        let hash_file = temp.path().join(".rtk-hook.sha256");
+        let hash_file = temp.path().join(".rtco-hook.sha256");
         assert!(hash_file.exists());
 
         let content = fs::read_to_string(&hash_file).unwrap();
-        // Format: "<64 hex chars>  rtk-rewrite.sh\n"
-        assert!(content.ends_with("  rtk-rewrite.sh\n"));
+        // Format: "<64 hex chars>  rtco-rewrite.sh\n"
+        assert!(content.ends_with("  rtco-rewrite.sh\n"));
         let parts: Vec<&str> = content.trim().splitn(2, "  ").collect();
         assert_eq!(parts.len(), 2);
         assert_eq!(parts[0].len(), 64);
-        assert_eq!(parts[1], "rtk-rewrite.sh");
+        assert_eq!(parts[1], "rtco-rewrite.sh");
     }
 
     #[test]
     fn test_store_hash_overwrites_existing() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
+        let hook = temp.path().join("rtco-rewrite.sh");
 
         fs::write(&hook, "version 1").unwrap();
         store_hash(&hook).unwrap();
@@ -472,12 +472,12 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
 
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
+        let hook = temp.path().join("rtco-rewrite.sh");
         fs::write(&hook, "test").unwrap();
 
         store_hash(&hook).unwrap();
 
-        let hash_file = temp.path().join(".rtk-hook.sha256");
+        let hash_file = temp.path().join(".rtco-hook.sha256");
         let perms = fs::metadata(&hash_file).unwrap().permissions();
         assert_eq!(perms.mode() & 0o777, 0o444, "Hash file should be read-only");
     }
@@ -485,11 +485,11 @@ mod tests {
     #[test]
     fn test_remove_hash() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
+        let hook = temp.path().join("rtco-rewrite.sh");
         fs::write(&hook, "test").unwrap();
 
         store_hash(&hook).unwrap();
-        let hash_file = temp.path().join(".rtk-hook.sha256");
+        let hash_file = temp.path().join(".rtco-hook.sha256");
         assert!(hash_file.exists());
 
         let removed = remove_hash(&hook).unwrap();
@@ -500,7 +500,7 @@ mod tests {
     #[test]
     fn test_remove_hash_not_found() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
+        let hook = temp.path().join("rtco-rewrite.sh");
 
         let removed = remove_hash(&hook).unwrap();
         assert!(!removed);
@@ -509,11 +509,11 @@ mod tests {
     #[test]
     fn test_invalid_hash_file_rejected() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
-        let hash_file = temp.path().join(".rtk-hook.sha256");
+        let hook = temp.path().join("rtco-rewrite.sh");
+        let hash_file = temp.path().join(".rtco-hook.sha256");
 
         fs::write(&hook, "test").unwrap();
-        fs::write(&hash_file, "not-a-valid-hash  rtk-rewrite.sh\n").unwrap();
+        fs::write(&hash_file, "not-a-valid-hash  rtco-rewrite.sh\n").unwrap();
 
         let result = verify_hook_at(&hook);
         assert!(result.is_err(), "Should reject invalid hash format");
@@ -522,8 +522,8 @@ mod tests {
     #[test]
     fn test_hash_only_no_filename_rejected() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
-        let hash_file = temp.path().join(".rtk-hook.sha256");
+        let hook = temp.path().join("rtco-rewrite.sh");
+        let hash_file = temp.path().join(".rtco-hook.sha256");
 
         fs::write(&hook, "test").unwrap();
         // Hash with no two-space separator and filename
@@ -543,14 +543,14 @@ mod tests {
     #[test]
     fn test_wrong_separator_rejected() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
-        let hash_file = temp.path().join(".rtk-hook.sha256");
+        let hook = temp.path().join("rtco-rewrite.sh");
+        let hash_file = temp.path().join(".rtco-hook.sha256");
 
         fs::write(&hook, "test").unwrap();
         // Single space instead of two-space separator
         fs::write(
             &hash_file,
-            "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2 rtk-rewrite.sh\n",
+            "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2 rtco-rewrite.sh\n",
         )
         .unwrap();
 
@@ -561,12 +561,12 @@ mod tests {
     #[test]
     fn test_hash_format_compatible_with_sha256sum() {
         let temp = TempDir::new().unwrap();
-        let hook = temp.path().join("rtk-rewrite.sh");
+        let hook = temp.path().join("rtco-rewrite.sh");
         fs::write(&hook, "#!/bin/bash\necho hello\n").unwrap();
 
         store_hash(&hook).unwrap();
 
-        let hash_file = temp.path().join(".rtk-hook.sha256");
+        let hash_file = temp.path().join(".rtco-hook.sha256");
         let content = fs::read_to_string(&hash_file).unwrap();
 
         // Should be parseable by sha256sum -c
@@ -574,6 +574,6 @@ mod tests {
         let parts: Vec<&str> = content.trim().splitn(2, "  ").collect();
         assert_eq!(parts.len(), 2);
         assert_eq!(parts[0].len(), 64);
-        assert_eq!(parts[1], "rtk-rewrite.sh");
+        assert_eq!(parts[1], "rtco-rewrite.sh");
     }
 }

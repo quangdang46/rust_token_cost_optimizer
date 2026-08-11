@@ -1,4 +1,4 @@
-//! Building blocks shared across all RTK modules.
+//! Building blocks shared across all RTCO modules.
 
 pub mod adaptive_sizer;
 pub mod anchor;

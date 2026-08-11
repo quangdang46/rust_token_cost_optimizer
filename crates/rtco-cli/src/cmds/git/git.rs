@@ -396,7 +396,7 @@ pub(crate) const RTK_DIFF_BUDGET: usize = 500;
 /// track against the pre-truncation slice. Issue #1561.
 ///
 /// The hint follows the same terse style as `compact_diff`'s own
-/// "[full diff: rtk git diff --no-compact]" trailer; we deliberately
+/// "[full diff: rtco git diff --no-compact]" trailer; we deliberately
 /// don't repeat the `--no-compact` recovery here because `compact_diff`
 /// already prints it when its budget fires.
 ///
@@ -524,7 +524,7 @@ pub(crate) fn compact_diff(diff: &str, max_lines: usize) -> String {
     }
 
     if was_truncated {
-        result.push("[full diff: rtk git diff --no-compact]".to_string());
+        result.push("[full diff: rtco git diff --no-compact]".to_string());
     }
 
     result.join("\n")
@@ -1142,7 +1142,7 @@ fn run_commit(args: &[String], verbose: u8, global_args: &[String]) -> Result<i3
     } else if stderr.contains("nothing to commit") || stdout.contains("nothing to commit") {
         // #2494: Return actual exit code even on "nothing to commit"
         if exit_code != 0 {
-            eprintln!("[rtk] commit failed (exit: {})", exit_code);
+            eprintln!("[rtco] commit failed (exit: {})", exit_code);
             timer.track(
                 &original_cmd,
                 "rtco git commit",
@@ -2951,7 +2951,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
         }
         let result = compact_diff(&diff, 500);
         assert!(
-            result.contains("[full diff: rtk git diff --no-compact]"),
+            result.contains("[full diff: rtco git diff --no-compact]"),
             "Expected recovery hint when hunk is truncated, got:\n{}",
             result
         );

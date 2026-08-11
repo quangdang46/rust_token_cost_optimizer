@@ -197,10 +197,10 @@ impl TimedExecution {
     pub fn start() -> Self;
 
     /// Track command with elapsed time
-    pub fn track(&self, original_cmd: &str, rtk_cmd: &str, input: &str, output: &str);
+    pub fn track(&self, original_cmd: &str, rtco_cmd: &str, input: &str, output: &str);
 
     /// Track passthrough commands (timing-only, no token counting)
-    pub fn track_passthrough(&self, original_cmd: &str, rtk_cmd: &str);
+    pub fn track_passthrough(&self, original_cmd: &str, rtco_cmd: &str);
 }
 ```
 
@@ -215,7 +215,7 @@ pub fn args_display(args: &[OsString]) -> String;
 
 /// Legacy tracking function (deprecated, use TimedExecution)
 #[deprecated(note = "Use TimedExecution instead")]
-pub fn track(original_cmd: &str, rtk_cmd: &str, input: &str, output: &str);
+pub fn track(original_cmd: &str, rtco_cmd: &str, input: &str, output: &str);
 ```
 
 ## Usage Examples
@@ -231,7 +231,7 @@ fn main() -> anyhow::Result<()> {
 
     // Execute command
     let input = execute_original_command()?;
-    let output = execute_rtk_command()?;
+    let output = execute_rtco_command()?;
 
     // Track execution
     timer.track("ls -la", "rtco ls", &input, &output);
@@ -265,7 +265,7 @@ fn main() -> anyhow::Result<()> {
     let recent = tracker.get_recent(10)?;
     for cmd in recent {
         println!("{}: {} saved {:.1}%",
-            cmd.timestamp, cmd.rtk_cmd, cmd.savings_pct);
+            cmd.timestamp, cmd.rtco_cmd, cmd.savings_pct);
     }
 
     Ok(())
@@ -405,7 +405,7 @@ import json
 import subprocess
 from datetime import datetime
 
-def get_rtk_metrics():
+def get_rtco_metrics():
     """Fetch RTCO metrics as JSON."""
     result = subprocess.run(
         ["rtco", "gain", "--all", "--format", "json"],
@@ -434,7 +434,7 @@ def export_to_datadog(metrics):
         )
 
 if __name__ == "__main__":
-    metrics = get_rtk_metrics()
+    metrics = get_rtco_metrics()
     export_to_datadog(metrics)
     print(f"Exported {len(metrics.get('daily', []))} days to Datadog")
 ```
@@ -490,7 +490,7 @@ CREATE TABLE commands (
     id INTEGER PRIMARY KEY,
     timestamp TEXT NOT NULL,           -- RFC3339 UTC timestamp
     original_cmd TEXT NOT NULL,        -- Original command (e.g., "ls -la")
-    rtk_cmd TEXT NOT NULL,             -- RTCO command (e.g., "rtco ls")
+    rtco_cmd TEXT NOT NULL,             -- RTCO command (e.g., "rtco ls")
     input_tokens INTEGER NOT NULL,     -- Estimated input tokens
     output_tokens INTEGER NOT NULL,    -- Actual output tokens
     saved_tokens INTEGER NOT NULL,     -- input_tokens - output_tokens

@@ -41,8 +41,8 @@ pub struct RunOptions<'a> {
     pub filter_stdout_only: bool,
     pub skip_filter_on_failure: bool,
     pub no_trailing_newline: bool,
-    /// Forward rtk's own stdin to the child process. Needed for commands that
-    /// can read from a pipe (e.g. `cat file | rtk wc`); without it the child
+    /// Forward rtco's own stdin to the child process. Needed for commands that
+    /// can read from a pipe (e.g. `cat file | rtco wc`); without it the child
     /// gets an empty stdin and reports zero.
     pub inherit_stdin: bool,
 }

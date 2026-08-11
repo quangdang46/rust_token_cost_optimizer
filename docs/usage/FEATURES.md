@@ -1167,7 +1167,7 @@ rtco cc-economics --format json        # Export JSON
 
 ### `rtco hook-audit` -- Metriques du hook
 
-**Prerequis :** Necessite `RTK_HOOK_AUDIT=1` dans l'environnement.
+**Prerequis :** Necessite `RTCO_HOOK_AUDIT=1` dans l'environnement.
 
 ```bash
 rtco hook-audit                        # 7 derniers jours (defaut)
@@ -1336,9 +1336,9 @@ exclude_commands = []       # Commandes a exclure de la recriture automatique
 
 | Variable | Description |
 |----------|-------------|
-| `RTK_TEE_DIR` | Surcharge le repertoire tee |
-| `RTK_TELEMETRY_DISABLED=1` | Desactiver la telemetrie |
-| `RTK_HOOK_AUDIT=1` | Activer l'audit du hook |
+| `RTCO_TEE_DIR` | Surcharge le repertoire tee |
+| `RTCO_TELEMETRY_DISABLED=1` | Desactiver la telemetrie |
+| `RTCO_HOOK_AUDIT=1` | Activer l'audit du hook |
 | `SKIP_ENV_VALIDATION=1` | Desactiver la validation d'env (Next.js, etc.) |
 
 ---
@@ -1391,7 +1391,7 @@ rtco telemetry forget     # Retirer + supprimer donnees locales + demande d'effa
 
 **Desactiver via variable d'environnement :**
 ```bash
-export RTK_TELEMETRY_DISABLED=1
+export RTCO_TELEMETRY_DISABLED=1
 ```
 
 Aucune donnee personnelle, aucun contenu de commande, aucun chemin de fichier n'est transmis. Conservation serveur : 12 mois max. Details : [docs/TELEMETRY.md](../TELEMETRY.md)

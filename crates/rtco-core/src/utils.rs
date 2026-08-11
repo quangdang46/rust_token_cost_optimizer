@@ -1,6 +1,6 @@
 //! Utility functions for text processing and command execution.
 //!
-//! Provides common helpers used across rtk commands:
+//! Provides common helpers used across rtco commands:
 //! - ANSI color code stripping
 //! - Text truncation
 //! - Command execution with error context
@@ -199,11 +199,11 @@ pub fn exit_code_from_output(output: &std::process::Output, label: &str) -> i32 
             {
                 use std::os::unix::process::ExitStatusExt;
                 if let Some(sig) = output.status.signal() {
-                    eprintln!("[rtk] {}: process terminated by signal {}", label, sig);
+                    eprintln!("[rtco] {}: process terminated by signal {}", label, sig);
                     return 128 + sig;
                 }
             }
-            eprintln!("[rtk] {}: process terminated by signal", label);
+            eprintln!("[rtco] {}: process terminated by signal", label);
             1
         }
     }
@@ -220,11 +220,11 @@ pub fn exit_code_from_status(status: &std::process::ExitStatus, label: &str) -> 
             {
                 use std::os::unix::process::ExitStatusExt;
                 if let Some(sig) = status.signal() {
-                    eprintln!("[rtk] {}: process terminated by signal {}", label, sig);
+                    eprintln!("[rtco] {}: process terminated by signal {}", label, sig);
                     return 128 + sig;
                 }
             }
-            eprintln!("[rtk] {}: process terminated by signal", label);
+            eprintln!("[rtco] {}: process terminated by signal", label);
             1
         }
     }
@@ -234,7 +234,7 @@ pub fn exit_code_from_status(status: &std::process::ExitStatus, label: &str) -> 
 /// when filter parsing fails. Logs a diagnostic to stderr.
 pub fn fallback_tail(output: &str, label: &str, n: usize) -> String {
     eprintln!(
-        "[rtk] {}: output format not recognized, showing last {} lines",
+        "[rtco] {}: output format not recognized, showing last {} lines",
         label, n
     );
     let lines: Vec<&str> = output.lines().collect();
@@ -387,7 +387,7 @@ pub fn resolved_command(name: &str) -> Command {
             // On Unix, this is less common; only log in debug builds.
             if cfg!(any(target_os = "windows", debug_assertions)) {
                 eprintln!(
-                    "rtk: Failed to resolve '{}' via PATH, falling back to direct exec: {}",
+                    "rtco: Failed to resolve '{}' via PATH, falling back to direct exec: {}",
                     name, e
                 );
             }
