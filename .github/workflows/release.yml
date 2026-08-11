@@ -104,7 +104,7 @@ jobs:
         run: cargo install cross --locked
 
       - name: cargo cross build --release
-        run: cross build --release --target ${{ matrix.target }} -p rtco-cli
+        run: cross build --release --target ${{ matrix.target }} -p rtco
 
       - name: Package binary
         shell: bash
