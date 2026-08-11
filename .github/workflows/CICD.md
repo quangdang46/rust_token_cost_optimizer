@@ -109,4 +109,9 @@ gh release create "$VERSION" --title "rtco $VERSION" --notes "Release notes here
 ### Prerequisites
 
 - `GITHUB_TOKEN` with `contents:write` scope (default for GitHub Actions)
+- **Repo settings → Actions → General → Workflow permissions must allow
+  GitHub Actions to create/approve pull requests** — otherwise release-please
+  fails with "GitHub Actions is not permitted to create or approve pull
+  requests" (set `default_workflow_permissions: write` +
+  `can_approve_pull_request_reviews: true`).
 - An active GitHub Actions runner allocation (check billing at Settings > Billing & plans)
