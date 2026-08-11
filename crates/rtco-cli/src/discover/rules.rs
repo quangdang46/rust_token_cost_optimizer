@@ -1109,6 +1109,26 @@ pub const RULES: &[RtcoRule] = &[
         subcmd_status: &[],
         ..RtcoRule::DEFAULT
     },
+    RtcoRule {
+        pattern: r"^ffs\s+",
+        rtco_cmd: "rtco ffs",
+        rewrite_prefixes: &["ffs"],
+        category: "Files",
+        savings_pct: 50.0,
+        subcmd_savings: &[],
+        subcmd_status: &[],
+        ..RtcoRule::DEFAULT
+    },
+    RtcoRule {
+        pattern: r"^hashline\s+",
+        rtco_cmd: "rtco hashline",
+        rewrite_prefixes: &["hashline"],
+        category: "Files",
+        savings_pct: 40.0,
+        subcmd_savings: &[],
+        subcmd_status: &[],
+        ..RtcoRule::DEFAULT
+    },
 ];
 pub const IGNORED_PREFIXES: &[&str] = &[
     "cd ",

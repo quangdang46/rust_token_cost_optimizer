@@ -48,6 +48,9 @@ claudedocs
 .vitals/
 .worktrees/
 
+# ffs local index (symbol/bigram cache, regenerated on demand)
+.ffs/
+
 # icm 
 .fastembed_cache/
 

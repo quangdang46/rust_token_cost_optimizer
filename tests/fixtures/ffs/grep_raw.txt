@@ -1,0 +1,10 @@
+crates/rtco-cli\src\cmds\cloud\aws_cmd.rs:19: use std::sync::LazyLock;
+crates/rtco-cli\src\cmds\cloud\aws_cmd.rs:1369: static S3_TRANSFER_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(upload|download|delete|copy|move):").unwrap());
+crates/rtco-cli\src\cmds\cloud\aws_cmd.rs:1371: static LOG_TS_PREFIX_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[Z]? ").unwrap());
+crates/rtco-cli\src\cmds\cloud\aws_cmd.rs:1373: static LOG_HANDLER_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[[^\]]*\]\s*").unwrap());
+crates/rtco-cli\src\cmds\cloud\aws_cmd.rs:1375: static LOG_DURATION_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r" duration=(\d+)ms").unwrap());
+crates/rtco-cli\src\cmds\cloud\psql_cmd.rs:11: use std::sync::LazyLock;
+crates/rtco-cli\src\cmds\cloud\psql_cmd.rs:16: static EXPANDED_RECORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"-\[ RECORD \d+ \]-").unwrap());
+crates/rtco-cli\src\cmds\cloud\psql_cmd.rs:17: static SEPARATOR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[-+]+$").unwrap());
+crates/rtco-cli\src\cmds\cloud\psql_cmd.rs:18: static ROW_COUNT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\(\d+ rows?\)$").unwrap());
+crates/rtco-cli\src\cmds\cloud\psql_cmd.rs:19: static RECORD_HEADER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^-\[ RECORD (\d+) \]-").unwrap());

@@ -1,0 +1,12 @@
+[crates/rtco-cli/src/cmds/scala/sbt_cmd.rs#33f5]
+1:d8|use rtco_core::runner::{self, RunOptions};
+2:52|use rtco_core::utils::{resolved_command, truncate};
+3:b5|use anyhow::Result;
+4:28|use regex::Regex;
+5:c3|use std::ffi::OsString;
+6:11|use std::sync::LazyLock;
+7:f8|
+8:5f|/// Matches the ScalaTest summary line:
+9:97|/// Tests: succeeded N, failed N, canceled N, ignored N, pending N
+10:57|static TEST_SUMMARY_RE: LazyLock<Regex> = LazyLock::new(|| {
+11:48|    Regex::new(

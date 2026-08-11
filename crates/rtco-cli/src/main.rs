@@ -10,8 +10,10 @@ mod toml_filter;
 // Re-export command modules for routing
 use cmds::cloud::{aws_cmd, container, curl_cmd, psql_cmd, sqlite_cmd, wget_cmd};
 use cmds::dotnet::{binlog, dotnet_cmd, dotnet_format_report, dotnet_trx};
+use cmds::ffs::ffs_cmd;
 use cmds::git::{diff_cmd, gh_cmd, git, glab_cmd, gt_cmd};
 use cmds::go::{go_cmd, golangci_cmd};
+use cmds::hashline::hashline_cmd;
 use cmds::js::{
     lint_cmd, next_cmd, npm_cmd, playwright_cmd, pnpm_cmd, prettier_cmd, prisma_cmd, tsc_cmd,
     vitest_cmd,
@@ -822,6 +824,22 @@ enum Commands {
     #[command(name = "sbt")]
     Sbt {
         /// SBT tasks and arguments (e.g., test, compile, run, Test/test, --info)
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+
+    /// hashline (hash-anchored file editing) — read/patch/write with tracking
+    #[command(name = "hashline")]
+    Hashline {
+        /// hashline subcommand and arguments (read, patch, write, find-block, ...)
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+
+    /// ffs (fast file search) — find/glob/grep/symbol/read with tracking
+    #[command(name = "ffs")]
+    Ffs {
+        /// ffs subcommand and arguments (find, glob, grep, read, symbol, map, ...)
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
@@ -2357,6 +2375,10 @@ fn run_cli() -> Result<i32> {
 
         Commands::Sbt { args } => sbt_cmd::run(&args, cli.verbose)?,
 
+        Commands::Hashline { args } => hashline_cmd::run(&args, cli.verbose)?,
+
+        Commands::Ffs { args } => ffs_cmd::run(&args, cli.verbose)?,
+
         Commands::HookAudit { since } => {
             hooks::hook_audit_cmd::run(since, cli.verbose)?;
             0
@@ -2719,7 +2741,9 @@ fn is_operational_command(cmd: &Commands) -> bool {
         | Commands::Mypy { .. }
         | Commands::Gradlew { .. }
         | Commands::Mvn { .. }
-        | Commands::Sbt { .. } => true,
+        | Commands::Sbt { .. }
+        | Commands::Hashline { .. }
+        | Commands::Ffs { .. } => true,
         _ => false,
     }
 }

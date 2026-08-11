@@ -117,6 +117,20 @@ Typical savings: 60-99%.
 | `cat` / `head` / `tail <file>` | 60-80% | Smart file reading via `rtco read` |
 | `rtco smart <file>` | 85% | 2-line heuristic code summary (signatures only) |
 
+## Search & Editing Proxies
+
+These proxy the standalone `ffs` (fast file search) and `hashline` (hash-anchored editing) binaries when installed. Both tools' output is already compact, so the value is routing + tracking + a light filter rather than aggressive compression.
+
+| Command | Savings | What changes |
+|---------|---------|--------------|
+| `ffs find` | ~50% | Rerouted to `rtco ffs`, tracking only |
+| `ffs grep` / `ffs symbol` / `ffs callers` | ~50% | Dedup/group via SearchCompressor |
+| `ffs read` / `ffs map` / `ffs overview` | 0% | Passthrough (already token-budgeted) |
+| `hashline read` | ~10% | `[path#HASH]` header stripped, anchors kept |
+| `hashline patch` / `write` / `remove` / `rename` | 0% | Passthrough (mutation — never mask errors) |
+
+Install them: `curl -fsSL https://raw.githubusercontent.com/quangdang46/hashline/main/install.sh | bash` and `curl -fsSL https://raw.githubusercontent.com/quangdang46/fast_file_search/main/install.sh | bash`.
+
 ## Cloud and Data
 
 | Command | Savings | What changes |

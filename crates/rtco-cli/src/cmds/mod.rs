@@ -2,8 +2,10 @@
 
 pub mod cloud;
 pub mod dotnet;
+pub mod ffs;
 pub mod git;
 pub mod go;
+pub mod hashline;
 pub mod js;
 pub mod jvm;
 pub mod php;

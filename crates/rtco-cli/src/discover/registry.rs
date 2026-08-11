@@ -5348,5 +5348,67 @@ mod tests {
         }
     }
 
+    // --- ffs / hashline rewrite rules -------------------------------
+
+    #[test]
+    fn test_rewrite_ffs_find() {
+        assert_eq!(
+            rewrite_command_no_prefixes("ffs find sbt_cmd", &[]),
+            Some("rtco ffs find sbt_cmd".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_ffs_grep() {
+        assert_eq!(
+            rewrite_command_no_prefixes("ffs grep LazyLock", &[]),
+            Some("rtco ffs grep LazyLock".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_hashline_read() {
+        assert_eq!(
+            rewrite_command_no_prefixes("hashline read src/main.rs", &[]),
+            Some("rtco hashline read src/main.rs".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_hashline_patch() {
+        assert_eq!(
+            rewrite_command_no_prefixes("hashline patch src/main.rs 'SWAP 1:ab:'", &[]),
+            Some("rtco hashline patch src/main.rs 'SWAP 1:ab:'".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_ffs_already_rtco_passthrough() {
+        // Already-rtco commands return as-is (Some, unchanged).
+        assert_eq!(
+            rewrite_command_no_prefixes("rtco ffs find foo", &[]),
+            Some("rtco ffs find foo".into())
+        );
+    }
+
+    #[test]
+    fn test_rewrite_hashline_already_rtco_passthrough() {
+        assert_eq!(
+            rewrite_command_no_prefixes("rtco hashline read f", &[]),
+            Some("rtco hashline read f".into())
+        );
+    }
+
+    #[test]
+    fn test_pipeline_final_ffs_not_safe() {
+        // ffs is not a grep-pipeline filter: `git log | ffs grep foo` has no
+        // rewritable stage (producer stays raw, final stage not pipeline-safe),
+        // so the whole pipeline passes through unchanged (None = no rewrite).
+        assert_eq!(
+            rewrite_command_no_prefixes("git log | ffs grep foo", &[]),
+            None
+        );
+    }
+
     // --- line-continuation handling (issue #1564) -------------------
 }
