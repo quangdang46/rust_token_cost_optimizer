@@ -25,7 +25,8 @@
 //! assert_eq!(traces[0].frames.len(), 6);
 //! ```
 
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
+
 use regex::Regex;
 
 // ---------------------------------------------------------------------------
@@ -60,57 +61,52 @@ pub struct StackTrace {
 // Lazily compiled regexes
 // ---------------------------------------------------------------------------
 
-lazy_static! {
-    // -- Python --
-    static ref PY_TRACEBACK_HEADER: Regex =
-        Regex::new(r"^Traceback \(most recent call last\):").unwrap();
-    static ref PY_FILE_LINE: Regex =
-        Regex::new(r#"^\s+File ""#).unwrap();
+// -- Python --
+static PY_TRACEBACK_HEADER: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^Traceback \(most recent call last\):").unwrap());
+static PY_FILE_LINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^\s+File ""#).unwrap());
 
-    /// Exception chain message (Python 3 chained exceptions).
-    /// e.g. "During handling of the above exception, another exception occurred:"
-    ///      "The above exception was the direct cause of the following exception:"
-    static ref PY_CHAIN_MSG: Regex =
-        Regex::new(r"^(During handling of the above exception|The above exception was)").unwrap();
-    static ref JS_AT_FRAME: Regex =
-        Regex::new(r"^\s+at\s+").unwrap();
-    static ref JS_ERROR_LINE: Regex =
-        Regex::new(r"^(TypeError|ReferenceError|SyntaxError|RangeError|Error|URIError|EvalError)\b").unwrap();
+/// Exception chain message (Python 3 chained exceptions).
+/// e.g. "During handling of the above exception, another exception occurred:"
+///      "The above exception was the direct cause of the following exception:"
+static PY_CHAIN_MSG: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(During handling of the above exception|The above exception was)").unwrap()
+});
+static JS_AT_FRAME: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\s+at\s+").unwrap());
+static JS_ERROR_LINE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(TypeError|ReferenceError|SyntaxError|RangeError|Error|URIError|EvalError)\b")
+        .unwrap()
+});
 
-    // -- Rust --
-    static ref RUST_LOCATION: Regex =
-        Regex::new(r"^\s*-->\s+\S+:\d+").unwrap();
-    static ref RUST_PANIC_LINE: Regex =
-        Regex::new(r"thread '.+' panicked at").unwrap();
-    static ref RUST_AT_LOCATION: Regex =
-        Regex::new(r"^\s+at\s+\S+\.rs:\d+").unwrap();
-    // Numbered backtrace frames like "   0: std::panicking::begin_panic"
-    static ref RUST_BACKTRACE_FRAME: Regex =
-        Regex::new(r"^\s+\d+:\s+\S+").unwrap();
-    // Compiler annotation lines like "    |" or " 10 | code"
-    static ref RUST_ANNOTATION: Regex =
-        Regex::new(r"^\s*\d+\s*\||^\s*\|").unwrap();
+// -- Rust --
+static RUST_LOCATION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\s*-->\s+\S+:\d+").unwrap());
+static RUST_PANIC_LINE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"thread '.+' panicked at").unwrap());
+static RUST_AT_LOCATION: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\s+at\s+\S+\.rs:\d+").unwrap());
+// Numbered backtrace frames like "   0: std::panicking::begin_panic"
+static RUST_BACKTRACE_FRAME: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\s+\d+:\s+\S+").unwrap());
+// Compiler annotation lines like "    |" or " 10 | code"
+static RUST_ANNOTATION: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\s*\d+\s*\||^\s*\|").unwrap());
 
-    // -- Java --
-    // Java "at" frames always contain a class.method(File.java:NN) pattern.
-    // We check Java before JS because both use "at " prefix.
-    // The method name may contain angle brackets (e.g. <init>, <clinit>).
-    static ref JAVA_AT_FRAME: Regex =
-        Regex::new(r"^\s+at\s+[\w$.<>]+\([\w$.<>]+\.java:\d+\)").unwrap();
-    static ref JAVA_CAUSED_BY: Regex =
-        Regex::new(r"^Caused by:\s+").unwrap();
+// -- Java --
+// Java "at" frames always contain a class.method(File.java:NN) pattern.
+// We check Java before JS because both use "at " prefix.
+// The method name may contain angle brackets (e.g. <init>, <clinit>).
+static JAVA_AT_FRAME: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\s+at\s+[\w$.<>]+\([\w$.<>]+\.java:\d+\)").unwrap());
+static JAVA_CAUSED_BY: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^Caused by:\s+").unwrap());
 
-    // -- Go --
-    // "goroutine N [state]:" where state can be running, chan receive, select, etc.
-    static ref GO_GOROUTINE: Regex =
-        Regex::new(r"^goroutine\s+\d+\s+\[.+\]").unwrap();
-    // Indented file.go:line +offset
-    static ref GO_FILE_LINE: Regex =
-        Regex::new(r"^\s+\S+\.go:\d+").unwrap();
-    // Function calls like "main.foo()" or "main.foo(0x1, 0x2)"
-    static ref GO_FUNC_CALL: Regex =
-        Regex::new(r"^\w[\w.]*\(.*\)$").unwrap();
-}
+// -- Go --
+// "goroutine N [state]:" where state can be running, chan receive, select, etc.
+static GO_GOROUTINE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^goroutine\s+\d+\s+\[.+\]").unwrap());
+// Indented file.go:line +offset
+static GO_FILE_LINE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\s+\S+\.go:\d+").unwrap());
+// Function calls like "main.foo()" or "main.foo(0x1, 0x2)"
+static GO_FUNC_CALL: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\w[\w.]*\(.*\)$").unwrap());
 
 // ---------------------------------------------------------------------------
 // Per-language frame classification

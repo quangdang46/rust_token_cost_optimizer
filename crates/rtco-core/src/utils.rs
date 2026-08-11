@@ -11,7 +11,7 @@ use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{LazyLock, Mutex, OnceLock};
 
 /// Truncates a string to `max_len` characters, appending `...` if needed.
 ///
@@ -49,9 +49,8 @@ pub fn truncate(s: &str, max_len: usize) -> String {
 /// assert_eq!(strip_ansi(colored), "Error");
 /// ```
 pub fn strip_ansi(text: &str) -> String {
-    lazy_static::lazy_static! {
-        static ref ANSI_RE: Regex = Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap();
-    }
+    static ANSI_RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"\x1b\[[0-9;]*[a-zA-Z]").unwrap());
     ANSI_RE.replace_all(text, "").to_string()
 }
 
@@ -555,16 +554,16 @@ fn set_owner_only(_path: &std::path::Path, _mode: u32) {}
 /// ```
 #[allow(dead_code)]
 pub fn conservative_normalize(line: &str) -> String {
-    lazy_static::lazy_static! {
-        // 8+ hex chars (sha-like hashes)
-        static ref HEX_RE: Regex = Regex::new(r"\b[0-9a-fA-F]{8,40}\b").unwrap();
-        // UUID pattern: 8-4-4-4-12 hex
-        static ref UUID_RE: Regex = Regex::new(
-            r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-        ).unwrap();
-        // Contiguous digit runs (2+ digits to avoid replacing single meaningful digits)
-        static ref DIGITS_RE: Regex = Regex::new(r"\d{2,}").unwrap();
-    }
+    // 8+ hex chars (sha-like hashes)
+    static HEX_RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"\b[0-9a-fA-F]{8,40}\b").unwrap());
+    // UUID pattern: 8-4-4-4-12 hex
+    static UUID_RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+            .unwrap()
+    });
+    // Contiguous digit runs (2+ digits to avoid replacing single meaningful digits)
+    static DIGITS_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\d{2,}").unwrap());
 
     // Split at first ':' or '=' to separate key from value
     if let Some(sep_pos) = line.find([':', '=']) {

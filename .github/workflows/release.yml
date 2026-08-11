@@ -64,14 +64,107 @@ jobs:
             tar czf "rtco-${VERSION}-${PLATFORM}.${EXT}" -C target/release rtco
           fi
 
-      - name: Generate SHA256 checksums
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            rtco-*.tar.gz
+            rtco-*.zip
+          generate_release_notes: true
+
+  # Cross-compile the Linux targets the native matrix can't produce:
+  # aarch64 Linux (ARM servers), and musl static builds (Alpine, scratch
+  # containers, NixOS). Uses `cross` (containerized toolchains) so the
+  # aarch64 linker and musl toolchain need no manual apt setup.
+  cross-build:
+    name: Cross-build (${{ matrix.target }})
+    needs: release
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross
+        run: cargo install cross --locked
+
+      - name: cargo cross build --release
+        run: cross build --release --target ${{ matrix.target }} -p rtco-cli
+
+      - name: Package binary
+        shell: bash
+        run: |
+          VERSION="${{ github.event.inputs.tag || github.ref_name }}"
+          # Normalize rust triple -> release.yml platform suffix (os-arch).
+          case "${{ matrix.target }}" in
+            aarch64-unknown-linux-gnu)  suffix="linux-aarch64" ;;
+            x86_64-unknown-linux-musl)  suffix="linux-x86_64-musl" ;;
+            aarch64-unknown-linux-musl) suffix="linux-aarch64-musl" ;;
+          esac
+          cp "target/${{ matrix.target }}/release/rtco" "rtco-${VERSION}-${suffix}"
+          tar czf "rtco-${VERSION}-${suffix}.tar.gz" "rtco-${VERSION}-${suffix}"
+
+      - name: Upload cross-built asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: rtco-*.tar.gz
+
+  # Aggregate every release artifact's SHA-256 into one checksums.txt and
+  # upload it. This must run AFTER all asset jobs (release + cross-build) so
+  # the manifest is complete; the per-job approach in the old workflow let
+  # jobs clobber each other's checksums.txt (only the last upload survived).
+  checksums:
+    name: Aggregate checksums
+    needs: [release, cross-build]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Download all release assets
+        uses: robinraju/release-downloader@v1.11
+        with:
+          tag: ${{ github.event.inputs.tag || github.ref_name }}
+          fileName: "rtco-*.tar.gz"
+          out-file-path: assets/
+          extract: false
+
+      - name: Download Windows zip assets
+        uses: robinraju/release-downloader@v1.11
+        with:
+          tag: ${{ github.event.inputs.tag || github.ref_name }}
+          fileName: "rtco-*.zip"
+          out-file-path: assets/
+          extract: false
+
+      - name: Generate aggregated checksums.txt
         shell: bash
         run: |
           shopt -s nullglob
+          cd assets
           files=(rtco-*.tar.gz rtco-*.zip)
           if [[ ${#files[@]} -eq 0 ]]; then
             echo "No archive files found" && exit 1
           fi
+          # GNU sha256sum format: "<hash>  <filename>" — install.sh and
+          # install.ps1 both parse this exact layout.
           if command -v sha256sum &> /dev/null; then
             sha256sum "${files[@]}" > checksums.txt
           elif command -v shasum &> /dev/null; then
@@ -79,12 +172,10 @@ jobs:
           else
             echo "No SHA256 tool found" && exit 1
           fi
+          cat checksums.txt
 
-      - name: Upload release asset
+      - name: Upload checksums
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            rtco-*.tar.gz
-            rtco-*.zip
-            checksums.txt
-          generate_release_notes: true
+          files: assets/checksums.txt
+

@@ -96,39 +96,55 @@ pub fn reset() {
 // ---------------------------------------------------------------------------
 
 #[cfg(feature = "prometheus")]
-use prometheus::{register_histogram_vec, register_int_counter_vec, HistogramVec, IntCounterVec};
+use std::sync::LazyLock;
 
 #[cfg(feature = "prometheus")]
-lazy_static::lazy_static! {
-    /// Total number of commands that were filtered by RTCO.
-    static ref COMMANDS_FILTERED: IntCounterVec = register_int_counter_vec!(
+use prometheus::{register_histogram_vec, register_int_counter_vec, HistogramVec, IntCounterVec};
+
+/// Total number of commands that were filtered by RTCO.
+#[cfg(feature = "prometheus")]
+static COMMANDS_FILTERED: LazyLock<IntCounterVec> = LazyLock::new(|| {
+    register_int_counter_vec!(
         "rtco_commands_filtered_total",
         "Total number of commands processed by RTCO filters",
         &["command", "handler"]
-    ).expect("COMMANDS_FILTERED metric registration failed");
+    )
+    .expect("COMMANDS_FILTERED metric registration failed")
+});
 
-    /// Total number of commands that were passed through unfiltered.
-    static ref COMMANDS_PASSTHROUGH: IntCounterVec = register_int_counter_vec!(
+/// Total number of commands that were passed through unfiltered.
+#[cfg(feature = "prometheus")]
+static COMMANDS_PASSTHROUGH: LazyLock<IntCounterVec> = LazyLock::new(|| {
+    register_int_counter_vec!(
         "rtco_commands_passthrough_total",
         "Total number of commands that bypassed RTCO filtering",
         &["command"]
-    ).expect("COMMANDS_PASSTHROUGH metric registration failed");
+    )
+    .expect("COMMANDS_PASSTHROUGH metric registration failed")
+});
 
-    /// Total number of tokens saved by RTCO filters.
-    static ref TOKENS_SAVED: IntCounterVec = register_int_counter_vec!(
+/// Total number of tokens saved by RTCO filters.
+#[cfg(feature = "prometheus")]
+static TOKENS_SAVED: LazyLock<IntCounterVec> = LazyLock::new(|| {
+    register_int_counter_vec!(
         "rtco_tokens_saved_total",
         "Total number of tokens saved by RTCO compression",
         &["command", "handler"]
-    ).expect("TOKENS_SAVED metric registration failed");
+    )
+    .expect("TOKENS_SAVED metric registration failed")
+});
 
-    /// Latency of filter operations in seconds.
-    static ref FILTER_DURATION: HistogramVec = register_histogram_vec!(
+/// Latency of filter operations in seconds.
+#[cfg(feature = "prometheus")]
+static FILTER_DURATION: LazyLock<HistogramVec> = LazyLock::new(|| {
+    register_histogram_vec!(
         "rtco_filter_duration_seconds",
         "Latency of RTCO filter operations in seconds",
         &["command", "handler"],
         vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
-    ).expect("FILTER_DURATION metric registration failed");
-}
+    )
+    .expect("FILTER_DURATION metric registration failed")
+});
 
 // ---------------------------------------------------------------------------
 // No-op stubs (when feature is disabled)

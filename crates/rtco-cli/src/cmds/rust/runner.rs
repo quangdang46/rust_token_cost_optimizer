@@ -3,15 +3,15 @@
 use rtco_core::stream::StreamFilter;
 use rtco_core::truncate::{CAP_LIST, CAP_WARNINGS};
 use anyhow::Result;
-use lazy_static::lazy_static;
 use regex::Regex;
 use std::process::Command;
+use std::sync::LazyLock;
 
 const MAX_RUNNER_FAILURES: usize = CAP_WARNINGS;
 const MAX_RUNNER_LINES: usize = CAP_LIST;
 
-lazy_static! {
-    static ref ERROR_PATTERNS: Vec<Regex> = vec![
+static ERROR_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    vec![
         // Generic errors
         Regex::new(r"(?i)^.*error[\s:\[].*$").unwrap(),
         Regex::new(r"(?i)^.*\berr\b.*$").unwrap(),
@@ -31,7 +31,8 @@ lazy_static! {
         Regex::new(r"^\s*at .*:\d+:\d+.*$").unwrap(),
         // Go
         Regex::new(r"^.*\.go:\d+:.*$").unwrap(),
-    ];
+    ]
+});
 }
 
 struct ErrorStreamFilter {

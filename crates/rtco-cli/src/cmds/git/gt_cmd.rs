@@ -5,21 +5,17 @@ use rtco_core::tracking;
 use rtco_core::truncate::{reduced, CAP_LIST};
 use rtco_core::utils::{ok_confirmation, resolved_command, strip_ansi, truncate};
 use anyhow::{Context, Result};
-use lazy_static::lazy_static;
 use regex::Regex;
 use std::ffi::OsString;
+use std::sync::LazyLock;
 
-lazy_static! {
-    static ref EMAIL_RE: Regex =
-        Regex::new(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b").unwrap();
-    static ref BRANCH_NAME_RE: Regex = Regex::new(
-        r#"(?:Created|Pushed|pushed|Deleted|deleted)\s+branch\s+[`"']?([a-zA-Z0-9/_.\-+@]+)"#
-    )
-    .unwrap();
-    static ref PR_LINE_RE: Regex =
-        Regex::new(r"(Created|Updated)\s+pull\s+request\s+#(\d+)\s+for\s+([^\s:]+)(?::\s*(\S+))?")
-            .unwrap();
-}
+static EMAIL_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b").unwrap());
+static BRANCH_NAME_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(?:Created|Pushed|pushed|Deleted|deleted)\s+branch\s+[`"']?([a-zA-Z0-9/_.\-+@]+)"#).unwrap()
+});
+static PR_LINE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(Created|Updated)\s+pull\s+request\s+#(\d+)\s+for\s+([^\s:]+)(?::\s*(\S+))?").unwrap());
 
 fn run_gt_filtered(
     subcmd: &[&str],

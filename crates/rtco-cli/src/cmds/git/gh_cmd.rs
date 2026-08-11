@@ -8,28 +8,26 @@ use rtco_core::truncate::CAP_LIST;
 use rtco_core::utils::{ok_confirmation, resolved_command, truncate};
 use crate::git;
 use anyhow::Result;
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json::Value;
 use std::process::Command;
+use std::sync::LazyLock;
 
-lazy_static! {
-    static ref HTML_COMMENT_RE: Regex = Regex::new(r"(?s)<!--.*?-->").unwrap();
-    static ref BADGE_LINE_RE: Regex =
-        Regex::new(r"(?m)^\s*\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)\s*$").unwrap();
-    static ref IMAGE_ONLY_LINE_RE: Regex = Regex::new(r"(?m)^\s*!\[[^\]]*\]\([^)]*\)\s*$").unwrap();
-    static ref HORIZONTAL_RULE_RE: Regex =
-        Regex::new(r"(?m)^\s*(?:---+|\*\*\*+|___+)\s*$").unwrap();
-    static ref MULTI_BLANK_RE: Regex = Regex::new(r"\n{3,}").unwrap();
-    static ref HEADING_MARKER_RE: Regex = Regex::new(r"(?m)^\s*#+\s+").unwrap();
-    static ref BOLD_RE: Regex = Regex::new(r"\*\*([^*]+)\*\*").unwrap();
-    static ref STRIKETHROUGH_RE: Regex = Regex::new(r"~~([^~]+)~~").unwrap();
-    static ref LINK_URL_RE: Regex = Regex::new(r"\[([^\]]*)\]\([^)]+\)").unwrap();
-    static ref LIST_PREFIX_RE: Regex = Regex::new(r"(?m)^\s*[-*+]\s+").unwrap();
-    static ref CHECKBOX_RE: Regex = Regex::new(r"\s*\[[ x]\]\s*").unwrap();
-    static ref INLINE_CODE_RE: Regex = Regex::new(r"`([^`]+)`").unwrap();
-    static ref TABLE_SEP_RE: Regex = Regex::new(r"(?m)^\s*\|?\s*[-]+\s*[-| ]+[-]+\s*\|?\s*$").unwrap();
-}
+static HTML_COMMENT_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?s)<!--.*?-->").unwrap());
+static BADGE_LINE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?m)^\s*\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)\s*$").unwrap());
+static IMAGE_ONLY_LINE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^\s*!\[[^\]]*\]\([^)]*\)\s*$").unwrap());
+static HORIZONTAL_RULE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?m)^\s*(?:---+|\*\*\*+|___+)\s*$").unwrap());
+static MULTI_BLANK_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\n{3,}").unwrap());
+static HEADING_MARKER_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^\s*#+\s+").unwrap());
+static BOLD_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\*\*([^*]+)\*\*").unwrap());
+static STRIKETHROUGH_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"~~([^~]+)~~").unwrap());
+static LINK_URL_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[([^\]]*)\]\([^)]+\)").unwrap());
+static LIST_PREFIX_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^\s*[-*+]\s+").unwrap());
+static CHECKBOX_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s*\[[ x]\]\s*").unwrap());
+static INLINE_CODE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"`([^`]+)`").unwrap());
+static TABLE_SEP_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^\s*\|?\s*[-]+\s*[-| ]+[-]+\s*\|?\s*$").unwrap());
 
 /// Filter markdown body to remove noise while preserving meaningful content.
 /// Removes HTML comments, badge lines, image-only lines, horizontal rules,

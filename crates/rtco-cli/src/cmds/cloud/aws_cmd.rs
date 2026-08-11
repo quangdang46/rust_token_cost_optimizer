@@ -12,11 +12,11 @@ use rtco_core::utils::{
 };
 use crate::json_cmd;
 use anyhow::{Context, Result};
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::sync::Once;
+use std::sync::LazyLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 const MAX_ITEMS: usize = CAP_LIST;
@@ -1366,15 +1366,13 @@ fn filter_eks_cluster(json_str: &str) -> Option<FilterResult> {
     Some(FilterResult::new(text))
 }
 
-lazy_static! {
-    static ref S3_TRANSFER_RE: Regex = Regex::new(r"^(upload|download|delete|copy|move):").unwrap();
-    /// Strips leading ISO-8601 timestamps from log messages (redundant with event timestamp)
-    static ref LOG_TS_PREFIX_RE: Regex = Regex::new(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[Z]? ").unwrap();
-    /// Strips service handler class prefixes (e.g. "[com.example.Handler]") from log messages
-    static ref LOG_HANDLER_RE: Regex = Regex::new(r"\[[^\]]*\]\s*").unwrap();
-    /// Shortens "duration=XXms" to "dur=XX"
-    static ref LOG_DURATION_RE: Regex = Regex::new(r" duration=(\d+)ms").unwrap();
-}
+static S3_TRANSFER_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(upload|download|delete|copy|move):").unwrap());
+/// Strips leading ISO-8601 timestamps from log messages (redundant with event timestamp)
+static LOG_TS_PREFIX_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[Z]? ").unwrap());
+/// Strips service handler class prefixes (e.g. "[com.example.Handler]") from log messages
+static LOG_HANDLER_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[[^\]]*\]\s*").unwrap());
+/// Shortens "duration=XXms" to "dur=XX"
+static LOG_DURATION_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r" duration=(\d+)ms").unwrap());
 
 fn filter_sqs_messages(json_str: &str) -> Option<FilterResult> {
     let v: Value = serde_json::from_str(json_str).ok()?;

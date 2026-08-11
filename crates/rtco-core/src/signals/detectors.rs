@@ -6,6 +6,8 @@
 //! - [`SeparatorDetector`]: structural separator lines
 //! - [`LengthDetector`]: line-length heuristic
 
+use std::sync::LazyLock;
+
 use super::{ImportanceSignal, LineImportanceDetector, SignalCategory, SignalContext};
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder};
 
@@ -41,7 +43,7 @@ impl Default for ErrorWarningDetector {
     }
 }
 
-/// Case-insensitive pattern sets built once via lazy_static.
+/// Case-insensitive pattern sets built once via LazyLock.
 struct ErrorPatterns {
     /// Substrings that indicate a fatal/critical condition.
     fatal: AhoCorasick,
@@ -77,15 +79,13 @@ const ERROR_START_PATTERNS: &[&str] = &[
     "critical]",
 ];
 
-lazy_static::lazy_static! {
-    static ref ERROR_PATTERNS: ErrorPatterns = ErrorPatterns {
-        fatal: build_ci_ac(&["FATAL", "PANIC", "CRITICAL"]),
-        exceptions: build_ci_ac(&["exception", "errorcode", "errno"]),
-        failure: build_ci_ac(&["failed", " FAIL ", " fail ", "FAILED", "failure"]),
-        warning: build_ci_ac(&["warning", "WARN"]),
-        deprecated: build_ci_ac(&["deprecated"]),
-    };
-}
+static ERROR_PATTERNS: LazyLock<ErrorPatterns> = LazyLock::new(|| ErrorPatterns {
+    fatal: build_ci_ac(&["FATAL", "PANIC", "CRITICAL"]),
+    exceptions: build_ci_ac(&["exception", "errorcode", "errno"]),
+    failure: build_ci_ac(&["failed", " FAIL ", " fail ", "FAILED", "failure"]),
+    warning: build_ci_ac(&["warning", "WARN"]),
+    deprecated: build_ci_ac(&["deprecated"]),
+});
 
 /// Check if a line starts with any of the given case-insensitive patterns.
 fn line_starts_with_any(line: &str, patterns: &[&str]) -> bool {

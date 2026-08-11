@@ -14,8 +14,8 @@
 //! assert_eq!(kind, ContentType::JsonArray);
 //! ```
 
-use lazy_static::lazy_static;
 use regex::Regex;
+use std::sync::LazyLock;
 
 // ---------------------------------------------------------------------------
 // Content types
@@ -44,45 +44,47 @@ pub enum ContentType {
 // Lazily compiled regexes
 // ---------------------------------------------------------------------------
 
-lazy_static! {
-    /// JSON array: leading whitespace then `[` at the start, `]` at the end
-    /// (after trimming).  We only look at the first/last non-space char.
-    static ref JSON_ARRAY_OPEN: Regex = Regex::new(r"^\s*\[").unwrap();
-    static ref JSON_ARRAY_CLOSE: Regex = Regex::new(r"\]\s*$").unwrap();
+/// JSON array: leading whitespace then `[` at the start, `]` at the end
+/// (after trimming).  We only look at the first/last non-space char.
+static JSON_ARRAY_OPEN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\s*\[").unwrap());
+static JSON_ARRAY_CLOSE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\]\s*$").unwrap());
 
-    /// JSON object -- useful as a secondary signal for `SourceCode` false
-    /// positives (a `{` ... `}` block that looks like code may actually be
-    /// JSON).
-    static ref JSON_OBJECT_OPEN: Regex = Regex::new(r"^\s*\{").unwrap();
-    static ref JSON_OBJECT_CLOSE: Regex = Regex::new(r"\}\s*$").unwrap();
+/// JSON object -- useful as a secondary signal for `SourceCode` false
+/// positives (a `{` ... `}` block that looks like code may actually be
+/// JSON).
+static JSON_OBJECT_OPEN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\s*\{").unwrap());
+static JSON_OBJECT_CLOSE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\}\s*$").unwrap());
 
-    /// Diff hunk header: `--- a/file`, `+++ b/file`, `@@ -1,3 +1,5 @@`,
-    /// and also handles `--- original_file` / `+++ modified_file` without `a/` prefix.
-    static ref DIFF_HEADER: Regex =
-        Regex::new(r"^diff --git |^--- (?:[ab]/)?\S|^\+\+\+ (?:[ab]/)?\S|^@@\s+-?\d+").unwrap();
-    static ref DIFF_HUNK: Regex =
-        Regex::new(r"^@@\s+-?\d+").unwrap();
+/// Diff hunk header: `--- a/file`, `+++ b/file`, `@@ -1,3 +1,5 @@`,
+/// and also handles `--- original_file` / `+++ modified_file` without `a/` prefix.
+static DIFF_HEADER: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^diff --git |^--- (?:[ab]/)?\S|^\+\+\+ (?:[ab]/)?\S|^@@\s+-?\d+").unwrap()
+});
 
-    /// Search / grep result: `file.ext:NN:...` or `file.ext-NN-...`.
-    static ref SEARCH_RESULT: Regex =
-        Regex::new(r"^\S+\.(?:rs|py|js|ts|go|java|kt|swift|c|cpp|cxx|h|hpp|hh|rb|toml|yaml|yml|json|md|txt|sh|bash|zsh|fish|ps1|css|scss|less|php|sql|xml|conf|cfg|ini|env|log|r|lua|hs|ex|exs|vue|svelte|tex|svg|gradle|sbt|makefile|dockerfile):\d+[:\-]").unwrap();
+/// Search / grep result: `file.ext:NN:...` or `file.ext-NN-...`.
+static SEARCH_RESULT: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^\S+\.(?:rs|py|js|ts|go|java|kt|swift|c|cpp|cxx|h|hpp|hh|rb|toml|yaml|yml|json|md|txt|sh|bash|zsh|fish|ps1|css|scss|less|php|sql|xml|conf|cfg|ini|env|log|r|lua|hs|ex|exs|vue|svelte|tex|svg|gradle|sbt|makefile|dockerfile):\d+[:\-]").unwrap()
+});
 
-    /// HTML tag at the start of input.
-    static ref HTML_TAG: Regex = Regex::new(r"(?i)^\s*<!DOCTYPE\s+html|^\s*<html[\s>]").unwrap();
+/// HTML tag at the start of input.
+static HTML_TAG: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)^\s*<!DOCTYPE\s+html|^\s*<html[\s>]").unwrap());
 
-    /// Build/compiler output indicators.  Each alternative is tested per-line
-    /// (the function does per-line matching, not multi-line, so `^` means
-    /// start-of-string which equals start-of-line for each trimmed line).
-    static ref BUILD_ERROR: Regex =
-        Regex::new(r"(?i)((error|warning|fatal)(\[|:))|\berror\[E\d+\]|FAILED|Build failed|Compilation failed|cannot find|undefined reference").unwrap();
+/// Build/compiler output indicators.  Each alternative is tested per-line
+/// (the function does per-line matching, not multi-line, so `^` means
+/// start-of-string which equals start-of-line for each trimmed line).
+static BUILD_ERROR: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)((error|warning|fatal)(\[|:))|\berror\[E\d+\]|FAILED|Build failed|Compilation failed|cannot find|undefined reference").unwrap()
+});
 
-    /// Source code indicator keywords that appear at the start of a line
-    /// (after optional leading whitespace).
-    /// Handles both `pub fn` and `pub(crate) fn` / `pub(super) fn` etc.
-    static ref SOURCE_CODE_LINE: Regex = Regex::new(
+/// Source code indicator keywords that appear at the start of a line
+/// (after optional leading whitespace).
+/// Handles both `pub fn` and `pub(crate) fn` / `pub(super) fn` etc.
+static SOURCE_CODE_LINE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
         r"^(pub(?:\s+|\([^)]*\)\s*)?)?(fn |func |def |class |import |from |package |module |namespace |struct |enum |trait |impl |type |const |let |var |async |use |extern |static |#\[|//|/\*|\*/)"
-    ).unwrap();
-}
+    ).unwrap()
+});
 
 // ---------------------------------------------------------------------------
 // Detection

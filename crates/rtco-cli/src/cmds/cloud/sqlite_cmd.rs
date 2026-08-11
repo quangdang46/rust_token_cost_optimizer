@@ -7,15 +7,13 @@ use rtco_core::runner::{self, RunOptions};
 use rtco_core::utils::resolved_command;
 use anyhow::Result;
 use std::io::IsTerminal;
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
 use regex::Regex;
 
 const MAX_DATA_ROWS: usize = 50;
 
-lazy_static! {
-    static ref COLUMN_SEPARATOR: Regex = Regex::new(r"(?m)^[-]+(\s+[-]+)+$").unwrap();
-    static ref LINE_MODE_RE: Regex = Regex::new(r"(?m)^\s*\w+\s*=\s*.+").unwrap();
-}
+static COLUMN_SEPARATOR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^[-]+(\s+[-]+)+$").unwrap());
+static LINE_MODE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^\s*\w+\s*=\s*.+").unwrap());
 
 pub fn run(args: &[String], verbose: u8) -> Result<i32> {
     let mut cmd = resolved_command("sqlite3");

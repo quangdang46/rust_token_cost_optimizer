@@ -15,13 +15,13 @@
 use rtco_core::runner::{self, RunOptions};
 use rtco_core::utils::resolved_command;
 use anyhow::Result;
-use lazy_static::lazy_static;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 use regex::Regex;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::LazyLock;
 
 // ── Task detection ───────────────────────────────────────────────────────────
 
@@ -145,17 +145,13 @@ pub fn run(args: &[String], verbose: u8) -> Result<i32> {
 
 // ── Build-phase line filter ──────────────────────────────────────────────────
 
-lazy_static! {
-    /// Strip noisy lines emitted on every Maven run.
-    static ref INFO_NOISE: Regex = Regex::new(
-        r"^\[INFO\]\s*(---|Building\s|Downloading\s|Downloaded\s|Installing\s|\s*$)"
-    ).unwrap();
-    static ref DOWNLOAD_LEGACY: Regex = Regex::new(r"^(Downloading|Downloaded|Progress)\b").unwrap();
-    /// Keep these for diagnostics.
-    static ref KEEP: Regex = Regex::new(
-        r"^\[(ERROR|WARNING)\]|^BUILD\s+(SUCCESS|FAILURE)|^\[INFO\]\s+BUILD\s+(SUCCESS|FAILURE)|^\[INFO\]\s+Total time|^\[INFO\]\s+Finished at"
-    ).unwrap();
-}
+/// Strip noisy lines emitted on every Maven run.
+static INFO_NOISE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\[INFO\]\s*(---|Building\s|Downloading\s|Downloaded\s|Installing\s|\s*$)").unwrap());
+static DOWNLOAD_LEGACY: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(Downloading|Downloaded|Progress)\b").unwrap());
+/// Keep these for diagnostics.
+static KEEP: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\[(ERROR|WARNING)\]|^BUILD\s+(SUCCESS|FAILURE)|^\[INFO\]\s+BUILD\s+(SUCCESS|FAILURE)|^\[INFO\]\s+Total time|^\[INFO\]\s+Finished at").unwrap());
 
 /// Predicate version, exposed for streaming/line tests.
 fn filter_build_line(line: &str) -> bool {

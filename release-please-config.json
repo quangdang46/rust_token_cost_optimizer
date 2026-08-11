@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "rust",
+      "package-name": "rtco",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "extra-files": [
+        { "type": "toml", "path": "Cargo.toml", "jsonpath": "$.workspace.package.version" },
+        { "type": "toml", "path": "crates/rtco-core/Cargo.toml", "jsonpath": "$.package.version" },
+        { "type": "toml", "path": "crates/rtco-cli/Cargo.toml", "jsonpath": "$.package.version" }
+      ],
+      "changelog-sections": [
+        { "type": "feat", "section": "Features" },
+        { "type": "fix", "section": "Bug Fixes" },
+        { "type": "perf", "section": "Performance" },
+        { "type": "security", "section": "Security" }
+      ]
+    }
+  },
+  "plugins": [
+    "sentence-case"
+  ]
+}

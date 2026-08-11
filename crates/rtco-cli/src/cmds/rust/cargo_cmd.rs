@@ -8,7 +8,7 @@ use anyhow::Result;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::ffi::OsString;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 #[derive(Debug, Clone)]
 pub enum CargoCommand {
@@ -601,18 +601,18 @@ fn flush_failure_block(header: &mut String, body: &mut Vec<String>, failures: &m
 
 /// Filter cargo nextest output - show failures + compact summary
 fn filter_cargo_nextest(output: &str) -> String {
-    static SUMMARY_RE: OnceLock<regex::Regex> = OnceLock::new();
-    let summary_re = SUMMARY_RE.get_or_init(|| {
+    static SUMMARY_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
         regex::Regex::new(
             r"Summary \[\s*([\d.]+)s\]\s+(\d+) tests? run:\s+(\d+) passed(?:,\s+(\d+) failed)?(?:,\s+(\d+) skipped)?"
         ).expect("invalid nextest summary regex")
     });
+    let summary_re = &*SUMMARY_RE;
 
-    static STARTING_RE: OnceLock<regex::Regex> = OnceLock::new();
-    let starting_re = STARTING_RE.get_or_init(|| {
+    static STARTING_RE: LazyLock<regex::Regex> = LazyLock::new(|| {
         regex::Regex::new(r"Starting \d+ tests? across (\d+) binar(?:y|ies)")
             .expect("invalid nextest starting regex")
     });
+    let starting_re = &*STARTING_RE;
 
     let mut failures: Vec<String> = Vec::new();
     let mut in_failure_block = false;
@@ -899,12 +899,12 @@ impl AggregatedTestResult {
     /// Parse a test result summary line
     /// Format: "test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s"
     fn parse_line(line: &str) -> Option<Self> {
-        static RE: OnceLock<regex::Regex> = OnceLock::new();
-        let re = RE.get_or_init(|| {
+        static RE: LazyLock<regex::Regex> = LazyLock::new(|| {
             regex::Regex::new(
                 r"test result: (\w+)\.\s+(\d+) passed;\s+(\d+) failed;\s+(\d+) ignored;\s+(\d+) measured;\s+(\d+) filtered out(?:;\s+finished in ([\d.]+)s)?"
             ).unwrap()
         });
+        let re = &*RE;
 
         let caps = re.captures(line)?;
         let status = caps.get(1)?.as_str();

@@ -7,7 +7,7 @@
 //! path to `<basename>#<8-hex-sha256>` so the tracking DB does not pin a
 //! user's private layout.
 //!
-//! All regex are `lazy_static!`-cached and the public functions perform a
+//! All regex are `LazyLock`-cached and the public functions perform a
 //! single pass per call — they run on the `Tracker::record` hot path.
 //!
 //! `redact_content` reuses the same regex bundle for free-form command output
@@ -15,42 +15,47 @@
 //! see the security & privacy design doc). It returns both the redacted text
 //! and a count of substitutions so callers can prepend an audit header.
 
-use lazy_static::lazy_static;
 use regex::Regex;
 use sha2::{Digest, Sha256};
 use std::path::Path;
+use std::sync::LazyLock;
 
-lazy_static! {
-    /// `https://user:secret@host/repo` → keep host/path, mask user + secret.
-    /// Restricted to URL contexts (after `://`) so we do not chew through
-    /// arbitrary `user:pass` substrings.
-    static ref URL_USERINFO_RE: Regex =
-        Regex::new(r"(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*://)(?P<user>[^/@\s:]+):(?P<pass>[^@\s]+)@")
-            .expect("URL_USERINFO_RE");
+/// `https://user:secret@host/repo` → keep host/path, mask user + secret.
+/// Restricted to URL contexts (after `://`) so we do not chew through
+/// arbitrary `user:pass` substrings.
+static URL_USERINFO_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*://)(?P<user>[^/@\s:]+):(?P<pass>[^@\s]+)@")
+        .expect("URL_USERINFO_RE")
+});
 
-    /// `Authorization: Bearer abc123` / `bearer abc123` style.
-    /// We match the keyword and replace the trailing token with `****`.
-    static ref BEARER_RE: Regex = Regex::new(
+/// `Authorization: Bearer abc123` / `bearer abc123` style.
+/// We match the keyword and replace the trailing token with `****`.
+static BEARER_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
         r#"(?i)(?P<lead>(?:authorization\s*[:=]\s*)?(?:bearer|basic|token))[ \t]+(?P<val>[^\s"']+)"#
     )
-    .expect("BEARER_RE");
+    .expect("BEARER_RE")
+});
 
-    /// `--token=secret` / `--token secret` / `-p=secret`.
-    /// Covers `token`, `password`, `passwd`, `pwd`, `api-key`, `apikey`,
-    /// `secret`, `auth`, `access-token`, `refresh-token`.
-    static ref FLAG_VALUE_RE: Regex = Regex::new(
+/// `--token=secret` / `--token secret` / `-p=secret`.
+/// Covers `token`, `password`, `passwd`, `pwd`, `api-key`, `apikey`,
+/// `secret`, `auth`, `access-token`, `refresh-token`.
+static FLAG_VALUE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
         r#"(?ix)
         (?P<flag>--(?:token|password|passwd|pwd|api[_-]?key|secret|auth|access[_-]?token|refresh[_-]?token))
         (?P<sep>=|\s+)
         (?P<val>[^\s"']+)
         "#
     )
-    .expect("FLAG_VALUE_RE");
+    .expect("FLAG_VALUE_RE")
+});
 
-    /// Inline env-style `FOO_TOKEN=value` assignment.
-    /// Restricted to a known-allowlist of credential-shaped variable names so
-    /// we do not mangle benign `LANG=en_US.UTF-8`-style assignments.
-    static ref INLINE_ENV_RE: Regex = Regex::new(
+/// Inline env-style `FOO_TOKEN=value` assignment.
+/// Restricted to a known-allowlist of credential-shaped variable names so
+/// we do not mangle benign `LANG=en_US.UTF-8`-style assignments.
+static INLINE_ENV_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
         r"(?x)
         \b
         (?P<name>
@@ -80,15 +85,17 @@ lazy_static! {
         )
         =
         (?P<val>\S+)
-        "
+        ",
     )
-    .expect("INLINE_ENV_RE");
+    .expect("INLINE_ENV_RE")
+});
 
-    /// "Looks like a credential" heuristic — well-known prefixes.
-    /// `ghp_…`, `gho_…`, `ghu_…`, `ghs_…`, `github_pat_…`,
-    /// `sk-…` / `sk_live_…` / `sk_test_…`, `xoxb-…` / `xoxp-…`,
-    /// `AKIA…` (AWS access key id), `ASIA…` (AWS STS), `glpat-…` (GitLab).
-    static ref CREDENTIAL_PREFIX_RE: Regex = Regex::new(
+/// "Looks like a credential" heuristic — well-known prefixes.
+/// `ghp_…`, `gho_…`, `ghu_…`, `ghs_…`, `github_pat_…`,
+/// `sk-…` / `sk_live_…` / `sk_test_…`, `xoxb-…` / `xoxp-…`,
+/// `AKIA…` (AWS access key id), `ASIA…` (AWS STS), `glpat-…` (GitLab).
+static CREDENTIAL_PREFIX_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
         r"(?x)
         \b
         (?:
@@ -100,14 +107,14 @@ lazy_static! {
         )
         [A-Za-z0-9_\-]{16,}
         \b
-        "
+        ",
     )
-    .expect("CREDENTIAL_PREFIX_RE");
+    .expect("CREDENTIAL_PREFIX_RE")
+});
 
-    /// Project-path output shape used by `redact_project_path`.
-    static ref BASENAME_SAFE_RE: Regex =
-        Regex::new(r"[^A-Za-z0-9_.-]").expect("BASENAME_SAFE_RE");
-}
+/// Project-path output shape used by `redact_project_path`.
+static BASENAME_SAFE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"[^A-Za-z0-9_.-]").expect("BASENAME_SAFE_RE"));
 
 /// Scrub credential-shaped substrings from a command line.
 ///
@@ -153,7 +160,7 @@ pub(crate) fn redact_command(s: &str) -> String {
 /// "something looked like a credential and was masked", not "exactly N unique
 /// secrets were found".
 ///
-/// Reuses the same `lazy_static!`-cached regex bundle as `redact_command`,
+/// Reuses the same `LazyLock`-cached regex bundle as `redact_command`,
 /// so the cost is identical to a single command-line redact pass.
 pub(crate) fn redact_content(s: &str) -> (String, usize) {
     if s.is_empty() {

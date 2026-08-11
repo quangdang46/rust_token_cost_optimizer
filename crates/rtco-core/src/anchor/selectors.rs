@@ -2,22 +2,26 @@
 //!
 //! Each anchor type has a regex-based detector and a default priority.
 
-use lazy_static::lazy_static;
+use std::sync::LazyLock;
+
 use regex::Regex;
 
-lazy_static! {
-    static ref HEADER_RE: Regex = Regex::new(r"^(#{1,6}\s|={3,}|-{3,}|___)").unwrap();
-    static ref COMMAND_RE: Regex = Regex::new(r"^(\$ |% |> |\||`).+").unwrap();
-    static ref PATH_RE: Regex = Regex::new(
-        r"(?i)(?:^|\s)(?:/[a-z0-9_./-]+|[a-zA-Z]:\\[a-z0-9_\.\\-]+|[a-z0-9_./-]+\.[a-z]+)"
-    ).unwrap();
-    static ref KEY_VALUE_RE: Regex = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*\s*[=:]\s*.+").unwrap();
-    static ref DEFINITION_RE: Regex =
-        Regex::new(r"^\s*(?:pub\s+)?(?:fn|def|class|struct|enum|trait|impl|function|function\s|async\s+fn|const|let|type|interface|typealias)\s+").unwrap();
-    static ref SUMMARY_RE: Regex =
-        Regex::new(r"(?i)(?:^summary|tests:|results:|total:|passed:|failed:|errors?:\s+\d|^\d+ passed|^\d+ failed)").unwrap();
-    static ref ARROW_RE: Regex = Regex::new(r"^---+$").unwrap();
-}
+static HEADER_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(#{1,6}\s|={3,}|-{3,}|___)").unwrap());
+static COMMAND_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(\$ |% |> |\||`).+").unwrap());
+static PATH_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)(?:^|\s)(?:/[a-z0-9_./-]+|[a-zA-Z]:\\[a-z0-9_\.\\-]+|[a-z0-9_./-]+\.[a-z]+)")
+        .unwrap()
+});
+static KEY_VALUE_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*\s*[=:]\s*.+").unwrap());
+static DEFINITION_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^\s*(?:pub\s+)?(?:fn|def|class|struct|enum|trait|impl|function|function\s|async\s+fn|const|let|type|interface|typealias)\s+").unwrap()
+});
+static SUMMARY_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)(?:^summary|tests:|results:|total:|passed:|failed:|errors?:\s+\d|^\d+ passed|^\d+ failed)").unwrap()
+});
+static ARROW_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^---+$").unwrap());
 
 /// Type of detected anchor.
 #[derive(Debug, Clone, PartialEq)]

@@ -1,0 +1,26 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # One "rust" package at the workspace root. release-please bumps
+          # [workspace.package] version + both crate [package] versions via
+          # extra-files, updates CHANGELOG.md, and opens a release PR. On
+          # merge it tags `v{version}` — which the existing release.yml
+          # (on: push: tags: v*) then builds and publishes.
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
