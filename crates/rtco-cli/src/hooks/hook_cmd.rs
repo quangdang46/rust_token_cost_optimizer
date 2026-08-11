@@ -1116,6 +1116,7 @@ mod tests {
         let tmp = std::env::temp_dir().join("rtk-test-audit");
         let _ = std::fs::create_dir_all(&tmp);
         let log_path = tmp.join("hook-audit.log");
+        // nosemgrep: filesystem-deletion — test temp cleanup.
         let _ = std::fs::remove_file(&log_path);
 
         {
@@ -1140,6 +1141,7 @@ mod tests {
         assert_eq!(parts[2], "git status");
         assert_eq!(parts[3], "rtco git status");
 
+        // nosemgrep: filesystem-deletion — test temp cleanup.
         let _ = std::fs::remove_dir_all(&tmp);
     }
 

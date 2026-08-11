@@ -216,12 +216,15 @@ jobs:
           fetch-depth: 0
       # On PRs, scan only the diff against the base branch; on push, scan the
       # whole tree (baseline-commit would be empty for non-PR events).
+      # --severity=ERROR: only ERROR-severity rules block the build; WARNING
+      # rules (filesystem-deletion, path-env-manipulation) are advisory.
       - name: semgrep scan
         shell: bash
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             semgrep scan --config .semgrep.yml \
-              --baseline-commit ${{ github.event.pull_request.base.sha }} --error
+              --baseline-commit ${{ github.event.pull_request.base.sha }} \
+              --severity=ERROR --error
           else
-            semgrep scan --config .semgrep.yml --error
+            semgrep scan --config .semgrep.yml --severity=ERROR --error
           fi

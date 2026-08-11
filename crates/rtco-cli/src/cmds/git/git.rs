@@ -2908,6 +2908,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
             stdout
         );
 
+        // nosemgrep: filesystem-deletion — test temp dir cleanup.
         let _ = std::fs::remove_dir_all(&tmp);
     }
 

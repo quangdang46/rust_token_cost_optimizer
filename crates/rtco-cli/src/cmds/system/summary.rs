@@ -24,8 +24,7 @@ pub fn run(command: &str, verbose: u8) -> Result<i32> {
         c.args(["/C", command]);
         c
     } else {
-        // nosemgrep: interpreter-execution — spawning `sh -c` is the Unix
-        // path for running the proxied command; intentional and required.
+        // nosemgrep: interpreter-execution
         let mut c = Command::new("sh");
         c.args(["-c", command]);
         c

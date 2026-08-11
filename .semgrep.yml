@@ -67,8 +67,8 @@ rules:
     pattern: ureq::$METHOD(...)
     paths:
       exclude:
-        - crates/rtco-core/src/telemetry.rs
-        - crates/rtco-cli/src/telemetry_cmd.rs
+        - "**/crates/rtco-core/src/telemetry.rs"
+        - "**/crates/rtco-cli/src/telemetry_cmd.rs"
     message: >
       ureq usage outside of the telemetry modules.
       HTTP calls are restricted to telemetry to prevent data exfiltration.

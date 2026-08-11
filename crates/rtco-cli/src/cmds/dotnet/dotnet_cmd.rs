@@ -422,12 +422,16 @@ fn format_dotnet_format_output(
 
 fn cleanup_temp_file(path: &Path) {
     if path.exists() {
+        // nosemgrep: filesystem-deletion — removing the temp output file
+        // we created for this filter run; intentional cleanup.
         std::fs::remove_file(path).ok();
     }
 }
 
 fn cleanup_temp_dir(path: &Path) {
     if path.exists() {
+        // nosemgrep: filesystem-deletion — removing the temp output dir
+        // we created for this filter run; intentional cleanup.
         std::fs::remove_dir_all(path).ok();
     }
 }

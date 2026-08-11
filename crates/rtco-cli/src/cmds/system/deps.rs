@@ -319,6 +319,7 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap_or_default();
         let result = run(&dir, 0);
         assert!(result.is_ok());
+        // nosemgrep: filesystem-deletion — test temp dir cleanup.
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -340,6 +341,7 @@ mod tests {
         }"#).unwrap();
         let result = run(&dir, 0);
         assert!(result.is_ok());
+        // nosemgrep: filesystem-deletion — test temp dir cleanup.
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -361,6 +363,7 @@ criterion = "0.5"
 "#).unwrap();
         let result = run(&dir, 0);
         assert!(result.is_ok());
+        // nosemgrep: filesystem-deletion — test temp dir cleanup.
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -372,6 +375,7 @@ criterion = "0.5"
         std::fs::write(&req_path, "requests==2.28.0\nflask==2.3.0\n").unwrap();
         let result = run(&dir, 0);
         assert!(result.is_ok());
+        // nosemgrep: filesystem-deletion — test temp dir cleanup.
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -389,6 +393,7 @@ require (
 "#).unwrap();
         let result = run(&dir, 0);
         assert!(result.is_ok());
+        // nosemgrep: filesystem-deletion — test temp dir cleanup.
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
