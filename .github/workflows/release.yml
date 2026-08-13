@@ -139,7 +139,7 @@ jobs:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Download all release assets
-        uses: robinraju/release-downloader@v1.11
+        uses: robinraju/release-downloader@v1.13
         with:
           tag: ${{ github.event.inputs.tag || github.ref_name }}
           fileName: "rtco-*.tar.gz"
@@ -147,7 +147,7 @@ jobs:
           extract: false
 
       - name: Download Windows zip assets
-        uses: robinraju/release-downloader@v1.11
+        uses: robinraju/release-downloader@v1.13
         with:
           tag: ${{ github.event.inputs.tag || github.ref_name }}
           fileName: "rtco-*.zip"
