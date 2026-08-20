@@ -1073,6 +1073,28 @@ fn analyze_pipeline(
     }
 }
 
+fn find_first_pipe_offset(
+    cmd: &str,
+    segment_start: usize,
+    final_stage_start: usize,
+) -> Option<usize> {
+    // The token stream is quote-aware; find the first Pipe token between
+    // segment_start and final_stage_start. Fallback to a raw scan if not found.
+    let tokens = tokenize(cmd);
+    for tok in &tokens {
+        if tok.kind == TokenKind::Pipe
+            && tok.offset >= segment_start
+            && tok.offset < final_stage_start
+        {
+            return Some(tok.offset);
+        }
+    }
+    // Fallback: raw `|` that tokenize didn't emit (shouldn't happen, but safe)
+    cmd[segment_start..final_stage_start]
+        .find('|')
+        .map(|i| segment_start + i)
+}
+
 /// Rewrite the final stage of a pipeline (e.g. `git log | grep foo` →
 /// `rtco git log | rtco grep foo`) when the rule is `pipeline_final_safe`.
 /// Ported from upstream rtk (523c803).
@@ -1085,6 +1107,16 @@ fn rewrite_pipeline_final_stage(
 ) -> Option<String> {
     let final_stage_start = analysis.final_stage_start?;
     let final_stage = cmd[final_stage_start..analysis.end_offset].trim();
+
+    // Only allow pipeline_final_safe rewrite when the producer is rtco-tracked.
+    // Otherwise the final grep/rg reads piped stdin, not the working tree
+    // (e.g. `tasklist | grep -ci cargo` must not become repo-wide search).
+    if let Some(pipe_offset) = find_first_pipe_offset(cmd, segment_start, final_stage_start) {
+        let producer = &cmd[segment_start..pipe_offset];
+        if !is_rtco_tracked_producer(producer) {
+            return None;
+        }
+    }
 
     rewrite_segment_inner(
         final_stage,
@@ -1314,7 +1346,68 @@ fn search_uses_pattern_file(cmd: &str) -> bool {
 }
 
 fn pipeline_final_command_is_safe(rtco_cmd: &str, cmd: &str) -> bool {
-    !matches!(rtco_cmd, "rtco grep" | "rtco rg") || !search_uses_pattern_file(cmd)
+    if !matches!(rtco_cmd, "rtco grep" | "rtco rg") {
+        return true;
+    }
+    if search_uses_pattern_file(cmd) {
+        return false;
+    }
+    // Counting/listing-only grep modes read stdin for filtering, not repo search
+    // (e.g. `tasklist | grep -ci cargo` — rewriting to `rtco grep` would
+    // search the repo instead of counting piped lines, issue #74).
+    if search_is_counting_mode(cmd) {
+        return false;
+    }
+    true
+}
+
+fn search_is_counting_mode(cmd: &str) -> bool {
+    // Only treat counting output modes as "stdin-filtering" when the grep
+    // after a pipe clearly wants to count/filter piped lines, not search repo.
+    // Narrow to count semantics (-c/--count and combined -ci etc) to avoid
+    // over-broad suppression of legit `git log | grep -l pattern` etc.
+    shell_split(cmd)
+        .into_iter()
+        .skip(1)
+        .take_while(|arg| arg != "--")
+        .any(|arg| {
+            if arg == "-c" || arg == "--count" {
+                return true;
+            }
+            if let Some(flags) = arg.strip_prefix('-').filter(|f| !f.starts_with('-')) {
+                if flags.contains('c') {
+                    return true;
+                }
+            }
+            false
+        })
+}
+
+/// Returns true if `producer` is an rtco-tracked command whose stdout
+/// is semantically compatible with piping into a repo-wide search.
+/// When the producer is NOT rtco-tracked (e.g. `tasklist`, `ps`, `cat`),
+/// the final `grep`/`rg` reads piped stdin, not the working tree — so
+/// rewriting it to `rtco grep` (repo-wide search) mangles the pipeline
+/// (issues #73/#74).
+fn is_rtco_tracked_producer(producer: &str) -> bool {
+    let trimmed = producer.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    // Strip env prefixes and normalize like classify_command does
+    let stripped = ENV_PREFIX.replace(trimmed, "");
+    let clean = stripped.trim();
+    if clean.is_empty() {
+        return false;
+    }
+    let normalized = strip_absolute_path(clean);
+    let normalized = strip_git_global_opts(&normalized);
+    let normalized = normalize_php_tool_command(&normalized);
+    let normalized = strip_golangci_global_opts(&normalized);
+    matches!(
+        classify_command(&normalized),
+        Classification::Supported { .. }
+    )
 }
 
 fn rewrite_segment(
@@ -5407,6 +5500,51 @@ mod tests {
         assert_eq!(
             rewrite_command_no_prefixes("git log | ffs grep foo", &[]),
             None
+        );
+    }
+
+    #[test]
+    fn test_pipeline_counting_grep_after_pipe_not_rewritten() {
+        // `| grep -c` / `| grep -ci` after pipe reads piped stdin to count,
+        // not the working tree — rewriting to `rtco grep` would mangle it
+        // into a repo-wide search (issues #73/#74: tasklist | grep -ci cargo).
+        assert_eq!(
+            rewrite_command_no_prefixes("tasklist | grep -c cargo", &[]),
+            None
+        );
+        assert_eq!(
+            rewrite_command_no_prefixes("tasklist 2>/dev/null | grep -ci cargo", &[]),
+            None
+        );
+        assert_eq!(
+            rewrite_command_no_prefixes("tasklist | grep --count cargo", &[]),
+            None
+        );
+        assert_eq!(
+            rewrite_command_no_prefixes("cat file.txt | grep -c pattern", &[]),
+            None
+        );
+        // Plain `| grep pattern` without -c still rewrites (repo search intent)
+        assert_eq!(
+            rewrite_command_no_prefixes("git log | grep pattern", &[]),
+            Some("git log | rtco grep pattern".into())
+        );
+    }
+
+    #[test]
+    fn test_grep_e_pipe_in_regex_still_rewrites() {
+        // `grep -iE "a|b" file` — the `|` is inside a quoted regex, not a pipe
+        // operator. Must still rewrite to `rtco grep` (issue #73).
+        assert_eq!(
+            rewrite_command_no_prefixes(
+                "grep -iE \"registered worker|EADDR\" \"/tmp/ab-worker.log\"",
+                &[]
+            ),
+            Some("rtco grep -iE \"registered worker|EADDR\" \"/tmp/ab-worker.log\"".into())
+        );
+        assert_eq!(
+            rewrite_command_no_prefixes("grep -E \"foo|bar\" file.log", &[]),
+            Some("rtco grep -E \"foo|bar\" file.log".into())
         );
     }
 
