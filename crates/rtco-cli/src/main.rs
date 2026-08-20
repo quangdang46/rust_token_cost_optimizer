@@ -2692,6 +2692,7 @@ fn run_cli() -> Result<i32> {
 #[allow(clippy::match_like_matches_macro)]
 fn is_operational_command(cmd: &Commands) -> bool {
     match cmd {
+        // Operational commands — execute external tools, go through integrity check.
         Commands::Ls { .. }
         | Commands::Tree { .. }
         | Commands::Read { .. }
@@ -2714,7 +2715,9 @@ fn is_operational_command(cmd: &Commands) -> bool {
         | Commands::Sqlite { .. }
         | Commands::Summary { .. }
         | Commands::Grep { .. }
+        | Commands::Rg { .. }
         | Commands::Wget { .. }
+        | Commands::Wc { .. }
         | Commands::Vitest { .. }
         | Commands::Prisma { .. }
         | Commands::Tsc { .. }
@@ -2745,7 +2748,6 @@ fn is_operational_command(cmd: &Commands) -> bool {
         | Commands::Gt { .. }
         | Commands::Aws { .. }
         | Commands::Psql { .. }
-        | Commands::Wc { .. }
         | Commands::Jest { .. }
         | Commands::Format { .. }
         | Commands::Mypy { .. }
@@ -2753,8 +2755,25 @@ fn is_operational_command(cmd: &Commands) -> bool {
         | Commands::Mvn { .. }
         | Commands::Sbt { .. }
         | Commands::Hashline { .. }
-        | Commands::Ffs { .. } => true,
-        _ => false,
+        | Commands::Ffs { .. }
+        | Commands::Proxy { .. }
+        | Commands::Pipe { .. }
+        | Commands::Run { .. } => true,
+        // Meta commands — skip integrity check (don't execute external tools).
+        Commands::Init { .. }
+        | Commands::Gain { .. }
+        | Commands::Discover { .. }
+        | Commands::Session { .. }
+        | Commands::Telemetry { .. }
+        | Commands::Learn { .. }
+        | Commands::CcEconomics { .. }
+        | Commands::Config { .. }
+        | Commands::HookAudit { .. }
+        | Commands::Rewrite { .. }
+        | Commands::Hook { .. }
+        | Commands::Trust { .. }
+        | Commands::Untrust { .. }
+        | Commands::Verify { .. } => false,
     }
 }
 
