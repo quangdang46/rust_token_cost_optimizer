@@ -2763,7 +2763,7 @@ fn is_operational_command(cmd: &Commands) -> bool {
         Commands::Init { .. }
         | Commands::Gain { .. }
         | Commands::Discover { .. }
-        | Commands::Session { .. }
+        | Commands::Session {}
         | Commands::Telemetry { .. }
         | Commands::Learn { .. }
         | Commands::CcEconomics { .. }
@@ -2772,7 +2772,7 @@ fn is_operational_command(cmd: &Commands) -> bool {
         | Commands::Rewrite { .. }
         | Commands::Hook { .. }
         | Commands::Trust { .. }
-        | Commands::Untrust { .. }
+        | Commands::Untrust
         | Commands::Verify { .. } => false,
     }
 }
