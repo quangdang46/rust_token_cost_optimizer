@@ -56,3 +56,6 @@ claudedocs
 
 # Conversation export artifact
 handoff.txt
+
+# bv (beads viewer) local config and caches
+.bv/
