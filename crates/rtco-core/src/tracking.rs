@@ -1251,6 +1251,43 @@ impl Tracker {
         Ok(rows.filter_map(|r| r.ok()).collect())
     }
 
+    /// Bypass rate per command slug: for each base command (e.g. `git`, `grep`),
+    /// count total invocations vs proxy invocations (rtco_cmd LIKE 'rtco proxy%').
+    /// Returns `(slug, total, proxy, bypass_rate)` sorted by bypass rate desc.
+    pub fn get_bypass_rates(
+        &self,
+        project_path: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<(String, i64, i64, f64)>> {
+        let (project_exact, project_glob) = project_filter_params(project_path);
+        let mut stmt = self.conn.prepare(
+            "SELECT slug, COUNT(*) as total,
+                    SUM(CASE WHEN rtco_cmd LIKE 'rtco proxy%' THEN 1 ELSE 0 END) as proxy
+             FROM (
+                 SELECT TRIM(SUBSTR(original_cmd, 1,
+                     INSTR(original_cmd || ' ', ' ') - 1)) as slug, rtco_cmd
+                 FROM commands
+                 WHERE (?1 IS NULL OR project_path = ?1 OR project_path GLOB ?2)
+             )
+             GROUP BY slug
+             HAVING total >= 1
+             ORDER BY CAST(proxy AS REAL) / COUNT(*) DESC
+             LIMIT ?3",
+        )?;
+        let rows = stmt.query_map(params![project_exact, project_glob, limit as i64], |row| {
+            let slug: String = row.get(0)?;
+            let total: i64 = row.get(1)?;
+            let proxy: i64 = row.get(2)?;
+            let rate = if total > 0 {
+                proxy as f64 / total as f64 * 100.0
+            } else {
+                0.0
+            };
+            Ok((slug, total, proxy, rate))
+        })?;
+        Ok(rows.filter_map(|r| r.ok()).collect())
+    }
+
     /// Average savings percentage per command (unweighted — each command name counts once).
     pub fn avg_savings_per_command(&self) -> Result<f64> {
         let avg: f64 = self.conn.query_row(

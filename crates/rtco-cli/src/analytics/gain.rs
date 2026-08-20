@@ -232,6 +232,38 @@ pub fn run(
             println!();
         }
 
+        // Bypass rate section: shows which commands are most often run via `rtco proxy`
+        if let Ok(bypass) = tracker.get_bypass_rates(project_scope.as_deref(), 10) {
+            let has_bypass = bypass.iter().any(|(_, _, proxy, _)| *proxy > 0);
+            if has_bypass {
+                println!("{}", styled("Bypass Rate (proxy invocations)", true));
+                println!("──────────────────────────────────────────────────────────");
+                println!(
+                    "  {:<16} {:>8} {:>8} {:>8}",
+                    "Command", "Total", "Proxy", "Rate"
+                );
+                println!(
+                    "  {:<16} {:>8} {:>8} {:>8}",
+                    "─".repeat(16),
+                    "─".repeat(8),
+                    "─".repeat(8),
+                    "─".repeat(8)
+                );
+                for (slug, total, proxy, rate) in &bypass {
+                    if *proxy > 0 {
+                        println!(
+                            "  {:<16} {:>8} {:>8} {:>7.1}%",
+                            truncate(slug, 16),
+                            total,
+                            proxy,
+                            rate
+                        );
+                    }
+                }
+                println!();
+            }
+        }
+
         if graph && !summary.by_day.is_empty() {
             println!("{}", styled("Daily Savings (last 30 days)", true)); // styled header
             println!("──────────────────────────────────────────────────────────");
