@@ -487,11 +487,6 @@ pub fn force_tee_tail_hint_sensitive(
 ///
 /// Returns `None` if tee is disabled or skipped.
 //
-// NOTE: Intentionally not yet wired into any filter caller. This change ships
-// the helper so consumers can adopt it incrementally per filter (the existing
-// `force_tee_tail_hint` callers stay on the simpler hint until they prove the
-// preview adds signal). Tests below exercise it directly.
-#[allow(dead_code)]
 pub fn force_tee_tail_hint_with_preview(
     content: &str,
     command_slug: &str,

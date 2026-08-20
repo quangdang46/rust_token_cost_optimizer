@@ -1331,9 +1331,19 @@ fn run_fallback(parse_error: clap::Error) -> Result<i32> {
                     None
                 };
 
-                let filtered = toml_filter::apply_filter(filter, &combined_raw);
+                let filter_result = toml_filter::apply_filter_with_meta(filter, &combined_raw);
+                let filtered = filter_result.text;
                 println!("{}", filtered);
-                if let Some(hint) = tee_hint {
+                if filter_result.truncated {
+                    let slug = toml_filter::slug_for_filter(filter);
+                    if let Some(preview) = rtco_core::tee::force_tee_tail_hint_with_preview(
+                        &combined_raw,
+                        &slug,
+                        filter_result.kept + 1,
+                    ) {
+                        println!("{}", preview);
+                    }
+                } else if let Some(hint) = tee_hint {
                     println!("{}", hint);
                 }
 

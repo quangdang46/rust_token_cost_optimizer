@@ -153,6 +153,29 @@ pub struct CompiledFilter {
     pub filter_stderr: bool,
 }
 
+/// Tee slug for a filter — used as filename prefix for `force_tee_tail_hint_with_preview`.
+/// Centralized here so `main.rs` fallback can emit recoverable hints without
+/// scattering `force_tee_*` calls per caller (C1: gom về .rtco).
+pub fn slug_for_filter(filter: &CompiledFilter) -> String {
+    // Sanitize like tee.rs sanitize_slug: alnum + _ - only, capped at 40
+    let raw = format!("toml-{}", filter.name);
+    let sanitized: String = raw
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if sanitized.len() > 40 {
+        sanitized[..40].to_string()
+    } else {
+        sanitized
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Results for `rtco verify`
 // ---------------------------------------------------------------------------
@@ -432,7 +455,21 @@ pub fn find_filter_in<'a>(
 ///   6. head/tail_lines      — keep first/last N lines
 ///   7. max_lines            — absolute line cap
 ///   8. on_empty             — message if result is empty
+pub struct FilterResult {
+    pub text: String,
+    pub truncated: bool,
+    #[allow(dead_code)]
+    pub total_before_truncation: usize,
+    pub kept: usize,
+}
+
 pub fn apply_filter(filter: &CompiledFilter, stdout: &str) -> String {
+    apply_filter_with_meta(filter, stdout).text
+}
+
+/// Like [`apply_filter`] but also reports whether truncation occurred.
+/// The caller can use `kept+1` as `line_offset` for `force_tee_tail_hint_with_preview`.
+pub fn apply_filter_with_meta(filter: &CompiledFilter, stdout: &str) -> FilterResult {
     let mut lines: Vec<String> = stdout.lines().map(String::from).collect();
 
     // 1. strip_ansi
@@ -470,7 +507,12 @@ pub fn apply_filter(filter: &CompiledFilter, stdout: &str) -> String {
                         continue; // errors/warnings present — skip this rule
                     }
                 }
-                return rule.message.clone();
+                return FilterResult {
+                    text: rule.message.clone(),
+                    truncated: false,
+                    total_before_truncation: lines.len(),
+                    kept: lines.len(),
+                };
             }
         }
     }
@@ -490,6 +532,10 @@ pub fn apply_filter(filter: &CompiledFilter, stdout: &str) -> String {
             .collect();
     }
 
+    let mut truncated = false;
+    let mut total_before_truncation = lines.len();
+    let mut kept = lines.len();
+
     // 6. head + tail
     let total = lines.len();
     if let (Some(head), Some(tail)) = (filter.head_lines, filter.tail_lines) {
@@ -498,26 +544,43 @@ pub fn apply_filter(filter: &CompiledFilter, stdout: &str) -> String {
             result.push(format!("... ({} lines omitted)", total - head - tail));
             result.extend_from_slice(&lines[total - tail..]);
             lines = result;
+            truncated = true;
+            total_before_truncation = total;
+            kept = head + tail;
         }
     } else if let Some(head) = filter.head_lines {
         if total > head {
             lines.truncate(head);
             lines.push(format!("... ({} lines omitted)", total - head));
+            truncated = true;
+            total_before_truncation = total;
+            kept = head;
         }
     } else if let Some(tail) = filter.tail_lines {
         if total > tail {
             let omitted = total - tail;
             lines = lines[omitted..].to_vec();
             lines.insert(0, format!("... ({} lines omitted)", omitted));
+            truncated = true;
+            total_before_truncation = total;
+            kept = tail;
         }
     }
 
     // 7. max_lines — absolute cap applied after head/tail (includes omit messages)
     if let Some(max) = filter.max_lines {
         if lines.len() > max {
-            let truncated = lines.len() - max;
+            let truncated_count = lines.len() - max;
             lines.truncate(max);
-            lines.push(format!("... ({} lines truncated)", truncated));
+            lines.push(format!("... ({} lines truncated)", truncated_count));
+            if !truncated {
+                total_before_truncation = lines.len() + truncated_count - 1; // before this step
+                kept = max;
+            } else {
+                // Already truncated by head/tail; keep original total, update kept to max
+                kept = max;
+            }
+            truncated = true;
         }
     }
 
@@ -525,11 +588,21 @@ pub fn apply_filter(filter: &CompiledFilter, stdout: &str) -> String {
     let result = lines.join("\n");
     if result.trim().is_empty() {
         if let Some(ref msg) = filter.on_empty {
-            return msg.clone();
+            return FilterResult {
+                text: msg.clone(),
+                truncated,
+                total_before_truncation,
+                kept,
+            };
         }
     }
 
-    result
+    FilterResult {
+        text: result,
+        truncated,
+        total_before_truncation,
+        kept,
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -888,6 +961,57 @@ on_empty = "empty"
         assert!(out.contains("red line"));
         assert!(!out.contains("noise skip"));
         assert!(out.contains("lines omitted") || out.contains("lines truncated"));
+    }
+
+    #[test]
+    fn test_apply_with_meta_detects_head_truncation() {
+        let f = first_filter(
+            r#"
+schema_version = 1
+[filters.f]
+match_command = "^cmd"
+head_lines = 2
+"#,
+        );
+        let r = apply_filter_with_meta(&f, "a\nb\nc\nd\ne");
+        assert!(r.truncated);
+        assert_eq!(r.kept, 2);
+        assert_eq!(r.total_before_truncation, 5);
+        // Backward compat: apply_filter text unchanged
+        assert_eq!(r.text, apply_filter(&f, "a\nb\nc\nd\ne"));
+    }
+
+    #[test]
+    fn test_apply_with_meta_no_truncation_when_under_cap() {
+        let f = first_filter(
+            r#"
+schema_version = 1
+[filters.f]
+match_command = "^cmd"
+head_lines = 10
+"#,
+        );
+        let r = apply_filter_with_meta(&f, "a\nb\nc");
+        assert!(!r.truncated);
+        assert_eq!(r.text, "a\nb\nc");
+    }
+
+    #[test]
+    fn test_slug_for_filter_sanitizes() {
+        let f = first_filter(
+            r#"
+schema_version = 1
+[filters.my-filter]
+match_command = "^my"
+head_lines = 2
+"#,
+        );
+        let slug = slug_for_filter(&f);
+        assert!(slug.starts_with("toml-"));
+        assert!(slug.len() <= 40);
+        assert!(slug
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-'));
     }
 
     // --- Validation ---
