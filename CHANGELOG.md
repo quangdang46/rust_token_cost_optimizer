@@ -5,6 +5,21 @@ All notable changes to rtco (Rust Token Killer) will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7](https://github.com/quangdang46/rust_token_cost_optimizer/compare/v0.2.6...v0.2.7) (2026-08-20)
+
+
+### Features
+
+* **gain:** Show bypass rate per command in rtco gain output (C4) ([346e45c](https://github.com/quangdang46/rust_token_cost_optimizer/commit/346e45c76fe9c091611ea789bc94a20c9f9ecffa))
+* **toml:** Wire centralized auto-tee for TOML filter truncation (C1) ([dc7a5a8](https://github.com/quangdang46/rust_token_cost_optimizer/commit/dc7a5a8e642c63d5fcbfb4b7d6151c3167c69e82))
+
+
+### Bug Fixes
+
+* **clippy:** Unit variant patterns in is_operational_command ([ee2139a](https://github.com/quangdang46/rust_token_cost_optimizer/commit/ee2139abd0cdaf0276f7ddc2fbb2b807a0d87f21))
+* **hook:** Prevent piped grep counting mode from becoming repo search ([#73](https://github.com/quangdang46/rust_token_cost_optimizer/issues/73) [#74](https://github.com/quangdang46/rust_token_cost_optimizer/issues/74)) ([5f3c5c4](https://github.com/quangdang46/rust_token_cost_optimizer/commit/5f3c5c4a6345e86bf83869e329355098173e3ac7))
+* **security:** Make is_operational_command match exhaustive (sprint-1) ([19aba8b](https://github.com/quangdang46/rust_token_cost_optimizer/commit/19aba8bef412b3318172137c5ae447e9a316b44c))
+
 ## [0.2.6](https://github.com/quangdang46/rust_token_cost_optimizer/compare/rtco-v0.2.5...rtco-v0.2.6) (2026-08-11)
 
 
