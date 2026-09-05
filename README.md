@@ -2,10 +2,9 @@
 
 <div align="center">
 
-### ⛔ ARCHIVED — DO NOT USE
+### 📦 Archived
 
-> **This project is no longer maintained.**
-> Aggressive token compression cuts too much context — agents end up needing extra follow-up queries, negating the savings. Modern LLMs and agent harnesses handle verbose output better on their own. This repo may be revisited only if a fundamentally better approach emerges.
+> This project is on hold. In practice, cutting tokens also cuts context — agents end up needing extra queries to recover the missing info, which defeats the purpose. As models and agent harnesses get smarter at handling verbose output natively, forced compression adds more friction than value. May revisit if a smarter approach surfaces.
 
 </div>
 
