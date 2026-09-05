@@ -1,5 +1,9 @@
 # rtco — Rust Token Cost Optimizer
 
+> 📦 **Archived — no longer actively developed**
+>
+> After extensive real-world testing, we found that aggressive token compression cuts too much context — agents end up needing extra follow-up queries to compensate, negating the savings. Meanwhile, modern LLMs and agent harnesses are getting smarter at handling verbose output on their own. The ROI of forced output compression is no longer justified. This repo may be revisited if a better approach emerges.
+
 <div align="center">
   <img src="rtco_illustration.webp" alt="rtco — cut LLM token costs 60–90% on every CLI command">
 </div>
